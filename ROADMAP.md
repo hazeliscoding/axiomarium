@@ -71,10 +71,12 @@ Axiomarium is my lab for building, testing and debugging AI coding environments 
 - [x] Write `schemas/asset.schema.json`.
 - [x] `axm --version`, and a first `axm doctor` that discovers assets and validates their manifests.
 - [x] Add the first real asset: `agents/determinism-auditor/`.
-- [ ] CI: build, test and format check on Linux, Windows and macOS, plus a NativeAOT publish on each.
+- [x] CI: build, test and format check on Linux, Windows and macOS, plus a NativeAOT publish on each.
 - [x] Guardrail: a test fails if `Axiomarium.Core` references `System.Console`, Spectre.Console or `System.Net.Http`.
 
 **Done when:** CI is green on all three platforms, `axm doctor` validates the determinism auditor, a test PR that breaks its manifest makes `axm doctor` fail and name the field, and a test PR that adds an `HttpClient` to `Axiomarium.Core` fails the build.
+
+**Done (2026-09-27).** CI passed on all three platforms ([run](https://github.com/hazeliscoding/axiomarium/actions/runs/36353578047)). Throwaway PR #2 broke the manifest, and CI failed with `Unknown maturity: "production-ready"` at `asset.yaml:8` ([run](https://github.com/hazeliscoding/axiomarium/actions/runs/36353703863)). Throwaway PR #3 added an `HttpClient` to the core, and the guardrail failed on `System.Net.Http.HttpClient` ([run](https://github.com/hazeliscoding/axiomarium/actions/runs/36353712232)). Both PRs were closed without merging.
 
 ## M1: v0.1, asset model
 
