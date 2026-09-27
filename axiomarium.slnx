@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Axiomarium.Cli/Axiomarium.Cli.csproj" />
+    <Project Path="src/Axiomarium.Core/Axiomarium.Core.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Axiomarium.Tests/Axiomarium.Tests.csproj" />
+  </Folder>
+</Solution>

@@ -1,0 +1,9 @@
+<Project>
+  <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))" />
+  <PropertyGroup>
+    <!-- With warnings as errors, a public type or member without an XML doc comment (CS1591) fails the build. -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <!-- The docs are for readers of the source; the published binary doesn't need them. -->
+    <PublishDocumentationFile>false</PublishDocumentationFile>
+  </PropertyGroup>
+</Project>
