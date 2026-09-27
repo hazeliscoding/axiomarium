@@ -1,0 +1,53 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            rid: linux-x64
+            binary: out/axm
+          - os: windows-latest
+            rid: win-x64
+            binary: out/axm.exe
+          - os: macos-latest
+            rid: osx-arm64
+            binary: out/axm
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+      - name: Check formatting
+        run: dotnet format axiomarium.slnx --verify-no-changes
+      - name: Build and test
+        run: dotnet test --project tests/Axiomarium.Tests
+      - name: Install the native toolchain
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y clang zlib1g-dev
+      # Trim and AOT warnings are errors, so this fails on any IL2xxx or IL3xxx warning.
+      - name: Publish NativeAOT
+        run: dotnet publish src/Axiomarium.Cli -c Release -r ${{ matrix.rid }} -o out
+      - name: Test the published binary
+        run: dotnet test --project tests/Axiomarium.Tests -- --filter-class Axiomarium.Tests.Cli.NativeBinaryTests
+        env:
+          AXM_BINARY: ${{ github.workspace }}/${{ matrix.binary }}
+      - name: Run axm doctor on this repo
+        run: ./${{ matrix.binary }} doctor
