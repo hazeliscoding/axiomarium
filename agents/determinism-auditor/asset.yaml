@@ -1,0 +1,26 @@
+# yaml-language-server: $schema=../../schemas/asset.schema.json
+name: determinism-auditor
+kind: agent
+version: 0.1.0
+description: >-
+  Reviews a codebase for decisions that depend on LLM judgment but should be
+  enforced by deterministic code, and says where the boundary belongs.
+maturity: experimental
+supports:
+  claude-code: experimental
+  codex: experimental
+  generic: full
+permissions:
+  filesystem: read
+  shell: none
+  network: none
+side_effects: none
+inputs:
+  - source-code
+  - architecture-notes
+outputs:
+  - boundary-findings
+evals:
+  trigger: false
+  behavioral: false
+  regression: false
