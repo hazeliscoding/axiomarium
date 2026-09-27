@@ -116,16 +116,40 @@ The first asset in the collection, for people who never run a CLI themselves.
 - `--add-dir` directories and symlinked rules.
 - A contradiction pass that is clearly labeled as model judgment.
 - A freshness check that warns when the docs a harness model was built from have changed.
-- The next pieces: determinism auditor, trigger collision lab, prompt fossil and scope sheriff.
-- The collection: skills, hooks and agents with a catalog, and adapters that generate each harness's files from one source.
 - A short launch video.
 - winget and Homebrew.
+
+### More pieces
+
+Each one ships like `axm explain`: a tool, a demo and a write-up.
+
+- **Determinism auditor:** finds decisions an LLM shouldn't own, such as auth, money, destructive actions and state transitions, and suggests the deterministic gate to put there instead.
+- **Trigger collision lab:** finds skills whose descriptions overlap, generates trigger tests and reports precision and recall for each skill. It emits fixtures for existing skill-eval tools instead of competing with them.
+- **Prompt fossil:** finds instructions written for older models that now only cost tokens, backed by before-and-after evals.
+- **Scope sheriff:** a hook that records a task's intended scope and flags edits outside it, with the reason, instead of blocking them.
+- **Failure distiller:** turns a failed session into an incident note, a proposed guardrail (hook, skill, policy or eval) and a regression test. It never changes configuration on its own.
+- **Evidence freshness ledger:** ties test, lint and build results to the tree they ran on, so a later edit marks them stale.
+- **Knowledge expiry:** a source, a `verified_at` date and a freshness class on reference material, with a warning when it may have rotted.
+- **Agent asset BOM:** for each asset, what it reads, runs and writes, its network access, environment variables and MCP dependencies.
+- **Change validator router:** given a diff, the smallest set of checks worth running.
+- **Public vault sanitizer:** catches usernames, private hosts, absolute paths, secrets and transcript fragments before agent configuration is published.
+- **Agent contract:** each agent declares its inputs, outputs, side effects, escalation conditions and expected evidence, and a linter checks the agent against it.
+
+### The collection
+
+- Agents, skills and hooks for the stack the owner actually uses (.NET, Angular, PostgreSQL, Terraform), plus guards such as a destructive-action hook.
+- Metadata on every asset: kind, supported harnesses, side effects, network access, what it writes and how it is tested.
+- Maturity levels: experimental, incubating, tested, stable and battle-tested.
+- Policies (deterministic boundaries, allowed tools, evidence requirements, public-repo safety) and workflows (failure to guardrail, research to ADR).
+- Failures as first-class records: the incident, its root cause and the regression test that now guards against it.
+- Adapters that generate each harness's files from one source, so there are never four copies drifting apart.
+- CLI commands once the collection exists: `axm init` detects a repo's stack and sets up the right assets for each harness, `axm doctor` reports the collection's health (overlapping triggers, stale references, assets without tests), and `axm eval` runs its trigger, behavior and regression evals.
 
 ## Not planned
 
 - A dashboard or control plane. That is a different, much larger product.
 - Anything hosted, accounts or telemetry.
-- Generic prompt, agent or skill collections. Plenty exist already.
+- Generic prompt, agent or skill collections as the headline. Plenty exist already. The owner's own stack assets can live in the collection, but they don't lead.
 - Editing instruction files. `axm` reports and suggests fixes. It never changes files.
 
 ## How we'll know it works
