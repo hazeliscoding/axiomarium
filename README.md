@@ -5,15 +5,69 @@
   </picture>
 </h1>
 
-**See exactly which instructions your coding agent loads for any file, and what it silently drops.** `axm explain` reads the CLAUDE.md files, AGENTS.md files, rules and imports in a repo, and shows what Claude Code and Codex each load for a given file, in order, with the reason for every one.
+**Build, test, and debug your AI coding environment like software.**
 
-Instructions for coding agents now live in many files: a global CLAUDE.md, the project's AGENTS.md, nested files per directory, path-scoped rules and imports. Each harness loads them by its own rules, and none of them tells you when something is skipped. A `CLAUDE.local.md` makes Claude Code stop reading your AGENTS.md. A rule with broken frontmatter loads for every file instead of the ones it names. Codex stops adding files once they reach 32 KiB. You find out when the agent ignores a rule you know you wrote.
+Axiomarium is my lab for engineering reliable AI coding environments. It holds the agents, skills, hooks, policies, workflows and evals I use, and `axm`, a local CLI that inspects, validates, tests and debugs them. It treats agent configuration as real software infrastructure: kept in git, inspectable, testable, portable, and able to learn from its failures. It's built for my own setup first, and it's public in case it's useful to you too.
 
 > **Status:** planning. There is nothing to install yet. See [ROADMAP.md](ROADMAP.md).
 
-## How it works
+## The problem
 
-The output below is the planned v0.1 output for a small repo. Its `CLAUDE.md` imports a missing file, doesn't import `AGENTS.md`, and sits next to a rule scoped to `src/api/**`.
+Most AI coding configuration ends up looking like this:
+
+```text
+CLAUDE.md
+AGENTS.md
+.github/copilot-instructions.md
+.claude/
+.agents/
+.cursor/
+skills/
+random-prompts/
+```
+
+Over time, instructions contradict each other, skills overlap, old rules stay forever and the context keeps growing. Agents wander outside the task, and nobody can tell which instruction caused a behavior. Broken behavior gets fixed by adding more prose, the same configuration is copied between tools, and nobody tests whether any of it works.
+
+Axiomarium treats that as an engineering problem.
+
+> **Failures should become tests, not paragraphs.**
+
+## Two parts
+
+**The vault** holds agents, skills, hooks, policies, workflows, schemas, evals, experiments and write-ups. It is all Markdown, YAML and JSON Schema, so you can read it without `axm`. Every asset carries a manifest that says what it is, which harnesses it supports, what it's allowed to touch, how it's tested and how far it can be trusted.
+
+**`axm`** is the engineering around the vault:
+
+```text
+axm doctor      health of the agent environment
+axm explain     which instructions apply to a file, and which get dropped
+axm triggers    which skill fires for which prompt, and where skills collide
+axm eval        whether a change actually improves agent behavior
+axm evidence    which test and build results are still fresh
+axm incident    turn an agent failure into a guardrail and a regression test
+axm fossil      instructions that only cost tokens now
+axm sync        generate each harness's files from one source
+```
+
+The vault provides the knowledge and behavior. `axm` provides the infrastructure around it.
+
+## What it looks like
+
+The output below is planned, not built yet.
+
+`axm doctor` catches a broken asset before any agent loads it:
+
+```text
+$ axm doctor
+
+ERROR  agents/determinism-auditor/asset.yaml
+       Unknown maturity: "production-ready"
+       Allowed: experimental, incubating, tested, stable, battle-tested
+
+5 assets · 1 error
+```
+
+`axm explain` shows what each harness loads for a file, and what it silently drops:
 
 ```text
 $ axm explain src/api/orders/OrderService.cs --harness all
@@ -42,29 +96,23 @@ WARNING  dead-import
 2 harnesses · 5 loaded · 4 not loaded · 2 warnings
 ```
 
-The same file gets different instructions from each harness. Claude Code applies the backend rule but never sees AGENTS.md. Codex sees AGENTS.md but not the rule, and not the AGENTS.md in `src/api/`.
+## Principles
 
-## What it does
+- **Local first.** No account, hosted storage, telemetry or uploaded code. Agent configuration often holds sensitive repository context, so it stays on your machine.
+- **Vendor neutral.** The canonical definitions belong to Axiomarium, not to Claude Code, Codex or Copilot. Thin adapters generate each harness's files.
+- **Markdown where possible.** Markdown, YAML and JSON Schema, never a custom DSL.
+- **Progressive disclosure.** Global rules, then contextual rules, then task-relevant skills, then a specialized agent. Not a 150 KB system prompt.
+- **Evidence over confidence.** "`dotnet test` passed at commit abc123", not "I think this works".
+- **A deterministic core.** Discovery, validation, `explain` and `doctor` never call a model. Only `eval`, `triggers`, `fossil` and `conflicts --judge` do, and only when you run them.
+- **Recommend, don't rewrite.** `axm` suggests changes to your instructions. It writes files only when you ask it to.
 
-- **Resolves** the instructions a harness loads for a file, in context order, with why each one loaded and when: at launch, or when the agent reads the file.
-- **Shows what's dropped:** files that are excluded, hidden by another file, past the byte cap or too many imports deep.
-- **Compares harnesses.** `--diff` shows what Claude Code sees that Codex doesn't, and the reverse.
-- **Flags problems:** dead imports and links, rules that match no file or load for every file, and blocks duplicated across files.
-- **Checks the whole repo.** `axm check` lists every problem in plain words, each with its fix, and exits non-zero so CI can catch it.
+## What it isn't
 
-## Deterministic, and honest about it
+Axiomarium is not an AI IDE, an agent runtime, an autonomous coding agent, a prompt or MCP marketplace, an LLM gateway, a model router, an observability service or another giant collection of prompts. It manages the environment around agents.
 
-- **No model in the loop.** Every line of output comes from your files and a documented loading rule. `axm` makes no network calls and never edits your files.
-- **Checked against the real harness.** Each harness model names the docs and version it was built against, and its test scenarios are confirmed by running the real Claude Code and Codex.
-- **Clear about what it can't know.** When a harness leaves loading to the model, as Codex does with an AGENTS.md below the launch directory, `axm` says "not loaded by the harness" instead of guessing.
+## Using it
 
-## Axiomarium
-
-Axiomarium is a lab for tools that make coding agents observable, constrained, testable and correctable, rather than smarter. Each piece ships as a working tool, a demo you can reproduce and a write-up of the thinking behind it. `axm explain` is the first piece.
-
-## Contributing
-
-Each finding will be one folder: a note that explains it, and two small fixture repos, one that triggers it and one that doesn't. A contributor guide arrives with v0.1.
+It's built for my own setup: Claude Code and Codex first, on .NET, Angular, PostgreSQL and Terraform projects. Each asset is one folder with a manifest, so it's easy to read or borrow even if you never run `axm`. Issues and ideas are welcome.
 
 ## License
 
