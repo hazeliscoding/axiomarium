@@ -7,6 +7,10 @@
     <PackageReference Include="YamlDotNet" />
   </ItemGroup>
   <ItemGroup>
+    <!-- The schema files in the repo are the single source of truth; the binary carries a copy. -->
+    <EmbeddedResource Include="..\..\schemas\*.schema.json" LogicalName="schemas/%(Filename)%(Extension)" />
+  </ItemGroup>
+  <ItemGroup>
     <InternalsVisibleTo Include="Axiomarium.Tests" />
   </ItemGroup>
 </Project>

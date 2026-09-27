@@ -16,6 +16,14 @@ public class YamlDocumentTests
     }
 
     [Fact]
+    public void Numbers_keep_their_source_text()
+    {
+        var result = YamlDocument.Parse("a: 1.0\nb: 1.50\n");
+
+        Assert.Equal("""{"a":1.0,"b":1.50}""", result.Root!.ToJsonString());
+    }
+
+    [Fact]
     public void Records_key_locations_for_nested_paths()
     {
         var result = YamlDocument.Parse("name: x\nsupports:\n  claude-code: full\ninputs:\n  - a\n");

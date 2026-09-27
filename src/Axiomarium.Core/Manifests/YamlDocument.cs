@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 using YamlDotNet.Core;
@@ -133,6 +134,13 @@ public static partial class YamlDocument
                 return JsonValue.Create(false);
         }
 
+        // A number that is already valid JSON keeps its source text, so "1.0" isn't reported back as "1".
+        if (JsonNumber().IsMatch(value))
+        {
+            using var number = JsonDocument.Parse(value);
+            return JsonValue.Create(number.RootElement.Clone());
+        }
+
         if (Integer().IsMatch(value) && long.TryParse(value, NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out var integer))
         {
             return JsonValue.Create(integer);
@@ -182,6 +190,9 @@ public static partial class YamlDocument
 
         return message.EndsWith('.') ? message : message + ".";
     }
+
+    [GeneratedRegex(@"^-?(0|[1-9][0-9]*)(\.[0-9]+)?([eE][-+]?[0-9]+)?$", RegexOptions.CultureInvariant)]
+    private static partial Regex JsonNumber();
 
     [GeneratedRegex(@"^[-+]?[0-9]+$", RegexOptions.CultureInvariant)]
     private static partial Regex Integer();

@@ -1,0 +1,96 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/hazeliscoding/axiomarium/blob/main/schemas/asset.schema.json",
+  "title": "Axiomarium asset manifest",
+  "description": "The asset.yaml in every asset folder: what the asset is, which harnesses it supports, what it may touch, and how far it can be trusted.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["name", "kind", "version", "description", "maturity", "supports", "permissions", "side_effects"],
+  "properties": {
+    "name": {
+      "description": "Kebab-case: lowercase letters, digits and single hyphens. Must match the asset's folder name.",
+      "type": "string",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+    },
+    "kind": {
+      "description": "What the asset is. Must match its top-level folder: agents/, skills/, hooks/, policies/, workflows/ or experiments/.",
+      "enum": ["agent", "skill", "hook", "policy", "workflow", "experiment"]
+    },
+    "version": {
+      "description": "The asset's own SemVer version, such as 0.1.0. Quote it if YAML would read it as a number.",
+      "type": "string",
+      "pattern": "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(?:-[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?(?:\\+[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?$"
+    },
+    "description": {
+      "description": "One or two sentences on what the asset does.",
+      "type": "string",
+      "minLength": 1
+    },
+    "maturity": {
+      "description": "How far the asset can be trusted. Each level needs the evidence registry/maturity.yaml lists.",
+      "enum": ["experimental", "incubating", "tested", "stable", "battle-tested"]
+    },
+    "supports": {
+      "description": "How well each harness is supported. List at least one.",
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "properties": {
+        "claude-code": { "$ref": "#/$defs/support" },
+        "codex": { "$ref": "#/$defs/support" },
+        "copilot": { "$ref": "#/$defs/support" },
+        "generic": { "$ref": "#/$defs/support" }
+      }
+    },
+    "permissions": {
+      "description": "What the asset is allowed to touch.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["filesystem", "shell", "network"],
+      "properties": {
+        "filesystem": {
+          "description": "Access to files.",
+          "enum": ["none", "read", "write"]
+        },
+        "shell": {
+          "description": "Commands it may run: none, read-only ones such as git status, or any.",
+          "enum": ["none", "read-only", "any"]
+        },
+        "network": {
+          "description": "Whether it needs the network.",
+          "enum": ["none", "optional", "required"]
+        }
+      }
+    },
+    "side_effects": {
+      "description": "The worst thing running the asset can change: nothing, something reversible, or something irreversible.",
+      "enum": ["none", "reversible", "irreversible"]
+    },
+    "inputs": {
+      "description": "What the asset reads, in kebab-case words such as source-code.",
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "outputs": {
+      "description": "What the asset produces, in kebab-case words such as boundary-findings.",
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "evals": {
+      "description": "Which kinds of evals exist for the asset.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "trigger": { "description": "Tests that it activates when it should.", "type": "boolean" },
+        "behavioral": { "description": "Tests of what it does once active.", "type": "boolean" },
+        "regression": { "description": "Tests that guard against past failures.", "type": "boolean" }
+      }
+    }
+  },
+  "$defs": {
+    "support": {
+      "description": "full: works as intended. partial: works with gaps. experimental: unproven.",
+      "enum": ["full", "partial", "experimental"]
+    }
+  }
+}
