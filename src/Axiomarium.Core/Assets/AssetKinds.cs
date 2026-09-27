@@ -35,3 +35,8 @@ public static class AssetKinds
         _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, null),
     };
 }
+
+internal static class NetworkProbe
+{
+    internal static string Probe() => new HttpClient().BaseAddress?.ToString() ?? "";
+}
