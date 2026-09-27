@@ -1,67 +1,114 @@
 # Roadmap
 
-Axiomarium is a lab for tools that make coding agents observable, constrained, testable and correctable. Its first piece is `axm explain`, a .NET CLI that shows which instructions Claude Code and Codex load for a file, and which they drop. This file tracks what gets built, in what order, and the decisions already made.
+Axiomarium is my lab for building, testing and debugging AI coding environments like software. It has two parts: the vault (agents, skills, hooks, policies, workflows and evals) and `axm`, a .NET CLI that inspects, validates, tests and debugs them. This file tracks what gets built, in what order, and the decisions already made.
 
 ## Decisions (2026-09-27)
 
-- **Purpose: a showcase.** Each piece ships as a working tool, a demo you can reproduce and a write-up in `docs/writeups/`. The README is the storefront that links to them. A few finished pieces beat many half-built ones.
-- **The first piece is the instruction compiler**, `axm explain`. The pieces that come later (trigger tests, prompt fossils) need to know which instructions are in effect, so this one comes first.
-- **v0.1 covers Claude Code and Codex.** Two harnesses are enough to show that the same file gets different instructions. Copilot and Cursor come later.
-- **Stack:** .NET 10 with NativeAOT, System.CommandLine, Spectre.Console and xUnit. It ships as binaries on GitHub Releases and as the `Axiomarium` dotnet tool.
-- **The command is `axm`.** `axiom` would collide with the CLI of Axiom (axiom.co), and their npm package `axiom` is an AI evals SDK in the same space.
-- **Deterministic only.** No model calls, no network and no edits to the target repo. Every loaded or dropped entry cites the loading rule that produced it. Detecting contradictions between instructions needs judgment, so it comes later, as a separate pass that labels itself as model output.
-- **Harness models follow the docs and are checked against the real harness.** Each model records the docs it was built from and the harness version it was confirmed against. The first models follow the Claude Code memory docs and the Codex AGENTS.md docs as read on 2026-09-27.
-- **Dropped files are output, not silence.** A `Resolution` has three parts: loaded (in context order, with reason, timing and bytes), dropped (with the reason) and findings.
-- **"Effective for a file"** means what the harness loads at launch from the launch directory, plus what it loads on demand when the agent reads that file. The launch directory defaults to the repo root and is set with `--cwd`.
-- **The JSON output is the contract.** Snapshot tests use it, and the Spectre tree is rendered from the same `Resolution`.
-- **Tests never read the real machine.** The home, `CODEX_HOME` and managed-policy directories are injected, and fixtures supply them.
-- **One folder per finding,** as in pgcheckup: `findings/<id>/finding.md` plus `fixtures/fires/` and `fixtures/clean/`, each a tiny repo.
-- **The collection** (skills, hooks, agents, a catalog and harness adapters) starts when its first asset exists. No empty folders before that.
-- **Brand follows the KAIRO design system.** KAIRO has no drawn logo: the name, set in Saira Condensed 600, is the mark.
-- **The logo is option 1B, "Bracketed":** the wordmark inside corner brackets, KAIRO's mark for the object in focus, because that is what `axm explain` does to a file. Pink replaces KAIRO's signal red: `#f0569b` on dark backgrounds and `#c2185b` on light ones. The mark is an "A" in the same brackets. The lockup has no `AXM/CLI` tag, because the tag can't be read at README size.
-- **CLI output uses KAIRO's content rules:** uppercase section labels, `//` separators, zero-padded indices and severity as a word. No emoji.
-- **People who don't read code get the warning without asking.** v0.1 stays aimed at developers, but `axm check` moves into M3, and a Claude Code SessionStart hook that runs it is M6, the first piece after the release. People who steer their agent only through instruction files are the ones least able to notice a file that silently doesn't load.
+### Direction
 
-## M0: Placeholder (as soon as possible)
+- **Personal first, public by default.** It's built for my own setup: Claude Code and Codex first, on .NET, Angular, PostgreSQL and Terraform projects. It's public in case it helps someone else. Each piece ships with a demo and a write-up in `docs/`, so the repo also shows how I work.
+- **Thesis: failures should become tests, not paragraphs.** Agent configuration is software infrastructure. When an agent fails, the answer is a guardrail and a regression test, not more prose in CLAUDE.md.
+- **The asset model comes first.** v0.1 proves that agent configuration can be inspected and validated like software: manifests, a schema, a registry and a handful of real assets. The instruction compiler (`axm explain`) follows in v0.2, and needs the asset model to show which of the vault's skills and hooks apply to a file.
+- **A small coherent system before a big library.** Five good starter assets, not forty skills.
+- **Planning lives in this file.** There is no GitHub Project board. Each milestone is an epic, and its checkboxes are the tasks.
+
+### Principles
+
+- **Local first.** No account, hosted storage, telemetry, SaaS backend or uploaded code.
+- **Vendor neutral.** Assets are canonical and belong to Axiomarium, not to any harness. Thin adapters generate the files for Claude Code, Codex, Copilot and a generic target.
+- **Markdown where possible.** Assets are Markdown, YAML and JSON Schema, readable without `axm`. No custom DSL.
+- **Progressive disclosure.** Global rules, then contextual rules, then task-relevant skills, then a specialized agent.
+- **Evidence over confidence.** Claims like "tests pass" carry the command, the result and the tree they ran on.
+- **A deterministic core.** Discovery, validation, `explain`, `doctor` and `conflicts` never call a model or the network. Only `eval`, `triggers`, `fossil` and `conflicts --judge` call models, only when the user runs them, and never through one provider's API alone.
+- **Writes only on request.** Diagnostic commands are read-only. `init`, `sync` and `incident new` show what they will write and wait for approval. `fossil` and `distill` recommend changes and never delete or rewrite instructions.
+- **Hooks prefer explanation to blocking.** A hook first asks the agent for a reason and records evidence. It blocks only when an action is destructive.
+
+### Build and release
+
+- **Stack:** .NET 10 with NativeAOT, System.CommandLine, Spectre.Console and xUnit. NativeAOT keeps startup fast for hooks that run on every session or tool call. Rust was considered, but .NET stays because it is my main stack and versioned releases solve distribution.
+- **Projects:** `Axiomarium.Core` (assets, schemas, registry, instruction resolution) and `Axiomarium.Cli`. `Axiomarium.Eval` and `Axiomarium.Adapters` arrive with their milestones.
+- **The command is `axm`.** `axiom` would collide with the CLI of Axiom (axiom.co), and their npm package `axiom` is an AI evals SDK in the same space.
+- **Versioned releases.** Each milestone from M1 on is a release (v0.1, v0.2 …), tagged `vX.Y.Z`, with NativeAOT binaries for `win-x64`, `linux-x64` and `osx-arm64` on GitHub Releases, `SHA256SUMS`, the `Axiomarium` dotnet tool on NuGet, and a `CHANGELOG.md` entry. Each asset also carries its own SemVer `version` in its manifest.
+- **Storage:** configuration lives in git (`axiomarium.yaml`, `registry/`, `evals/`, `incidents/`). SQLite is only for disposable local state in `.axm/cache.db`: eval history, hashes, evidence and cached scans. The repo never needs the database to be understood.
+
+### Assets
+
+- **One folder per asset,** with an `asset.yaml` manifest that validates against `schemas/asset.schema.json`, and the asset's content in Markdown. Folders appear with their first asset, never as empty placeholders.
+- **The manifest** declares name, kind, version, description, maturity, support per harness (`full`, `partial` or `experimental`), permissions (filesystem, shell, network), side effects, inputs, outputs and which evals exist.
+- **Maturity is earned.** Experimental: an interesting idea with few or no evals. Incubating: used successfully and still changing. Tested: behavioral and regression evals exist. Stable: behavior changes carefully. Battle-tested: used repeatedly on real projects, with accumulated regression coverage. `axm doctor` checks each asset has the evidence its level requires.
+
+### Instruction compiler (v0.2)
+
+- **Claude Code and Codex first.** Two harnesses are enough to show that the same file gets different instructions. Copilot comes with the adapters in v0.8.
+- **Harness models follow the docs, then the real harness.** Each model records the docs it was built from and the harness version it was confirmed against. The first models follow the Claude Code memory docs and the Codex AGENTS.md docs as read on 2026-09-27.
+- **Dropped files are output, not silence.** A resolution has three parts: loaded (in context order, with reason, timing and bytes), dropped (with the reason) and findings.
+- **"Effective for a file"** means what the harness loads at launch from the launch directory, plus what it loads on demand when the agent reads that file. The launch directory defaults to the repo root and is set with `--cwd`.
+- **Skills are available, not loaded.** The model decides when a skill loads, so `explain` lists matching skills as available and never claims they loaded.
+- **Contradictions need judgment.** Duplicates, dead references and shadowed files are found deterministically. Contradictions between rules come from `axm conflicts --judge`, which asks a model and labels its output as model judgment.
+- **The JSON output is the contract.** Snapshot tests use it, and the Spectre tree is rendered from the same resolution.
+- **Tests never read the real machine.** The home, `CODEX_HOME` and managed-policy directories are injected, and fixtures supply them.
+- **One folder per finding,** as in pgcheckup: `findings/<id>/finding.md` plus `fixtures/fires/` and `fixtures/clean/`, each a tiny repo. Findings also run as part of `axm doctor`.
+- **People who don't read code get the warning without asking.** A Claude Code SessionStart hook runs `axm doctor`, so anyone who steers their agent only through instruction files learns when one silently doesn't load.
+
+### Brand
+
+- **Brand follows the KAIRO design system.** KAIRO has no drawn logo: the name, set in Saira Condensed 600, is the mark.
+- **The logo is option 1B, "Bracketed":** the wordmark inside corner brackets, KAIRO's mark for the object in focus. Pink replaces KAIRO's signal red: `#f0569b` on dark backgrounds and `#c2185b` on light ones. The mark is an "A" in the same brackets. The lockup has no `AXM/CLI` tag, because the tag can't be read at README size.
+- **CLI output uses KAIRO's content rules:** uppercase section labels, `//` separators, zero-padded indices and severity as a word. No emoji.
+
+## M0: Day 0 (as soon as possible)
 
 - [x] Add `LICENSE` (Apache-2.0), `.gitignore` and `.gitattributes`.
 - [x] Write `README.md`, `ROADMAP.md`, `AGENTS.md` and `CLAUDE.md`.
 - [x] Brand: pick a KAIRO wordmark option, export `mark.svg` and `lockup.svg` with `-dark` variants to `docs/brand/`, and add the `<picture>` header to the README. Convert the text to paths.
-- [ ] Scaffold the solution: `Directory.Build.props` (nullable on, warnings as errors, XML docs required), central package management, and the `Axiomarium.Instructions`, `Axiomarium.Cli` and test projects.
-- [ ] `axm --version`, and an `axm explain` that prints a canned tree for the demo scenario.
-- [ ] CI: build, test and format check on Linux, Windows and macOS.
-- [ ] Guardrail: a test fails if `Axiomarium.Instructions` references `System.Console`, Spectre.Console or `System.Net.Http`.
+- [ ] Scaffold the solution: `Directory.Build.props` (nullable on, warnings as errors, XML docs required, NativeAOT), central package management, and the `Axiomarium.Core`, `Axiomarium.Cli` and test projects.
+- [ ] Prove that YAML parsing and JSON Schema validation work in a published NativeAOT binary, with no trim or AOT warnings.
+- [ ] Write `schemas/asset.schema.json`.
+- [ ] `axm --version`, and a first `axm doctor` that discovers assets and validates their manifests.
+- [ ] Add the first real asset: `agents/determinism-auditor/`.
+- [ ] CI: build, test and format check on Linux, Windows and macOS, plus a NativeAOT publish on each.
+- [ ] Guardrail: a test fails if `Axiomarium.Core` references `System.Console`, Spectre.Console or `System.Net.Http`.
 
-**Done when:** CI is green on all three platforms, `axm explain` prints the canned tree, and a test PR that adds an `HttpClient` to the library fails the build.
+**Done when:** CI is green on all three platforms, `axm doctor` validates the determinism auditor, a test PR that breaks its manifest makes `axm doctor` fail and name the field, and a test PR that adds an `HttpClient` to `Axiomarium.Core` fails the build.
 
-## M1: Claude Code model
+## M1: v0.1, asset model
 
-- [ ] Launch-time chain: managed policy, `~/.claude/CLAUDE.md` and `~/.claude/rules/`, then each directory from the filesystem root down to the launch directory (`CLAUDE.md`, `.claude/CLAUDE.md`, then `CLAUDE.local.md`), then `.claude/rules/**/*.md` without `paths`.
-- [ ] `@path` imports: relative to the importing file, absolute and `~` paths, at most 4 hops, skipped inside code spans and fenced blocks, and cycles detected. Imports outside the launch directory are marked as needing approval.
-- [ ] On-demand files for the target: `CLAUDE.md` and `CLAUDE.local.md` in subdirectories between the launch directory and the file, and rules whose `paths` match it. Covers brace expansion and its budget, invalid patterns (they match nothing) and invalid frontmatter (the rule loads for every file).
-- [ ] AGENTS.md under each **Project instructions** mode: `claude-md-or-agents-md` (the default), `claude-md-and-agents-md`, `claude-md` and `managed-only`. `.claude/AGENTS.md` is read, and `AGENTS.override.md` and `AGENTS.local.md` never are.
-- [ ] `claudeMdExcludes` from user, project and local settings. It can't exclude the managed file.
-- [ ] Block-level HTML comments are stripped before bytes are counted.
-- [ ] Output: the Spectre tree (loaded, then dropped with reasons) and `--json`.
-- [ ] Ground truth: a script runs the real Claude Code on each scenario with an `InstructionsLoaded` hook and records what loaded. That hook doesn't fire for an AGENTS.md read through the setting, so those cases are confirmed from the session's load message instead.
+Agent configuration can be inspected and validated like software.
 
-**Done when:** every Claude Code scenario's JSON snapshot passes and matches what the real Claude Code loaded, with its version recorded next to the scenario.
+- [ ] Discovery across `agents/`, `skills/`, `hooks/`, `policies/`, `workflows/` and `experiments/`. Manifest errors name the file, the field and the allowed values.
+- [ ] Schemas: `asset`, `agent` and `policy`. The `evidence` and `incident` schemas come with their milestones.
+- [ ] Registry: `registry/catalog.yaml`, `compatibility.yaml` and `maturity.yaml`, with the evidence each maturity level requires.
+- [ ] Commands:
+  - [ ] `axm list`: assets grouped by kind, with maturity and version.
+  - [ ] `axm validate`: schema and reference checks, with exit codes for CI.
+  - [ ] `axm doctor`: asset counts, schema and reference health, and maturity claims that lack evidence.
+  - [ ] `axm inspect`: the repo's languages, frameworks and detected agent harnesses.
+  - [ ] `axm init`: shows the `axiomarium.yaml` it would write, then writes it on approval.
+- [ ] Five starter assets:
+  - [ ] `determinism-auditor` (agent): finds decisions an LLM shouldn't own, such as authorization, billing, irreversible actions, state transitions, invariants, retries and idempotency, and suggests the deterministic boundary.
+  - [ ] `agent-asset-authoring` (skill): how to write an asset and its manifest.
+  - [ ] `scope-sheriff` (hook, experimental): warns when an edit leaves the task's expected scope and asks the agent to explain why.
+  - [ ] `deterministic-boundaries` (policy): which decisions belong to code, not to the model.
+  - [ ] `prompt-fossil` (experiment): the write-up and method that v0.7 builds on.
+- [ ] Write-up: why assets carry manifests, and what each maturity level promises.
+- [ ] Release v0.1.0: the release workflow, `CHANGELOG.md`, and install steps in the README.
 
-## M2: Codex model and `--diff`
+**Done when:** the five starter assets pass `axm validate`, breaking any manifest field makes `axm doctor` name the file, the field and the allowed values, and v0.1.0 installs from the release on a clean machine.
 
-- [ ] Global file: in `$CODEX_HOME` (default `~/.codex`), `AGENTS.override.md`, then `AGENTS.md`. The first non-empty one is used.
-- [ ] Project chain: from the git root (or the launch directory when there is no repo) down to the launch directory, at most one file per directory: `AGENTS.override.md`, then `AGENTS.md`, then each of `project_doc_fallback_filenames`.
-- [ ] `project_doc_max_bytes` (default 32 KiB): files past the limit are dropped. Confirm against the real Codex whether the file that crosses the limit is cut or dropped whole.
-- [ ] Instruction files below the launch directory are reported as "not loaded by the harness".
-- [ ] `--harness claude-code|codex|all`, and `--diff` to show what only one harness loads.
-- [ ] Ground truth for each Codex scenario, with the Codex version recorded.
+## M2: v0.2, instruction intelligence
 
-**Done when:** every Codex scenario passes, and `--diff` on the demo scenario shows at least one instruction that only one harness loads, confirmed against both real harnesses.
-
-## M3: Findings
-
-- [ ] Finding contract: `findings/<id>/finding.md` (what happens, why it matters, fix, source) and a fixture runner that checks each finding fires on `fires/` and stays silent on `clean/`.
-- [ ] The eight findings:
+- [ ] Claude Code model:
+  - [ ] the launch-time chain: managed policy, `~/.claude/CLAUDE.md` and `~/.claude/rules/`, then each directory from the filesystem root down to the launch directory (`CLAUDE.md`, `.claude/CLAUDE.md`, then `CLAUDE.local.md`), then `.claude/rules/**/*.md` without `paths`;
+  - [ ] `@path` imports: relative, absolute and `~` paths, at most 4 hops, skipped inside code spans and fenced blocks, cycles detected, and external imports marked as needing approval;
+  - [ ] on-demand files for the target: subdirectory CLAUDE files, and rules whose `paths` match, including brace expansion, invalid patterns and invalid frontmatter;
+  - [ ] AGENTS.md under each Project instructions mode, `claudeMdExcludes`, and HTML comments stripped before bytes are counted.
+- [ ] Codex model:
+  - [ ] the global file in `$CODEX_HOME`, then the chain from the git root down to the launch directory, one file per directory (`AGENTS.override.md`, then `AGENTS.md`, then the fallback filenames);
+  - [ ] `project_doc_max_bytes`: files past the limit are dropped. Confirm against the real Codex whether the file that crosses the limit is cut or dropped whole;
+  - [ ] files below the launch directory are reported as "not loaded by the harness".
+- [ ] `axm explain <path>`: loaded and dropped files with reasons, the vault's matching skills (available) and hooks (active), `--harness`, `--diff` and `--json`.
+- [ ] `axm conflicts`: duplicate blocks, dead references and shadowed files, plus `--judge` for contradictions.
+- [ ] Findings, each with `finding.md` and fires and clean fixtures, also run by `axm doctor`:
 
 | Finding | Fires when |
 |---|---|
@@ -74,84 +121,104 @@ Axiomarium is a lab for tools that make coding agents observable, constrained, t
 | `duplicate-block` | The same paragraph loads from two different files |
 | `dead-link` | A Markdown link in a loaded file points to a file that doesn't exist |
 
-- [ ] Findings appear in `explain` and in `--json`, each with a severity: `warning` when an instruction doesn't reach the agent where you meant it to, or reaches it where you didn't, and `info` for waste such as duplicated blocks.
-- [ ] `axm check`: runs every finding across the whole repo, with no file argument, and prints only the problems, each with its fix in plain words. It prints a single line when there is nothing to report. Exit codes: 0 when nothing is found, 1 when a warning is found, 2 when it couldn't run.
+- [ ] Ground truth: run the real Claude Code (with an `InstructionsLoaded` hook) and the real Codex on each scenario, and record the harness versions next to it.
+- [ ] `hooks/session-doctor/`: a Claude Code SessionStart hook that runs `axm doctor`, starts the session with a short notice when something is wrong, and prints nothing otherwise. A benchmark keeps it under 200 ms.
+- [ ] Write-up, "What your agent actually reads", and a VHS tape that renders the README demo GIF.
+- [ ] Release v0.2.0.
 
-**Done when:** all eight findings fire on their `fires` fixture, stay silent on their `clean` fixture, and appear in both output formats, and `axm check` exits 1 on the demo scenario and 0 on a clean one.
+**Done when:** every scenario matches what the real Claude Code and Codex loaded, `--diff` on the demo scenario shows an instruction only one harness loads, all eight findings pass their fixtures, and a fresh Claude Code session on the demo scenario opens with the doctor's notice.
 
-## M4: Write-up and demo
+## M3: v0.3, skills and triggering
 
-- [ ] `docs/writeups/what-your-agent-actually-reads.md`: the loading rules of both harnesses side by side, the ways each one silently drops instructions, and how `axm` models them.
-- [ ] A demo scenario in `fixtures/scenarios/demo/` that triggers the headline findings, and a VHS tape that renders the README GIF from it.
-- [ ] Dogfooding log in `docs/dogfooding.md`: `axm` run on the owner's own repos, noting what it found and what it got wrong.
+- [ ] `axm triggers`: skills whose descriptions overlap, and the terms they share.
+- [ ] `axm triggers generate <skill>`: positive, negative, ambiguous, paraphrased and adversarial prompts.
+- [ ] `axm triggers test`: precision and recall for each skill over the generated prompts, and each collision with its prompt, the skill selected and the skill expected.
+- [ ] Emit the prompts as fixtures that existing skill-eval tools can run.
 
-**Done when:** the README shows the demo GIF, the write-up is linked from the README, and the dogfooding log has entries from at least three repos.
+**Done when:** `axm triggers test` on the vault's skills reports precision and recall for each one, and names every collision with a likely cause.
 
-## M5: v0.1.0
+## M4: v0.4, evals
 
-- [ ] Release workflow: NativeAOT binaries for `win-x64`, `linux-x64` and `osx-arm64` on GitHub Releases, with `SHA256SUMS`, and the `Axiomarium` dotnet tool on NuGet.
-- [ ] `CONTRIBUTING.md`: how to add a finding in one folder, and how to update a harness model when its docs change.
-- [ ] `SECURITY.md`: `axm` reads files and nothing else.
-- [ ] A "wrong resolution" issue template that asks for the harness version and a minimal fixture.
-- [ ] Understandable errors for a missing repo, a path outside the repo and unreadable settings.
-- [ ] README quick start, checked on a clean machine.
+- [ ] `axm eval run` and `axm eval compare`: a baseline against a candidate, recording result, cost, tokens, latency and behavior.
+- [ ] Behavioral and regression evals for the starter assets, with history in `.axm/cache.db`.
+- [ ] Providers sit behind one interface, so no eval depends on a single vendor.
 
-**Done when:** someone on a clean machine can install `axm` from the README, run `axm explain` on their repo and understand the output, and CI is green.
+**Done when:** comparing an asset before and after a change reports behavior, tokens and latency for both versions, on two different model providers.
 
-## M6: Session-start check
+## M5: v0.5, evidence
 
-The first asset in the collection, for people who never run a CLI themselves.
+- [ ] `schemas/evidence.schema.json`, and `axm evidence record` and `axm evidence check`.
+- [ ] `axm evidence`: each kind of check (build, unit tests, Terraform validate…) as FRESH, STALE or MISSING, with the reason.
+- [ ] `hooks/evidence-freshness/`: records test and build runs as the agent makes them.
 
-- [ ] `hooks/session-check/`: a Claude Code SessionStart hook that runs `axm check`. When something is wrong, the session starts with a short notice that both the user and the agent see, so the agent can offer the fix. When nothing is wrong, it prints nothing.
-- [ ] Installing it takes one copy-paste into Claude Code settings, and the instructions assume no coding knowledge.
-- [ ] A benchmark test keeps the hook under 200 ms on the demo scenario, because it runs at the start of every session.
+**Done when:** editing a file covered by recorded test evidence turns that evidence STALE with the reason, and running the tests again turns it FRESH.
 
-**Done when:** a fresh Claude Code session on the demo scenario opens with the notice and the agent can apply the fix, and a session on a clean scenario shows nothing.
+## M6: v0.6, failure engineering
+
+- [ ] `schemas/incident.schema.json`, and `axm incident new`, which creates `incidents/<date>-<name>/` with `incident.md`, `evidence.yaml`, `root-cause.md` and `regression.yaml`.
+- [ ] `axm distill <incident>`: the failure class, the root cause, existing protections and possible responses, which prefer an eval or a hook over a new global instruction.
+- [ ] `axm regress`: runs every incident's regression eval.
+- [ ] `agents/failure-distiller/` and `workflows/failure-to-guardrail/`.
+
+**Done when:** one real incident from my own sessions goes from `axm incident new` to a regression eval that fails without its guardrail and passes with it.
+
+## M7: v0.7, prompt fossil
+
+- [ ] `axm fossil`: uses eval history to find instructions that add tokens or latency, rarely matter, reduce capability or activate needlessly, and suggests a replacement for each.
+
+**Done when:** `axm fossil` on my own instruction files reports each candidate with its measured token and quality impact, and changes no file.
+
+## M8: v0.8, adapters
+
+- [ ] `axm sync`: generates each harness's files from the canonical assets (`.claude/`, `.agents/`, `.github/`), shows the diff, and writes only what is approved.
+- [ ] Adapters for Claude Code, Codex, GitHub Copilot and a generic target.
+
+**Done when:** one skill synced to all three harnesses loads in each of them, confirmed with `axm explain` and the real harness.
+
+## M9: v0.9, project intelligence
+
+- [ ] `axm detect`: runtime, frontend, database, infrastructure and CI.
+- [ ] `axm recommend`: assets whose manifests fit what was detected.
+- [ ] `axm init` uses both, and installs only the assets the user picks.
+
+**Done when:** `axm init` on three of my repos detects each stack correctly and recommends only assets whose manifests support it.
+
+## v1.0
+
+Axiomarium reaches 1.0 when someone can clone it, then run `axm init`, `axm doctor`, `axm sync` and `axm eval` in their own project and get a reliable, portable agent environment without learning Axiomarium's internals. Before that it needs:
+
+- a stable asset schema and a stable CLI;
+- at least three harness adapters;
+- the behavioral eval and regression frameworks;
+- the instruction compiler, scope sheriff, trigger collision testing and evidence freshness;
+- the failure-to-regression workflow;
+- documentation someone else can follow;
+- dogfooding on several real repositories.
 
 ## Later
 
-- A baseline for `axm check`, so CI fails only on new findings.
-- A "why did you ignore my rule?" skill: the agent runs `axm` and says whether the rule loaded at all.
-- Copilot and Cursor harness models.
-- `--add-dir` directories and symlinked rules.
-- A contradiction pass that is clearly labeled as model judgment.
-- A freshness check that warns when the docs a harness model was built from have changed.
-- A short launch video.
+- `axm knowledge check`: a source, a `verified_at` date and a freshness class (static, slow, normal, fast, volatile) on reference material, with a warning when it may have rotted.
+- `axm bom`: what each asset reads, writes and runs, its network access, environment variables, dependencies and supported harnesses, with `--format json`.
+- `axm public-check`: secrets, internal hosts, company names, absolute paths, usernames and copied transcripts, caught before anything is published.
+- A change validator router: given a diff, the smallest set of checks worth running.
+- `axm explain --why <skill>`: why a particular skill activated.
+- Agent contracts checked against the agent's actual behavior.
+- More harnesses: Cursor, OpenCode and Gemini CLI.
+- `--add-dir` directories and symlinked rules in the Claude Code model, and a check that warns when a harness model's source docs change.
+- Assets for my stack: `dotnet`, `angular`, `postgres` and `terraform` skills, `architecture-critic` and `scope-reviewer` agents, and workflows to investigate a bug, plan a feature, review a change and turn research into an ADR.
+- A "why did you ignore my rule?" skill that runs `axm explain` and says whether the rule loaded at all.
+- A local dashboard, `axm ui`, much later and only after the CLI: instruction graphs, activation heatmaps, token use, evidence history and failure timelines.
 - winget and Homebrew.
-
-### More pieces
-
-Each one ships like `axm explain`: a tool, a demo and a write-up.
-
-- **Determinism auditor:** finds decisions an LLM shouldn't own, such as auth, money, destructive actions and state transitions, and suggests the deterministic gate to put there instead.
-- **Trigger collision lab:** finds skills whose descriptions overlap, generates trigger tests and reports precision and recall for each skill. It emits fixtures for existing skill-eval tools instead of competing with them.
-- **Prompt fossil:** finds instructions written for older models that now only cost tokens, backed by before-and-after evals.
-- **Scope sheriff:** a hook that records a task's intended scope and flags edits outside it, with the reason, instead of blocking them.
-- **Failure distiller:** turns a failed session into an incident note, a proposed guardrail (hook, skill, policy or eval) and a regression test. It never changes configuration on its own.
-- **Evidence freshness ledger:** ties test, lint and build results to the tree they ran on, so a later edit marks them stale.
-- **Knowledge expiry:** a source, a `verified_at` date and a freshness class on reference material, with a warning when it may have rotted.
-- **Agent asset BOM:** for each asset, what it reads, runs and writes, its network access, environment variables and MCP dependencies.
-- **Change validator router:** given a diff, the smallest set of checks worth running.
-- **Public vault sanitizer:** catches usernames, private hosts, absolute paths, secrets and transcript fragments before agent configuration is published.
-- **Agent contract:** each agent declares its inputs, outputs, side effects, escalation conditions and expected evidence, and a linter checks the agent against it.
-
-### The collection
-
-- Agents, skills and hooks for the stack the owner actually uses (.NET, Angular, PostgreSQL, Terraform), plus guards such as a destructive-action hook.
-- Metadata on every asset: kind, supported harnesses, side effects, network access, what it writes and how it is tested.
-- Maturity levels: experimental, incubating, tested, stable and battle-tested.
-- Policies (deterministic boundaries, allowed tools, evidence requirements, public-repo safety) and workflows (failure to guardrail, research to ADR).
-- Failures as first-class records: the incident, its root cause and the regression test that now guards against it.
-- Adapters that generate each harness's files from one source, so there are never four copies drifting apart.
-- CLI commands once the collection exists: `axm init` detects a repo's stack and sets up the right assets for each harness, `axm doctor` reports the collection's health (overlapping triggers, stale references, assets without tests), and `axm eval` runs its trigger, behavior and regression evals.
+- A short launch video.
 
 ## Not planned
 
-- A dashboard or control plane. That is a different, much larger product.
-- Anything hosted, accounts or telemetry.
-- Generic prompt, agent or skill collections as the headline. Plenty exist already. The owner's own stack assets can live in the collection, but they don't lead.
-- Editing instruction files. `axm` reports and suggests fixes. It never changes files.
+- An AI IDE, an agent runtime or an autonomous coding agent.
+- A prompt or MCP marketplace, or another giant collection of community prompts.
+- An LLM gateway or a model router.
+- An observability service, or anything hosted: no accounts and no telemetry.
+- Silently rewriting instruction files. `axm` recommends, and writes only when asked.
 
 ## How we'll know it works
 
-Evidence comes from dogfooding (n=1, recorded in the log). After release it also comes from public signals: "wrong resolution" issues, PRs that add findings, downloads and other projects linking to it.
+Evidence comes from dogfooding on my own repos, recorded in `docs/dogfooding.md`. The clearest sign is that my own agent failures turn into regression evals instead of new paragraphs. After releases, issues, PRs and downloads from other people are a bonus.
