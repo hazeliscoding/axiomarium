@@ -10,7 +10,7 @@ public class AssetSchemaTests
     {
         var parsed = YamlDocument.Parse(yaml);
         Assert.Null(parsed.Problem);
-        return SchemaValidator.Validate(parsed.Root, Schemas.Asset);
+        return SchemaValidator.Validate(parsed.Root, SchemaCatalog.Asset);
     }
 
     [Fact]
@@ -50,7 +50,7 @@ public class AssetSchemaTests
     public void Schema_uses_only_supported_keywords()
     {
         var used = new SortedSet<string>(StringComparer.Ordinal);
-        CollectKeywords(Schemas.Asset, used);
+        CollectKeywords(SchemaCatalog.Asset, used);
 
         Assert.Empty(used.Except(SchemaValidator.SupportedKeywords));
     }
@@ -60,7 +60,7 @@ public class AssetSchemaTests
     {
         var onDisk = JsonNode.Parse(File.ReadAllText(Path.Combine(RepoRoot.Path, "schemas", "asset.schema.json")));
 
-        Assert.True(JsonNode.DeepEquals(onDisk, Schemas.Asset));
+        Assert.True(JsonNode.DeepEquals(onDisk, SchemaCatalog.Asset));
     }
 
     // Keys of a schema object are keywords, except the names under properties and $defs, whose
