@@ -10,7 +10,15 @@ These are the working rules for agents in this repo. Axiomarium is the owner's p
 
 ## Commands
 
-The M0 scaffold adds the build, test and publish commands here. Keep them cross-platform (`dotnet`), because the owner develops on Windows. Avoid bash-only scripts.
+Keep commands cross-platform (`dotnet`), because the owner develops on Windows. Avoid bash-only scripts.
+
+- Build: `dotnet build axiomarium.slnx`.
+- Test: `dotnet test --project tests/Axiomarium.Tests`.
+- Format check, which CI runs: `dotnet format axiomarium.slnx --verify-no-changes`.
+- Run: `dotnet run --project src/Axiomarium.Cli -- doctor`.
+- Publish: `dotnet publish src/Axiomarium.Cli -c Release -r win-x64 -o out` (`linux-x64`, `osx-arm64`). Trim and AOT warnings fail it.
+- Test the published binary: set `AXM_BINARY` to it, then run `dotnet test --project tests/Axiomarium.Tests -- --filter-class Axiomarium.Tests.Cli.NativeBinaryTests`.
+- NativeAOT publish on this Windows machine fails with `'vswhere.exe' is not recognized` unless the VS Installer folder is on PATH. Run it as `$env:PATH = "C:\Program Files (x86)\Microsoft Visual Studio\Installer;$env:PATH"; dotnet publish …`. That is an environment problem, not an AOT warning.
 
 ## Local, deterministic and honest (hard rules)
 
@@ -30,6 +38,8 @@ The tool is only worth trusting if these hold. Never break them, not even in deb
 - One folder per asset under `agents/`, `skills/`, `hooks/`, `policies/`, `workflows/` or `experiments/`, with an `asset.yaml` manifest that validates against `schemas/asset.schema.json`, and its content in Markdown. Create a folder with its first asset, never as an empty placeholder.
 - Assets are canonical and vendor neutral. Never put harness-specific files (`.claude/`, `.agents/`, `.github/`) inside an asset. Adapters generate those.
 - An asset's `version` follows SemVer. Bump it when the asset's behavior changes.
+- Schemas in `schemas/` are the single source of truth and are embedded in the binary. `SchemaValidator` supports only the keywords in `SchemaValidator.SupportedKeywords`. To use another keyword, extend the validator and its tests first; a test fails if a schema uses an unsupported one.
+- YAML is read with the YAML 1.2 core schema: `yes` and `on` are strings, and numbers keep their source text. Quote a version such as `"1.0"`.
 - Maturity is earned. Raise an asset's level only when the evidence that level requires in `registry/maturity.yaml` exists.
 - Before adding an instruction, ask whether deterministic tooling could enforce it instead. Before adding a skill, write down when it should activate. Before adding a hook, decide whether it should block, warn or only gather evidence, and prefer warning with evidence.
 - Failures become tests, not paragraphs. When an agent fails, capture an incident and add a regression eval. Don't answer a failure with another paragraph of prose.

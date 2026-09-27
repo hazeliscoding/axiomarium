@@ -25,7 +25,11 @@ Axiomarium is my lab for building, testing and debugging AI coding environments 
 
 ### Build and release
 
-- **Stack:** .NET 10 with NativeAOT, System.CommandLine, Spectre.Console and xUnit. NativeAOT keeps startup fast for hooks that run on every session or tool call. Rust was considered, but .NET stays because it is my main stack and versioned releases solve distribution.
+- **Stack:** .NET 10 with NativeAOT, System.CommandLine, YamlDotNet and xunit.v3. NativeAOT keeps startup fast for hooks that run on every session or tool call. Rust was considered, but .NET stays because it is my main stack and versioned releases solve distribution.
+- **Manifests are validated by our own small validator** for the subset of JSON Schema 2020-12 our schemas use, and the schema files stay the single source of truth, embedded in the binary. JsonSchema.Net moved to a maintenance-fee EULA, which is friction for anyone using `axm` at work, and Corvus compiles validators at runtime, which NativeAOT can't do. A test fails if a schema uses a keyword the validator doesn't support.
+- **No Spectre.Console.** The output is simple enough for a plain writer with ANSI colors, as in pgcheckup, and startup stays fast for hooks. `axm doctor` on this repo takes about 60 ms.
+- **YAML follows the 1.2 core schema:** `yes` and `on` stay strings, and numbers keep their source text, so an error can say `Quote it: "1.0"`.
+- **The version is `0.1.0-dev`** until the v0.1.0 release.
 - **Projects:** `Axiomarium.Core` (assets, schemas, registry, instruction resolution) and `Axiomarium.Cli`. `Axiomarium.Eval` and `Axiomarium.Adapters` arrive with their milestones.
 - **The command is `axm`.** `axiom` would collide with the CLI of Axiom (axiom.co), and their npm package `axiom` is an AI evals SDK in the same space.
 - **Versioned releases.** Each milestone from M1 on is a release (v0.1, v0.2 …), tagged `vX.Y.Z`, with NativeAOT binaries for `win-x64`, `linux-x64` and `osx-arm64` on GitHub Releases, `SHA256SUMS`, the `Axiomarium` dotnet tool on NuGet, and a `CHANGELOG.md` entry. Each asset also carries its own SemVer `version` in its manifest.
@@ -62,13 +66,13 @@ Axiomarium is my lab for building, testing and debugging AI coding environments 
 - [x] Add `LICENSE` (Apache-2.0), `.gitignore` and `.gitattributes`.
 - [x] Write `README.md`, `ROADMAP.md`, `AGENTS.md` and `CLAUDE.md`.
 - [x] Brand: pick a KAIRO wordmark option, export `mark.svg` and `lockup.svg` with `-dark` variants to `docs/brand/`, and add the `<picture>` header to the README. Convert the text to paths.
-- [ ] Scaffold the solution: `Directory.Build.props` (nullable on, warnings as errors, XML docs required, NativeAOT), central package management, and the `Axiomarium.Core`, `Axiomarium.Cli` and test projects.
-- [ ] Prove that YAML parsing and JSON Schema validation work in a published NativeAOT binary, with no trim or AOT warnings.
-- [ ] Write `schemas/asset.schema.json`.
-- [ ] `axm --version`, and a first `axm doctor` that discovers assets and validates their manifests.
-- [ ] Add the first real asset: `agents/determinism-auditor/`.
+- [x] Scaffold the solution: `Directory.Build.props` (nullable on, warnings as errors, XML docs required, NativeAOT), central package management, and the `Axiomarium.Core`, `Axiomarium.Cli` and test projects.
+- [x] Prove that YAML parsing and JSON Schema validation work in a published NativeAOT binary, with no trim or AOT warnings.
+- [x] Write `schemas/asset.schema.json`.
+- [x] `axm --version`, and a first `axm doctor` that discovers assets and validates their manifests.
+- [x] Add the first real asset: `agents/determinism-auditor/`.
 - [ ] CI: build, test and format check on Linux, Windows and macOS, plus a NativeAOT publish on each.
-- [ ] Guardrail: a test fails if `Axiomarium.Core` references `System.Console`, Spectre.Console or `System.Net.Http`.
+- [x] Guardrail: a test fails if `Axiomarium.Core` references `System.Console`, Spectre.Console or `System.Net.Http`.
 
 **Done when:** CI is green on all three platforms, `axm doctor` validates the determinism auditor, a test PR that breaks its manifest makes `axm doctor` fail and name the field, and a test PR that adds an `HttpClient` to `Axiomarium.Core` fails the build.
 

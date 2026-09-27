@@ -9,7 +9,7 @@
 
 Axiomarium is my lab for engineering reliable AI coding environments. It holds the agents, skills, hooks, policies, workflows and evals I use, and `axm`, a local CLI that inspects, validates, tests and debugs them. It treats agent configuration as real software infrastructure: kept in git, inspectable, testable, portable, and able to learn from its failures. It's built for my own setup first, and it's public in case it's useful to you too.
 
-> **Status:** planning. There is nothing to install yet. See [ROADMAP.md](ROADMAP.md).
+> **Status:** early development. `axm doctor` works from source (`dotnet run --project src/Axiomarium.Cli -- doctor`), and there is no release to install yet. See [ROADMAP.md](ROADMAP.md).
 
 ## The problem
 
@@ -53,7 +53,7 @@ The vault provides the knowledge and behavior. `axm` provides the infrastructure
 
 ## What it looks like
 
-The output below is planned, not built yet. In a terminal it's in color, with a kaomoji for the outcome. Piped, in CI or read by an agent, it's plain text.
+`axm doctor` works today, and `axm explain` is planned for v0.2. In a terminal the output is in color, with a kaomoji for the outcome. Piped, in CI or read by an agent, it's plain text.
 
 `axm doctor` catches a broken asset before any agent loads it:
 
