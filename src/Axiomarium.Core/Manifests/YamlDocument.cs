@@ -48,7 +48,13 @@ public static partial class YamlDocument
         }
         catch (YamlException problem)
         {
-            return Failed(Describe(problem, text), Location(problem.Start));
+            return Failed(Describe(problem, text), Locate(problem, text));
+        }
+        catch (Exception problem) when (problem is not OutOfMemoryException)
+        {
+            // YamlDotNet's scanner throws other exceptions for some malformed input, such as an
+            // unclosed flow mapping, and they carry no position.
+            return Failed("The file isn't valid YAML.", null);
         }
 
         if (stream.Documents.Count == 0)
@@ -148,20 +154,60 @@ public static partial class YamlDocument
 
         if (value.StartsWith("0x", StringComparison.Ordinal) && Hex().IsMatch(value))
         {
-            return JsonValue.Create(System.Convert.ToInt64(value[2..], 16));
+            return Radix(value, 16);
         }
 
         if (value.StartsWith("0o", StringComparison.Ordinal) && Octal().IsMatch(value))
         {
-            return JsonValue.Create(System.Convert.ToInt64(value[2..], 8));
+            return Radix(value, 8);
         }
 
         if (Float().IsMatch(value))
         {
-            return JsonValue.Create(double.Parse(value, NumberStyles.Float, CultureInfo.InvariantCulture));
+            var number = double.Parse(value, NumberStyles.Float, CultureInfo.InvariantCulture);
+            return double.IsFinite(number) ? JsonValue.Create(number) : JsonValue.Create(value);
         }
 
         return JsonValue.Create(value);
+    }
+
+    // A number too large for a long stays the text it was, rather than stopping the read.
+    private static JsonNode Radix(string value, int radix)
+    {
+        try
+        {
+            var number = System.Convert.ToUInt64(value[2..], radix);
+            return number <= long.MaxValue ? JsonValue.Create((long)number) : JsonValue.Create(value);
+        }
+        catch (OverflowException)
+        {
+            return JsonValue.Create(value);
+        }
+    }
+
+    // YamlDotNet reports some scanner errors, such as tab indentation, at line 1 column 1. A wrong
+    // line is worse than none, so find the tab, or report no location.
+    private static SourceLocation? Locate(YamlException problem, string text)
+    {
+        if (problem.Start.Index != 0)
+        {
+            return Location(problem.Start);
+        }
+
+        if (problem.Message.Contains("tab", StringComparison.OrdinalIgnoreCase))
+        {
+            var lines = text.Split('\n');
+            for (var i = 0; i < lines.Length; i++)
+            {
+                var tab = LeadingTab().Match(lines[i]);
+                if (tab.Success)
+                {
+                    return new SourceLocation(i + 1, tab.Length);
+                }
+            }
+        }
+
+        return null;
     }
 
     private static SourceLocation Location(Mark mark) => new((int)mark.Line, (int)mark.Column);
@@ -208,6 +254,9 @@ public static partial class YamlDocument
 
     [GeneratedRegex(@"^\(Line: \d+, Col: \d+, Idx: \d+\) - \(Line: \d+, Col: \d+, Idx: \d+\): ", RegexOptions.CultureInvariant)]
     private static partial Regex MarkPrefix();
+
+    [GeneratedRegex(@"^ *\t", RegexOptions.CultureInvariant)]
+    private static partial Regex LeadingTab();
 
     private sealed class NonScalarKeyException(SourceLocation location) : Exception
     {

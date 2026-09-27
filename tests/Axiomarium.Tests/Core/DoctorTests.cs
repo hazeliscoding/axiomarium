@@ -128,6 +128,34 @@ public class DoctorTests
     }
 
     [Fact]
+    public void Unreadable_manifest_is_an_error_and_the_rest_still_run()
+    {
+        using var vault = new TempVault()
+            .Write("agents/determinism-auditor/asset.yaml", SampleManifests.Valid)
+            .Write("agents/other-agent/asset.yaml", TempVault.Manifest("agent", "other-agent"));
+        using var locked = MakeUnreadable(Path.Combine(vault.Root, "agents", "determinism-auditor", "asset.yaml"));
+
+        var report = Report(vault);
+
+        var diagnostic = Assert.Single(report.Diagnostics);
+        Assert.Equal("agents/determinism-auditor/asset.yaml", diagnostic.File);
+        Assert.StartsWith("Couldn't read asset.yaml: ", diagnostic.Message);
+        Assert.Equal(["determinism-auditor", "other-agent"], report.Assets.Select(asset => asset.Name));
+    }
+
+    // Windows enforces an exclusive lock; elsewhere a file with no permissions can't be read.
+    private static IDisposable? MakeUnreadable(string path)
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            return File.Open(path, FileMode.Open, FileAccess.ReadWrite, FileShare.None);
+        }
+
+        File.SetUnixFileMode(path, UnixFileMode.None);
+        return null;
+    }
+
+    [Fact]
     public void Folder_without_a_vault_could_not_run()
     {
         using var vault = new TempVault().Folder("docs");

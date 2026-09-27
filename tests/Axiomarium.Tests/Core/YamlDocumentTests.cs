@@ -90,6 +90,36 @@ public class YamlDocumentTests
     }
 
     [Fact]
+    public void Tab_indentation_points_at_the_tab_line()
+    {
+        var result = YamlDocument.Parse(SampleManifests.Valid.Replace("  claude-code: experimental", "\tclaude-code: experimental"));
+
+        Assert.Null(result.Root);
+        Assert.Equal(7, result.Problem!.Location!.Value.Line);
+    }
+
+    [Fact]
+    public void Unclosed_flow_mapping_is_a_problem_not_an_exception()
+    {
+        var result = YamlDocument.Parse(SampleManifests.Valid.Replace("kind: agent", "kind: {a: 1") + "}\n");
+
+        Assert.Null(result.Root);
+        Assert.NotNull(result.Problem);
+    }
+
+    [Theory]
+    [InlineData("0xFFFFFFFFFFFFFFFFFFFF")]
+    [InlineData("0o7777777777777777777777777")]
+    [InlineData("01e999")]
+    public void Out_of_range_numbers_stay_strings(string value)
+    {
+        var result = YamlDocument.Parse($"v: {value}\n");
+
+        Assert.Null(result.Problem);
+        Assert.Equal($$"""{"v":"{{value}}"}""", result.Root!.ToJsonString());
+    }
+
+    [Fact]
     public void Non_scalar_key_is_a_problem()
     {
         var result = YamlDocument.Parse("? [a, b]\n: 1\n");

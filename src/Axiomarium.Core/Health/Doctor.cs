@@ -65,7 +65,24 @@ public static class Doctor
         }
 
         var manifestFile = $"{folder}/{ManifestName}";
-        var parsed = YamlDocument.Parse(File.ReadAllText(manifestPath));
+
+        // One unreadable or surprising manifest becomes a diagnostic on that file, so the rest of
+        // the vault is still checked and the user learns which file is at fault.
+        try
+        {
+            return ExamineManifest(kind, name, folder, manifestFile, File.ReadAllText(manifestPath), diagnostics);
+        }
+        catch (Exception problem) when (problem is not OutOfMemoryException)
+        {
+            diagnostics.Add(new Diagnostic(Severity.Error, manifestFile, null, $"Couldn't read {ManifestName}: {problem.Message}", []));
+            return new DiscoveredAsset(kind, name, folder, manifestFile, null, null);
+        }
+    }
+
+    private static DiscoveredAsset ExamineManifest(
+        AssetKind kind, string name, string folder, string manifestFile, string text, List<Diagnostic> diagnostics)
+    {
+        var parsed = YamlDocument.Parse(text);
         if (parsed.Problem is { } problem)
         {
             diagnostics.Add(new Diagnostic(Severity.Error, manifestFile, problem.Location, problem.Message, []));
