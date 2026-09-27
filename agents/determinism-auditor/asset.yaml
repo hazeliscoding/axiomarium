@@ -5,7 +5,7 @@ version: 0.1.0
 description: >-
   Reviews a codebase for decisions that depend on LLM judgment but should be
   enforced by deterministic code, and says where the boundary belongs.
-maturity: experimental
+maturity: production-ready
 supports:
   claude-code: experimental
   codex: experimental
