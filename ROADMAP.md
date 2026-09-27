@@ -18,13 +18,14 @@ Axiomarium is a lab for tools that make coding agents observable, constrained, t
 - **One folder per finding,** as in pgcheckup: `findings/<id>/finding.md` plus `fixtures/fires/` and `fixtures/clean/`, each a tiny repo.
 - **The collection** (skills, hooks, agents, a catalog and harness adapters) starts when its first asset exists. No empty folders before that.
 - **Brand follows the KAIRO design system.** KAIRO has no drawn logo: the name, set in Saira Condensed 600, is the mark.
+- **The logo is option 1B, "Bracketed":** the wordmark inside corner brackets, KAIRO's mark for the object in focus, because that is what `axm explain` does to a file. Pink replaces KAIRO's signal red: `#f0569b` on dark backgrounds and `#c2185b` on light ones. The mark is an "A" in the same brackets. The lockup has no `AXM/CLI` tag, because the tag can't be read at README size.
 - **CLI output uses KAIRO's content rules:** uppercase section labels, `//` separators, zero-padded indices and severity as a word. No emoji.
 
 ## M0: Placeholder (as soon as possible)
 
 - [x] Add `LICENSE` (Apache-2.0), `.gitignore` and `.gitattributes`.
 - [x] Write `README.md`, `ROADMAP.md`, `AGENTS.md` and `CLAUDE.md`.
-- [ ] Brand: pick a KAIRO wordmark option, export `mark.svg` and `lockup.svg` with `-dark` variants to `docs/brand/`, and add the `<picture>` header to the README. Convert the text to paths.
+- [x] Brand: pick a KAIRO wordmark option, export `mark.svg` and `lockup.svg` with `-dark` variants to `docs/brand/`, and add the `<picture>` header to the README. Convert the text to paths.
 - [ ] Scaffold the solution: `Directory.Build.props` (nullable on, warnings as errors, XML docs required), central package management, and the `Axiomarium.Instructions`, `Axiomarium.Cli` and test projects.
 - [ ] `axm --version`, and an `axm explain` that prints a canned tree for the demo scenario.
 - [ ] CI: build, test and format check on Linux, Windows and macOS.

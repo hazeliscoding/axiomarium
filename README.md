@@ -1,4 +1,9 @@
-# Axiomarium
+<h1>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/brand/lockup-dark.svg">
+    <img alt="Axiomarium" src="docs/brand/lockup.svg" height="40">
+  </picture>
+</h1>
 
 **See exactly which instructions your coding agent loads for any file, and what it silently drops.** `axm explain` reads the CLAUDE.md files, AGENTS.md files, rules and imports in a repo, and shows what Claude Code and Codex each load for a given file, in order, with the reason for every one.
 

@@ -48,8 +48,11 @@ The tool is only worth trusting if these hold. Never break them, not even in deb
 
 ## Brand
 
-- Brand follows the KAIRO design system. KAIRO has no drawn logo: the name, set in Saira Condensed 600, is the mark. Don't draw a logo.
-- The assets go in `docs/brand/`: `mark.svg` and `lockup.svg` for light backgrounds, and `-dark` files for dark backgrounds. Use the SVGs, and don't re-typeset the wordmark with a web font.
+- Brand follows the KAIRO design system. KAIRO has no drawn logo: the name, set in Saira Condensed 600, is the mark. Don't draw a logo, and don't redraw or restyle the brackets.
+- The logo is option 1B, "Bracketed": the wordmark inside corner brackets. The mark is an "A" in the same brackets.
+- The assets are in `docs/brand/`: `mark.svg` and `lockup.svg` for light backgrounds, and `-dark` files for dark backgrounds. Use the SVGs, and don't re-typeset the wordmark with a web font.
+- The wordmark is Saira Condensed SemiBold, uppercase, with 0.02em letter spacing, converted to vector paths.
+- The accent is pink, replacing KAIRO's signal red: `#f0569b` on dark and `#c2185b` on light. Ink is `#101418` on light backgrounds and `#e9e7e1` on dark.
 
 ## Working style
 
