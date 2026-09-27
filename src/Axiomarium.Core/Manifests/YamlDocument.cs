@@ -72,21 +72,42 @@ public static partial class YamlDocument
         var locations = new Dictionary<string, SourceLocation>(StringComparer.Ordinal);
         try
         {
-            var root = Convert(stream.Documents[0].RootNode, "", Location(stream.Documents[0].RootNode.Start), locations);
+            var ancestors = new HashSet<YamlNode>(ReferenceEqualityComparer.Instance);
+            var root = Convert(stream.Documents[0].RootNode, "", Location(stream.Documents[0].RootNode.Start), locations, ancestors);
             return new YamlParseResult(root, locations, null);
         }
-        catch (NonScalarKeyException problem)
+        catch (ConversionException problem)
         {
-            return Failed("Mapping keys must be plain text.", problem.Location);
+            return Failed(problem.Message, problem.Location);
         }
     }
 
     private static YamlParseResult Failed(string message, SourceLocation? location) =>
         new(null, NoLocations, new YamlProblem(message, location));
 
-    private static JsonNode? Convert(YamlNode node, string path, SourceLocation location, Dictionary<string, SourceLocation> locations)
+    private static JsonNode? Convert(
+        YamlNode node, string path, SourceLocation location, Dictionary<string, SourceLocation> locations, HashSet<YamlNode> ancestors)
     {
         locations[path] = location;
+
+        // An alias can point at a mapping or list that contains it, which would recurse forever.
+        if (node is YamlMappingNode or YamlSequenceNode && !ancestors.Add(node))
+        {
+            throw new ConversionException("Recursive alias: a value can't contain itself.", location);
+        }
+
+        try
+        {
+            return ConvertNode(node, path, locations, ancestors);
+        }
+        finally
+        {
+            ancestors.Remove(node);
+        }
+    }
+
+    private static JsonNode? ConvertNode(YamlNode node, string path, Dictionary<string, SourceLocation> locations, HashSet<YamlNode> ancestors)
+    {
         switch (node)
         {
             case YamlMappingNode mapping:
@@ -95,11 +116,11 @@ public static partial class YamlDocument
                 {
                     if (keyNode is not YamlScalarNode { Value: { } key })
                     {
-                        throw new NonScalarKeyException(Location(keyNode.Start));
+                        throw new ConversionException("Mapping keys must be plain text.", Location(keyNode.Start));
                     }
 
                     var childPath = path.Length == 0 ? key : $"{path}.{key}";
-                    obj[key] = Convert(valueNode, childPath, Location(keyNode.Start), locations);
+                    obj[key] = Convert(valueNode, childPath, Location(keyNode.Start), locations, ancestors);
                 }
 
                 return obj;
@@ -109,7 +130,7 @@ public static partial class YamlDocument
                 for (var i = 0; i < sequence.Children.Count; i++)
                 {
                     var item = sequence.Children[i];
-                    array.Add(Convert(item, $"{path}[{i}]", Location(item.Start), locations));
+                    array.Add(Convert(item, $"{path}[{i}]", Location(item.Start), locations, ancestors));
                 }
 
                 return array;
@@ -258,7 +279,7 @@ public static partial class YamlDocument
     [GeneratedRegex(@"^ *\t", RegexOptions.CultureInvariant)]
     private static partial Regex LeadingTab();
 
-    private sealed class NonScalarKeyException(SourceLocation location) : Exception
+    private sealed class ConversionException(string message, SourceLocation location) : Exception(message)
     {
         public SourceLocation Location { get; } = location;
     }

@@ -120,6 +120,25 @@ public class YamlDocumentTests
     }
 
     [Fact]
+    public void Recursive_alias_is_a_problem_not_a_crash()
+    {
+        var result = YamlDocument.Parse("name: x\ninputs: &r [a, *r]\n");
+
+        Assert.Null(result.Root);
+        Assert.Equal("Recursive alias: a value can't contain itself.", result.Problem!.Message);
+        Assert.Equal(2, result.Problem.Location!.Value.Line);
+    }
+
+    [Fact]
+    public void Repeated_non_recursive_alias_is_fine()
+    {
+        var result = YamlDocument.Parse("a: &x [1, 2]\nb: *x\n");
+
+        Assert.Null(result.Problem);
+        Assert.Equal("""{"a":[1,2],"b":[1,2]}""", result.Root!.ToJsonString());
+    }
+
+    [Fact]
     public void Non_scalar_key_is_a_problem()
     {
         var result = YamlDocument.Parse("? [a, b]\n: 1\n");
