@@ -127,6 +127,19 @@ public class DoctorCommandTests
     }
 
     [Fact]
+    public void Argument_errors_in_a_terminal_get_color_and_kaomoji()
+    {
+        var (_, _, plain) = CliRun.Run(["doctor", "--bogus"]);
+        var (exitCode, _, fancy) = CliRun.Run(["doctor", "--bogus"], terminal: true);
+
+        Assert.Equal(AxmCli.CouldNotRun, exitCode);
+        Assert.EndsWith("\n     Run axm --help for usage.\n", plain);
+        Assert.Contains("\u001b[", fancy);
+        Assert.Contains(Kaomoji.CouldNotRun, fancy);
+        Assert.Equal(plain, CliRun.StripColor(fancy).Replace($"  {Kaomoji.CouldNotRun}", ""));
+    }
+
+    [Fact]
     public void Couldnt_run_in_a_terminal_gets_its_kaomoji_on_stderr()
     {
         using var vault = new TempVault().Folder("docs");

@@ -68,12 +68,7 @@ public static class AxmCli
         // Exit code 1 means errors were found, so bad arguments get 2 like anything else that couldn't run.
         if (parsed.Errors.Count > 0)
         {
-            foreach (var parseError in parsed.Errors)
-            {
-                error.WriteLine($"axm: {parseError.Message}");
-            }
-
-            error.WriteLine("     Run axm --help for usage.");
+            WriteCouldNotRun(error, errorStyle, [.. parsed.Errors.Select(parseError => parseError.Message)], "Run axm --help for usage.");
             return CouldNotRun;
         }
 
@@ -84,7 +79,7 @@ public static class AxmCli
         }
         catch (Exception problem)
         {
-            WriteCouldNotRun(error, errorStyle, $"the command stopped: {problem.Message}", hint: null);
+            WriteCouldNotRun(error, errorStyle, [$"the command stopped: {problem.Message}"], hint: null);
             return CouldNotRun;
         }
     }
@@ -97,7 +92,7 @@ public static class AxmCli
             var hint = result.CouldNotRun!.StartsWith("No vault found", StringComparison.Ordinal)
                 ? "Run axm doctor inside a vault, or pass --root <dir>."
                 : null;
-            WriteCouldNotRun(error, errorStyle, result.CouldNotRun, hint);
+            WriteCouldNotRun(error, errorStyle, [result.CouldNotRun], hint);
             return CouldNotRun;
         }
 
@@ -105,10 +100,21 @@ public static class AxmCli
         return report.ErrorCount > 0 ? ErrorsFound : Passed;
     }
 
-    private static void WriteCouldNotRun(TextWriter error, Style style, string message, string? hint)
+    // One "axm:" line per message, with a single kaomoji on the first, then an optional hint.
+    private static void WriteCouldNotRun(TextWriter error, Style style, IReadOnlyList<string> messages, string? hint)
     {
         var ink = new Ink(error, style);
-        ink.Write("axm: ", Palette.Error).Write(message).Kaomoji(Kaomoji.CouldNotRun, Palette.Warning).Line();
+        for (var i = 0; i < messages.Count; i++)
+        {
+            ink.Write("axm: ", Palette.Error).Write(messages[i]);
+            if (i == 0)
+            {
+                ink.Kaomoji(Kaomoji.CouldNotRun, Palette.Warning);
+            }
+
+            ink.Line();
+        }
+
         if (hint is not null)
         {
             ink.Write("     ").Write(hint, Palette.Dim).Line();
