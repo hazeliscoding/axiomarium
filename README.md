@@ -53,18 +53,24 @@ The vault provides the knowledge and behavior. `axm` provides the infrastructure
 
 ## What it looks like
 
-The output below is planned, not built yet.
+The output below is planned, not built yet. In a terminal it's in color, with a kaomoji for the outcome. Piped, in CI or read by an agent, it's plain text.
 
 `axm doctor` catches a broken asset before any agent loads it:
 
 ```text
 $ axm doctor
 
-ERROR  agents/determinism-auditor/asset.yaml
+AXM DOCTOR // 2 assets
+
+  AGENTS
+  01  determinism-auditor   experimental  0.1.0   OK
+  02  scope-reviewer        ERROR
+
+ERROR  agents/scope-reviewer/asset.yaml:5
        Unknown maturity: "production-ready"
        Allowed: experimental, incubating, tested, stable, battle-tested
 
-5 assets · 1 error
+2 assets · 1 error  (╥﹏╥)
 ```
 
 `axm explain` shows what each harness loads for a file, and what it silently drops:
@@ -93,7 +99,7 @@ WARNING  dead-import
          CLAUDE.md:12 imports docs/testing.md, which does not exist.
          Fix: restore the file, or remove the import.
 
-2 harnesses · 5 loaded · 4 not loaded · 2 warnings
+2 harnesses · 5 loaded · 4 not loaded · 2 warnings  (・_・;)
 ```
 
 ## Principles

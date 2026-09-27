@@ -58,9 +58,11 @@ The tool is only worth trusting if these hold. Never break them, not even in deb
 
 ## CLI output and copy
 
-- Voice is calm, short and declarative, following KAIRO's content rules: uppercase section labels, `//` separators, zero-padded indices and machine-report status lines. No exclamation marks, no emoji, no fake hacker jargon.
+- Structure follows KAIRO: uppercase section labels, `//` separators, zero-padded indices and machine-report status lines. Wording is short, declarative and friendly. No exclamation marks, no emoji, no fake hacker jargon.
+- Output is colorful and a little playful: brand-palette colors and one kaomoji per summary or status line, chosen by the outcome, from the fixed set in the CLI's `Kaomoji` class. Don't invent new ones inline, and never pick one at random: the same outcome always gets the same kaomoji.
+- Informative first. A kaomoji or a color never carries meaning on its own: severity is always a word, and counts are always written out.
+- Plain output (no color, no kaomoji) when stdout isn't a terminal, or `AXM_PLAIN` is set. `NO_COLOR` turns color off. Terminal output must equal the plain output plus color and kaomoji. Hooks and agents always read plain output.
 - Every finding says what is wrong, why it matters and what to do: "CLAUDE.md:12 imports docs/testing.md, which does not exist."
-- Severity is always a word, never only a color. Respect `NO_COLOR`, and print plain output when stdout isn't a terminal.
 - Write the project name as Axiomarium and the command as `axm`.
 
 ## Brand
