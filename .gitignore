@@ -1,0 +1,22 @@
+# Build output
+bin/
+obj/
+artifacts/
+TestResults/
+*.user
+
+# Editors
+.vs/
+.idea/
+.vscode/
+
+# Local tool output
+.playwright-mcp/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Agent guidelines are committed; this overrides the global gitignore
+!AGENTS.md
+!CLAUDE.md
