@@ -50,6 +50,7 @@ The same file gets different instructions from each harness. Claude Code applies
 - **Shows what's dropped:** files that are excluded, hidden by another file, past the byte cap or too many imports deep.
 - **Compares harnesses.** `--diff` shows what Claude Code sees that Codex doesn't, and the reverse.
 - **Flags problems:** dead imports and links, rules that match no file or load for every file, and blocks duplicated across files.
+- **Checks the whole repo.** `axm check` lists every problem in plain words, each with its fix, and exits non-zero so CI can catch it.
 
 ## Deterministic, and honest about it
 

@@ -20,6 +20,7 @@ Axiomarium is a lab for tools that make coding agents observable, constrained, t
 - **Brand follows the KAIRO design system.** KAIRO has no drawn logo: the name, set in Saira Condensed 600, is the mark.
 - **The logo is option 1B, "Bracketed":** the wordmark inside corner brackets, KAIRO's mark for the object in focus, because that is what `axm explain` does to a file. Pink replaces KAIRO's signal red: `#f0569b` on dark backgrounds and `#c2185b` on light ones. The mark is an "A" in the same brackets. The lockup has no `AXM/CLI` tag, because the tag can't be read at README size.
 - **CLI output uses KAIRO's content rules:** uppercase section labels, `//` separators, zero-padded indices and severity as a word. No emoji.
+- **People who don't read code get the warning without asking.** v0.1 stays aimed at developers, but `axm check` moves into M3, and a Claude Code SessionStart hook that runs it is M6, the first piece after the release. People who steer their agent only through instruction files are the ones least able to notice a file that silently doesn't load.
 
 ## M0: Placeholder (as soon as possible)
 
@@ -74,8 +75,9 @@ Axiomarium is a lab for tools that make coding agents observable, constrained, t
 | `dead-link` | A Markdown link in a loaded file points to a file that doesn't exist |
 
 - [ ] Findings appear in `explain` and in `--json`, each with a severity: `warning` when an instruction doesn't reach the agent where you meant it to, or reaches it where you didn't, and `info` for waste such as duplicated blocks.
+- [ ] `axm check`: runs every finding across the whole repo, with no file argument, and prints only the problems, each with its fix in plain words. It prints a single line when there is nothing to report. Exit codes: 0 when nothing is found, 1 when a warning is found, 2 when it couldn't run.
 
-**Done when:** all eight findings fire on their `fires` fixture, stay silent on their `clean` fixture, and appear in both output formats.
+**Done when:** all eight findings fire on their `fires` fixture, stay silent on their `clean` fixture, and appear in both output formats, and `axm check` exits 1 on the demo scenario and 0 on a clean one.
 
 ## M4: Write-up and demo
 
@@ -96,9 +98,20 @@ Axiomarium is a lab for tools that make coding agents observable, constrained, t
 
 **Done when:** someone on a clean machine can install `axm` from the README, run `axm explain` on their repo and understand the output, and CI is green.
 
+## M6: Session-start check
+
+The first asset in the collection, for people who never run a CLI themselves.
+
+- [ ] `hooks/session-check/`: a Claude Code SessionStart hook that runs `axm check`. When something is wrong, the session starts with a short notice that both the user and the agent see, so the agent can offer the fix. When nothing is wrong, it prints nothing.
+- [ ] Installing it takes one copy-paste into Claude Code settings, and the instructions assume no coding knowledge.
+- [ ] A benchmark test keeps the hook under 200 ms on the demo scenario, because it runs at the start of every session.
+
+**Done when:** a fresh Claude Code session on the demo scenario opens with the notice and the agent can apply the fix, and a session on a clean scenario shows nothing.
+
 ## Later
 
-- `axm check` for CI: fail the build on findings, with a baseline.
+- A baseline for `axm check`, so CI fails only on new findings.
+- A "why did you ignore my rule?" skill: the agent runs `axm` and says whether the rule loaded at all.
 - Copilot and Cursor harness models.
 - `--add-dir` directories and symlinked rules.
 - A contradiction pass that is clearly labeled as model judgment.
