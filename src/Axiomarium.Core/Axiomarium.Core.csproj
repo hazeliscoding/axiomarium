@@ -4,6 +4,9 @@
     <IsAotCompatible>true</IsAotCompatible>
   </PropertyGroup>
   <ItemGroup>
+    <PackageReference Include="YamlDotNet" />
+  </ItemGroup>
+  <ItemGroup>
     <InternalsVisibleTo Include="Axiomarium.Tests" />
   </ItemGroup>
 </Project>
