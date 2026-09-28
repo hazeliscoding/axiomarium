@@ -117,11 +117,14 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        # On Windows the SDK installs tools behind an axm.cmd launcher, which bash only runs by its full name.
+        include:
+          - { os: ubuntu-latest, tool: axm }
+          - { os: windows-latest, tool: axm.cmd }
+          - { os: macos-latest, tool: axm }
     env:
       VERSION: ${{ needs.check.outputs.version }}
-      # On Windows the SDK installs tools behind an axm.cmd launcher, which bash only runs by its full name.
-      AXM: ${{ runner.os == 'Windows' && 'axm.cmd' || 'axm' }}
+      AXM: ${{ matrix.tool }}
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-dotnet@v6
@@ -212,9 +215,9 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { os: ubuntu-latest, rid: linux-x64, archive: tar.gz }
-          - { os: windows-latest, rid: win-x64, archive: zip }
-          - { os: macos-latest, rid: osx-arm64, archive: tar.gz }
+          - { os: ubuntu-latest, rid: linux-x64, archive: tar.gz, tool: axm }
+          - { os: windows-latest, rid: win-x64, archive: zip, tool: axm.cmd }
+          - { os: macos-latest, rid: osx-arm64, archive: tar.gz, tool: axm }
     env:
       VERSION: ${{ needs.check.outputs.version }}
       GH_TOKEN: ${{ github.token }}
@@ -251,6 +254,6 @@ jobs:
       - name: Run the NuGet tool
         shell: bash
         run: |
-          tool="$HOME/.dotnet/tools/${{ runner.os == 'Windows' && 'axm.cmd' || 'axm' }}"
+          tool="$HOME/.dotnet/tools/${{ matrix.tool }}"
           "$tool" --version
           "$tool" validate
