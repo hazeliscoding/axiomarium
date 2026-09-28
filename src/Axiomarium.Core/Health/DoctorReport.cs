@@ -20,7 +20,25 @@ public sealed record DoctorReport(IReadOnlyList<DiscoveredAsset> Assets, IReadOn
         Diagnostics.Where(diagnostic => diagnostic.File == asset.Folder || diagnostic.File.StartsWith(asset.Folder + "/", StringComparison.Ordinal));
 }
 
+/// <summary>Why a folder couldn't be checked as a vault.</summary>
+public enum VaultProblemKind
+{
+    /// <summary>Nothing exists at the path.</summary>
+    FolderMissing,
+
+    /// <summary>The path is a file.</summary>
+    NotAFolder,
+
+    /// <summary>The folder has none of the kind folders, such as <c>agents/</c>.</summary>
+    NotAVault,
+}
+
+/// <summary>Why a folder couldn't be checked as a vault.</summary>
+/// <param name="Kind">What went wrong, for callers that respond differently to each.</param>
+/// <param name="Message">A sentence that says what went wrong and names the path.</param>
+public sealed record VaultProblem(VaultProblemKind Kind, string Message);
+
 /// <summary>Either a report, or the reason the doctor couldn't run.</summary>
 /// <param name="Report">The report, when the doctor ran.</param>
-/// <param name="CouldNotRun">Why it couldn't run, such as a folder that isn't a vault.</param>
-public sealed record DoctorResult(DoctorReport? Report, string? CouldNotRun);
+/// <param name="Problem">Why it couldn't run, when it didn't.</param>
+public sealed record DoctorResult(DoctorReport? Report, VaultProblem? Problem);

@@ -10,7 +10,7 @@ public class RepoVaultTests
     {
         var result = Doctor.Run(RepoRoot.Path);
 
-        Assert.Null(result.CouldNotRun);
+        Assert.Null(result.Problem);
         Assert.Empty(result.Report!.Diagnostics);
         Assert.Contains(result.Report.Assets, asset => asset.Name == "determinism-auditor");
     }

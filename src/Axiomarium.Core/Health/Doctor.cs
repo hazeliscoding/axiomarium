@@ -18,21 +18,26 @@ public static class Doctor
     /// <summary>Examines the vault at <paramref name="vaultRoot"/>.</summary>
     /// <param name="vaultRoot">The directory that holds <c>agents/</c>, <c>skills/</c> and the other kind folders.</param>
     /// <returns>
-    /// A report, or the reason the doctor couldn't run: the folder doesn't exist, or none of the kind
-    /// folders do. An empty kind folder is a vault with no assets, not a reason to stop.
+    /// A report, or the reason the doctor couldn't run: nothing exists at the path, the path is a file,
+    /// or none of the kind folders exist. An empty kind folder is a vault with no assets, not a reason to stop.
     /// </returns>
     public static DoctorResult Run(string vaultRoot)
     {
+        if (File.Exists(vaultRoot))
+        {
+            return new DoctorResult(null, new VaultProblem(VaultProblemKind.NotAFolder, $"{vaultRoot} is a file, not a folder."));
+        }
+
         if (!Directory.Exists(vaultRoot))
         {
-            return new DoctorResult(null, $"The folder {vaultRoot} does not exist.");
+            return new DoctorResult(null, new VaultProblem(VaultProblemKind.FolderMissing, $"The folder {vaultRoot} does not exist."));
         }
 
         var kinds = AssetKinds.All.Where(kind => Directory.Exists(Path.Combine(vaultRoot, kind.Folder()))).ToList();
         if (kinds.Count == 0)
         {
             var folders = string.Join(", ", AssetKinds.All.Select(kind => kind.Folder() + "/"));
-            return new DoctorResult(null, $"No vault found in {vaultRoot}. A vault has at least one of: {folders}.");
+            return new DoctorResult(null, new VaultProblem(VaultProblemKind.NotAVault, $"No vault found in {vaultRoot}. A vault has at least one of: {folders}."));
         }
 
         var assets = new List<DiscoveredAsset>();

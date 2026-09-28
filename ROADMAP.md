@@ -120,7 +120,7 @@ Agent configuration can be inspected and validated like software.
   - [ ] `prompt-fossil` (experiment): the write-up and method that v0.7 builds on.
 - [ ] Write-up in `docs/assets.md`: why assets carry manifests, and what each maturity level promises.
 - [ ] M0 review leftovers:
-  - [ ] the no-vault hint is chosen by reading the core's message text;
+  - [x] the no-vault hint is chosen by reading the core's message text;
   - [ ] the validator silently ignores a non-string `type` and a schema-valued `additionalProperties`;
   - [ ] only JSON-shaped numbers keep their source text, but the docs say all numbers do;
   - [ ] an empty maturity prints `null`, `--root <file>` says the folder doesn't exist, and a duplicate key `"a:b"` is reported as `a`;

@@ -89,10 +89,8 @@ public static class AxmCli
         var result = Core.Health.Doctor.Run(vaultRoot);
         if (result.Report is not { } report)
         {
-            var hint = result.CouldNotRun!.StartsWith("No vault found", StringComparison.Ordinal)
-                ? "Run axm doctor inside a vault, or pass --root <dir>."
-                : null;
-            WriteCouldNotRun(error, errorStyle, [result.CouldNotRun], hint);
+            var hint = result.Problem!.Kind == VaultProblemKind.NotAVault ? "Run axm doctor inside a vault, or pass --root <dir>." : null;
+            WriteCouldNotRun(error, errorStyle, [result.Problem.Message], hint);
             return CouldNotRun;
         }
 

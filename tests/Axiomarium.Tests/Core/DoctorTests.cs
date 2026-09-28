@@ -9,7 +9,7 @@ public class DoctorTests
     private static DoctorReport Report(TempVault vault)
     {
         var result = Doctor.Run(vault.Root);
-        Assert.Null(result.CouldNotRun);
+        Assert.Null(result.Problem);
         return result.Report!;
     }
 
@@ -476,7 +476,8 @@ public class DoctorTests
         var result = Doctor.Run(vault.Root);
 
         Assert.Null(result.Report);
-        Assert.StartsWith($"No vault found in {vault.Root}.", result.CouldNotRun);
+        Assert.Equal(VaultProblemKind.NotAVault, result.Problem!.Kind);
+        Assert.StartsWith($"No vault found in {vault.Root}.", result.Problem.Message);
     }
 
     [Fact]
@@ -486,7 +487,20 @@ public class DoctorTests
 
         var result = Doctor.Run(missing);
 
-        Assert.Equal($"The folder {missing} does not exist.", result.CouldNotRun);
+        Assert.Equal(VaultProblemKind.FolderMissing, result.Problem!.Kind);
+        Assert.Equal($"The folder {missing} does not exist.", result.Problem.Message);
+    }
+
+    [Fact]
+    public void Root_that_is_a_file_could_not_run()
+    {
+        using var vault = new TempVault().Write("notes.md", "# notes\n");
+        var file = Path.Combine(vault.Root, "notes.md");
+
+        var result = Doctor.Run(file);
+
+        Assert.Equal(VaultProblemKind.NotAFolder, result.Problem!.Kind);
+        Assert.Equal($"{file} is a file, not a folder.", result.Problem.Message);
     }
 
     [Fact]
