@@ -53,15 +53,9 @@ public static class AxmCli
             option.Action = new VersionAction(output, outputStyle);
         }
 
-        var vaultRoot = new Option<string>("--root")
-        {
-            Description = "The vault to check. Defaults to the current directory.",
-            DefaultValueFactory = _ => currentDirectory,
-        };
-        var doctor = new Command("doctor", "Check the vault's health: find every asset and validate its manifest.");
-        doctor.Options.Add(vaultRoot);
-        doctor.SetAction(result => Doctor(Path.GetFullPath(result.GetValue(vaultRoot)!, currentDirectory), output, error, outputStyle, errorStyle));
-        root.Subcommands.Add(doctor);
+        var session = new Session(output, error, outputStyle, errorStyle, currentDirectory);
+        root.Subcommands.Add(VaultCommand("doctor", "Check the vault's health: list every asset, then every problem.", ReportText.WriteDoctor, session));
+        root.Subcommands.Add(VaultCommand("validate", "Check every asset and print only the problems, for CI and hooks.", ReportText.WriteValidate, session));
 
         var parsed = root.Parse(args);
 
@@ -84,18 +78,43 @@ public static class AxmCli
         }
     }
 
-    private static int Doctor(string vaultRoot, TextWriter output, TextWriter error, Style outputStyle, Style errorStyle)
+    // A command that checks the vault at --root and renders the doctor's report its own way.
+    private static Command VaultCommand(string name, string description, Action<TextWriter, DoctorReport, Style> render, Session session)
     {
-        var result = Core.Health.Doctor.Run(vaultRoot);
-        if (result.Report is not { } report)
+        var vaultRoot = RootOption(session);
+        var command = new Command(name, description);
+        command.Options.Add(vaultRoot);
+        command.SetAction(result =>
         {
-            var hint = result.Problem!.Kind == VaultProblemKind.NotAVault ? "Run axm doctor inside a vault, or pass --root <dir>." : null;
-            WriteCouldNotRun(error, errorStyle, [result.Problem.Message], hint);
-            return CouldNotRun;
+            if (Check(name, result.GetValue(vaultRoot)!, session) is not { } report)
+            {
+                return CouldNotRun;
+            }
+
+            render(session.Output, report, session.OutputStyle);
+            return report.ErrorCount > 0 ? ErrorsFound : Passed;
+        });
+        return command;
+    }
+
+    private static Option<string> RootOption(Session session) => new("--root")
+    {
+        Description = "The vault to check. Defaults to the current directory.",
+        DefaultValueFactory = _ => session.CurrentDirectory,
+    };
+
+    // The report, or null after saying on stderr why the vault couldn't be checked.
+    private static DoctorReport? Check(string command, string vaultRoot, Session session)
+    {
+        var result = Core.Health.Doctor.Run(Path.GetFullPath(vaultRoot, session.CurrentDirectory));
+        if (result.Report is { } report)
+        {
+            return report;
         }
 
-        DoctorText.Write(output, report, outputStyle);
-        return report.ErrorCount > 0 ? ErrorsFound : Passed;
+        var hint = result.Problem!.Kind == VaultProblemKind.NotAVault ? $"Run axm {command} inside a vault, or pass --root <dir>." : null;
+        WriteCouldNotRun(session.Error, session.ErrorStyle, [result.Problem.Message], hint);
+        return null;
     }
 
     // One "axm:" line per message, with a single kaomoji on the first, then an optional hint.
@@ -118,6 +137,9 @@ public static class AxmCli
             ink.Write("     ").Write(hint, Palette.Dim).Line();
         }
     }
+
+    // What every command writes to, and how, for one run of axm.
+    private sealed record Session(TextWriter Output, TextWriter Error, Style OutputStyle, Style ErrorStyle, string CurrentDirectory);
 
     private sealed class VersionAction(TextWriter output, Style style) : SynchronousCommandLineAction
     {

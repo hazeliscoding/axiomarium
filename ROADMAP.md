@@ -106,8 +106,8 @@ Agent configuration can be inspected and validated like software.
 - [x] `registry/maturity.yaml` and its schema, and a check that each maturity claim has its evidence.
 - [ ] Commands:
   - [ ] `axm list`: assets grouped by kind, with version, maturity and harness support, filtered by `--kind` and `--harness`.
-  - [ ] `axm validate`: every check, printing only the problems, with exit codes for CI.
-  - [ ] `axm doctor`: rebuilt on the same result as `validate`, plus the inventory.
+  - [x] `axm validate`: every check, printing only the problems, with exit codes for CI.
+  - [x] `axm doctor`: rebuilt on the same result as `validate`, plus the inventory.
 - [ ] Scope sheriff:
   - [ ] Ground truth: log what a real Claude Code hook receives for Write, Edit, MultiEdit and NotebookEdit, confirm which hook output reaches the model, and record the Claude Code version and the docs date.
   - [ ] A glob matcher in the core (`*`, `**`, `?` and `{a,b}`), for v0.2 to extend.

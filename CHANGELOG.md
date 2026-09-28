@@ -7,6 +7,7 @@ This file records the user-visible changes to `axm` and the vault's schemas. The
 ### Added
 
 - `axm doctor` finds every asset in `agents/`, `skills/`, `hooks/`, `policies/`, `workflows/` and `experiments/` and validates its `asset.yaml`. Each error names the file, the line, the field and the allowed values. A broken manifest never stops the rest of the vault from being checked.
+- `axm validate` runs the same checks as `axm doctor` and prints only the problems and a summary line, for CI and hooks. Both render one result, so they never disagree.
 - `axm doctor` checks that each asset has a content file named after its kind (`agent.md`, `skill.md`, `hook.md`, `policy.md`, `workflow.md` or `experiment.md`), and that the file isn't empty. File names must match exactly, including case, so a vault means the same thing on every platform. A near miss such as `Agent.md` gets a rename hint.
 - `schemas/asset.schema.json`: the manifest every asset carries, with its name, kind, version, description, maturity, harness support, permissions, side effects, inputs, outputs and evals.
 - Skills, hooks and policies carry a block named after their kind, checked against `schemas/skill.schema.json`, `hook.schema.json` and `policy.schema.json`. A skill says when it should activate (`use_when`). A hook says when it runs, what it runs and whether it blocks, warns or only records evidence. Each policy rule names what enforces it. A block on the wrong kind of asset is an error.

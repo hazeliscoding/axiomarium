@@ -4,18 +4,17 @@ using Axiomarium.Core.Health;
 
 namespace Axiomarium.Cli;
 
-/// <summary>The report <c>axm doctor</c> prints.</summary>
-public static class DoctorText
+/// <summary>The reports <c>axm doctor</c> and <c>axm validate</c> print, from the same <see cref="DoctorReport"/>.</summary>
+public static class ReportText
 {
-    /// <summary>Writes the heading, one block per kind with a row per asset, each diagnostic, and the summary.</summary>
+    /// <summary>Writes the doctor's report: the heading, one block per kind with a row per asset, each diagnostic, and the summary.</summary>
     /// <param name="output">Where to write.</param>
     /// <param name="report">What the doctor found.</param>
     /// <param name="style">Whether to add color and a kaomoji. Without either, the text is identical.</param>
-    public static void Write(TextWriter output, DoctorReport report, Style style)
+    public static void WriteDoctor(TextWriter output, DoctorReport report, Style style)
     {
         var ink = new Ink(output, style);
-        ink.Write("AXM DOCTOR", Palette.Accent).Write(" // ", Palette.Dim).Write(Count(report.Assets.Count, "asset")).Line();
-        ink.Line();
+        WriteHeading(ink, "AXM DOCTOR", report);
 
         var nameWidth = report.Assets.Count == 0 ? 0 : report.Assets.Max(asset => asset.Name.Length) + 3;
         var index = 0;
@@ -31,6 +30,32 @@ public static class DoctorText
             ink.Line();
         }
 
+        WriteProblems(ink, report);
+    }
+
+    /// <summary>
+    /// Writes the validation report: the heading, each diagnostic, and the summary. It is the doctor's
+    /// report without the inventory, so the two never disagree.
+    /// </summary>
+    /// <param name="output">Where to write.</param>
+    /// <param name="report">What the doctor found.</param>
+    /// <param name="style">Whether to add color and a kaomoji. Without either, the text is identical.</param>
+    public static void WriteValidate(TextWriter output, DoctorReport report, Style style)
+    {
+        var ink = new Ink(output, style);
+        WriteHeading(ink, "AXM VALIDATE", report);
+        WriteProblems(ink, report);
+    }
+
+    private static void WriteHeading(Ink ink, string title, DoctorReport report)
+    {
+        ink.Write(title, Palette.Accent).Write(" // ", Palette.Dim).Write(Count(report.Assets.Count, "asset")).Line();
+        ink.Line();
+    }
+
+    // Every diagnostic, then the summary line with the outcome's kaomoji.
+    private static void WriteProblems(Ink ink, DoctorReport report)
+    {
         foreach (var diagnostic in report.Diagnostics)
         {
             WriteDiagnostic(ink, diagnostic);
