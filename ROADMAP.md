@@ -102,7 +102,7 @@ Agent configuration can be inspected and validated like software.
 - [ ] Asset structure:
   - [x] the content file named after the kind, and a check that it exists and isn't empty;
   - [x] `schemas/skill.schema.json`, `hook.schema.json` and `policy.schema.json`, and a check that each of those kinds has its block and no asset has another kind's block;
-  - [ ] reference checks: `enforced_by` targets and eval folders.
+  - [x] reference checks: `enforced_by` targets and eval folders.
 - [ ] `registry/maturity.yaml` and its schema, and a check that each maturity claim has its evidence.
 - [ ] Commands:
   - [ ] `axm list`: assets grouped by kind, with version, maturity and harness support, filtered by `--kind` and `--harness`.

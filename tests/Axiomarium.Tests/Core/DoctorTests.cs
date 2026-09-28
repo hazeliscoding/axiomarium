@@ -252,6 +252,91 @@ public class DoctorTests
         Assert.Equal(["This asset is in agents/. Remove the block, or move the asset to skills/."], diagnostic.Detail);
     }
 
+    private static string PolicyEnforcedBy(string targets) =>
+        TempVault.Manifest("policy", "p").Replace("enforced_by: []", $"enforced_by: [{targets}]");
+
+    [Fact]
+    public void Enforced_by_an_existing_asset_is_fine()
+    {
+        using var vault = new TempVault()
+            .Asset("agents/determinism-auditor", SampleManifests.Valid)
+            .Asset("policies/p", PolicyEnforcedBy("agents/determinism-auditor"));
+
+        Assert.Empty(Report(vault).Diagnostics);
+    }
+
+    [Fact]
+    public void Enforced_by_must_name_an_existing_asset()
+    {
+        using var vault = new TempVault()
+            .Asset("hooks/scope-sheriff", TempVault.Manifest("hook", "scope-sheriff"))
+            .Asset("policies/p", PolicyEnforcedBy("hooks/scope-sherif"));
+
+        var diagnostic = Assert.Single(Report(vault).Diagnostics);
+
+        Assert.Equal("policies/p/asset.yaml", diagnostic.File);
+        Assert.Equal(26, diagnostic.Location!.Value.Line);
+        Assert.Equal("enforced_by names \"hooks/scope-sherif\", which doesn't exist", diagnostic.Message);
+        Assert.Equal(["The vault's hooks: scope-sheriff"], diagnostic.Detail);
+    }
+
+    [Fact]
+    public void Enforced_by_a_kind_with_no_assets_says_so()
+    {
+        using var vault = new TempVault().Asset("policies/p", PolicyEnforcedBy("workflows/review"));
+
+        var diagnostic = Assert.Single(Report(vault).Diagnostics);
+
+        Assert.Equal(["The vault has no workflows yet."], diagnostic.Detail);
+    }
+
+    [Fact]
+    public void A_true_eval_flag_needs_eval_files()
+    {
+        using var vault = new TempVault().Asset("agents/determinism-auditor", SampleManifests.Valid.Replace("behavioral: false", "behavioral: true"));
+
+        var diagnostic = Assert.Single(Report(vault).Diagnostics);
+
+        Assert.Equal("agents/determinism-auditor/asset.yaml", diagnostic.File);
+        Assert.Equal(new SourceLocation(20, 3), diagnostic.Location);
+        Assert.Equal("evals.behavioral is true, but agents/determinism-auditor/evals/behavioral/ has no files", diagnostic.Message);
+        Assert.Equal(["Add the behavioral evals there, or set evals.behavioral to false."], diagnostic.Detail);
+    }
+
+    [Fact]
+    public void Eval_files_satisfy_a_true_eval_flag()
+    {
+        using var vault = new TempVault()
+            .Asset("agents/determinism-auditor", SampleManifests.Valid.Replace("behavioral: false", "behavioral: true"))
+            .Write("agents/determinism-auditor/evals/behavioral/billing/case-01.yaml", "prompt: x\n");
+
+        Assert.Empty(Report(vault).Diagnostics);
+    }
+
+    [Fact]
+    public void Hidden_files_are_not_evals()
+    {
+        using var vault = new TempVault()
+            .Asset("agents/determinism-auditor", SampleManifests.Valid.Replace("regression: false", "regression: true"))
+            .Write("agents/determinism-auditor/evals/regression/.gitkeep", "");
+
+        var diagnostic = Assert.Single(Report(vault).Diagnostics);
+
+        Assert.StartsWith("evals.regression is true", diagnostic.Message);
+    }
+
+    [Fact]
+    public void References_are_checked_once_the_manifest_is_valid()
+    {
+        using var vault = new TempVault().Asset(
+            "agents/determinism-auditor",
+            SampleManifests.Valid.Replace("behavioral: false", "behavioral: true").Replace("maturity: experimental", "maturity: production-ready"));
+
+        var diagnostic = Assert.Single(Report(vault).Diagnostics);
+
+        Assert.Equal("Unknown maturity: \"production-ready\"", diagnostic.Message);
+    }
+
     [Fact]
     public void Duplicate_key_is_reported_with_its_line()
     {

@@ -6,7 +6,10 @@ using Axiomarium.Core.Schemas;
 
 namespace Axiomarium.Core.Health;
 
-/// <summary>Checks the health of a vault: finds every asset and validates its manifest. Reads, never writes.</summary>
+/// <summary>
+/// Checks the health of a vault: finds every asset, validates its manifest and content file, and checks
+/// that what a valid manifest points to exists. Reads, never writes.
+/// </summary>
 public static class Doctor
 {
     private const string ManifestName = "asset.yaml";
@@ -33,6 +36,7 @@ public static class Doctor
 
         var assets = new List<DiscoveredAsset>();
         var diagnostics = new List<Diagnostic>();
+        var references = new List<Reference>();
         foreach (var kind in kinds)
         {
             var names = Directory.EnumerateDirectories(Path.Combine(vaultRoot, kind.Folder()))
@@ -42,9 +46,11 @@ public static class Doctor
                 .Order(StringComparer.Ordinal);
             foreach (var name in names)
             {
-                assets.Add(Examine(vaultRoot, kind, name, diagnostics));
+                assets.Add(Examine(vaultRoot, kind, name, diagnostics, references));
             }
         }
+
+        References.ExamineTargets(assets, references, diagnostics);
 
         var ordered = diagnostics
             .OrderBy(diagnostic => diagnostic.File, StringComparer.Ordinal)
@@ -53,7 +59,8 @@ public static class Doctor
         return new DoctorResult(new DoctorReport(assets, ordered), null);
     }
 
-    private static DiscoveredAsset Examine(string vaultRoot, AssetKind kind, string name, List<Diagnostic> diagnostics)
+    private static DiscoveredAsset Examine(
+        string vaultRoot, AssetKind kind, string name, List<Diagnostic> diagnostics, List<Reference> references)
     {
         var folder = $"{kind.Folder()}/{name}";
         var directory = Path.Combine(vaultRoot, kind.Folder(), name);
@@ -75,7 +82,8 @@ public static class Doctor
         // the vault is still checked and the user learns which file is at fault.
         try
         {
-            return ExamineManifest(kind, name, folder, manifestFile, File.ReadAllText(Path.Combine(directory, ManifestName)), diagnostics);
+            var text = File.ReadAllText(Path.Combine(directory, ManifestName));
+            return ExamineManifest(kind, name, folder, directory, manifestFile, text, diagnostics, references);
         }
         catch (Exception problem) when (problem is not OutOfMemoryException)
         {
@@ -118,8 +126,16 @@ public static class Doctor
     }
 
     private static DiscoveredAsset ExamineManifest(
-        AssetKind kind, string name, string folder, string manifestFile, string text, List<Diagnostic> diagnostics)
+        AssetKind kind,
+        string name,
+        string folder,
+        string directory,
+        string manifestFile,
+        string text,
+        List<Diagnostic> diagnostics,
+        List<Reference> references)
     {
+        var before = diagnostics.Count;
         var parsed = YamlDocument.Parse(text);
         if (parsed.Problem is { } problem)
         {
@@ -157,6 +173,13 @@ public static class Doctor
         if (declaredKind != kind.ManifestName())
         {
             diagnostics.Add(new Diagnostic(Severity.Error, manifestFile, Locate(parsed.Locations, "kind"), $"kind \"{declaredKind}\" doesn't match its folder \"{kind.Folder()}/\"", []));
+        }
+
+        // What a manifest points to is only worth checking once the manifest itself is valid.
+        if (diagnostics.Count == before)
+        {
+            References.ExamineEvals(directory, folder, manifestFile, manifest, parsed.Locations, diagnostics);
+            references.AddRange(References.Collect(manifestFile, manifest, parsed.Locations));
         }
 
         return new DiscoveredAsset(kind, name, folder, manifestFile, Text(manifest, "maturity"), Text(manifest, "version"));
@@ -202,7 +225,7 @@ public static class Doctor
     private static string Text(JsonObject manifest, string field) => manifest[field]!.GetValue<string>();
 
     // An error about a missing field has the parent's path, so walk up until a path has a location.
-    private static SourceLocation? Locate(IReadOnlyDictionary<string, SourceLocation> locations, string path)
+    internal static SourceLocation? Locate(IReadOnlyDictionary<string, SourceLocation> locations, string path)
     {
         while (true)
         {
