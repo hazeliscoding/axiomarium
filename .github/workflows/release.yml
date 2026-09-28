@@ -252,13 +252,14 @@ jobs:
       - uses: actions/setup-dotnet@v6
         with:
           dotnet-version: 10.0.x
-      # nuget.org takes a few minutes to index a new version, so keep trying for up to ten minutes.
+      # nuget.org takes minutes to list a new version, and longer for the platform packages: v0.2.0 needed
+      # more than ten. So keep trying for up to thirty.
       - name: Install the tool from NuGet
         shell: bash
         run: |
-          for attempt in $(seq 1 20); do
+          for attempt in $(seq 1 60); do
             dotnet tool install -g Axiomarium --version "$VERSION" && exit 0
-            echo "Not installable yet, attempt $attempt of 20."
+            echo "Not installable yet, attempt $attempt of 60."
             sleep 30
           done
           exit 1
