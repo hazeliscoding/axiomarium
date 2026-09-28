@@ -23,6 +23,12 @@
         "reason": "path_glob_match"
       },
       {
+        "file": "repo/.claude/rules/any-depth.md",
+        "bytes": 51,
+        "scope": "Project",
+        "reason": "path_glob_match"
+      },
+      {
         "file": "repo/.claude/rules/braces.md",
         "bytes": 45,
         "scope": "Project",
@@ -37,6 +43,12 @@
       {
         "file": "repo/.claude/rules/comma.md",
         "bytes": 50,
+        "scope": "Project",
+        "reason": "path_glob_match"
+      },
+      {
+        "file": "repo/.claude/rules/folder-anywhere.md",
+        "bytes": 65,
         "scope": "Project",
         "reason": "path_glob_match"
       },

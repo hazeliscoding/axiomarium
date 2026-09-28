@@ -133,6 +133,18 @@ public class InstructionFindingsTests
         Assert.Equal("Fix the patterns. They match paths relative to the repo root.", finding.Fix);
     }
 
+    // Claude Code matches paths like .gitignore lines, so these match files deeper in the repo.
+    [Fact]
+    public void Rule_matches_nothing_stays_quiet_for_patterns_that_match_at_any_depth()
+    {
+        using var vault = new TempVault()
+            .Write("repo/.claude/rules/name.md", "---\npaths: \"*.cs\"\n---\nname\n")
+            .Write("repo/.claude/rules/folder.md", "---\npaths: \"api/**\"\n---\nfolder\n")
+            .Write("repo/src/api/orders.cs", "orders\n");
+
+        Assert.DoesNotContain(Check(vault), finding => finding.Id == "rule-matches-nothing");
+    }
+
     [Fact]
     public void Rule_matches_nothing_names_an_invalid_pattern()
     {

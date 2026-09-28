@@ -155,12 +155,14 @@ public class ClaudeCodeSkillsTests
             .Write("repo/src/api/orders.ts", "export const orders = [];\n")
             .Write("repo/.claude/skills/star/SKILL.md", Skill("Any TypeScript file.", "paths: \"*.ts\"\n"))
             .Write("repo/.claude/skills/folder/SKILL.md", Skill("Anything in src.", "paths: src\n"))
-            .Write("repo/.claude/skills/anchored/SKILL.md", Skill("Only a top-level file.", "paths: /orders.ts\n"));
+            .Write("repo/.claude/skills/api/SKILL.md", Skill("Anything in an api folder.", "paths: \"api/**\"\n"))
+            .Write("repo/.claude/skills/anchored/SKILL.md", Skill("Only a top-level file.", "paths: /orders.ts\n"))
+            .Write("repo/.claude/skills/tail/SKILL.md", Skill("A slash inside anchors it.", "paths: api/orders.ts\n"));
 
         var resolution = Resolve(vault, target: "repo/src/api/orders.ts");
 
-        Assert.Equal(["folder", "star"], resolution.Skills.Where(skill => skill.Timing == LoadTiming.OnRead).Select(skill => skill.Name));
-        Assert.Equal([("anchored", "claude-code/paths-skill-no-match")], NotListed(resolution));
+        Assert.Equal(["api", "folder", "star"], resolution.Skills.Where(skill => skill.Timing == LoadTiming.OnRead).Select(skill => skill.Name));
+        Assert.Equal([("anchored", "claude-code/paths-skill-no-match"), ("tail", "claude-code/paths-skill-no-match")], NotListed(resolution));
     }
 
     [Fact]

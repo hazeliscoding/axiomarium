@@ -492,14 +492,8 @@ public static partial class InstructionFindings
         public string Show(string path) => DisplayPath.Of(path, repoRoot, machine.Home);
 
         /// <summary>The first file under <paramref name="patternBase"/> that one of the valid <paramref name="patterns"/> matches.</summary>
-        public string? FirstMatch(string patternBase, IReadOnlyList<string> patterns)
-        {
-            var globs = patterns.Select(pattern => Glob.TryParse(pattern, out var glob, out _) ? glob : null).OfType<Glob>().ToList();
-            return Files.FirstOrDefault(file =>
-                Instructions.Paths.IsUnder(file, patternBase)
-                && !Instructions.Paths.Same(file, patternBase)
-                && globs.Any(glob => glob.IsMatch(Path.GetRelativePath(patternBase, file).Replace(Path.DirectorySeparatorChar, '/'))));
-        }
+        public string? FirstMatch(string patternBase, IReadOnlyList<string> patterns) =>
+            Files.FirstOrDefault(file => !Instructions.Paths.Same(file, patternBase) && PathPatterns.MatchLikeGitignore(patterns, patternBase, file));
 
         private static List<string> ListFiles(string root)
         {

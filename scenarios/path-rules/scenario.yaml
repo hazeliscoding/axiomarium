@@ -1,3 +1,3 @@
-description: "Path-scoped rules in every form the docs leave open: braces, brackets, an invalid pattern, a comma string, bad frontmatter, user rules, and rule folders above and below the launch directory."
+description: "Path-scoped rules in every form the docs leave open: braces, brackets, an invalid pattern, a comma string, bad frontmatter, user rules, rule folders above and below the launch directory, and patterns that match like .gitignore lines."
 launch: .
 target: src/api/orders.cs

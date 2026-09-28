@@ -4,7 +4,7 @@
 
 ## What happens
 
-A project rule's `paths` patterns match no file in the repo, or one of its patterns isn't valid, such as a `[` that is never closed. Claude Code loads a path rule only when the agent reads a file it matches, so the rule never loads. Patterns match from the folder that holds the rule's `.claude/`. Every file on disk counts except those under `.git`.
+A project rule's `paths` patterns match no file in the repo, or one of its patterns isn't valid, such as a `[` that is never closed. Claude Code loads a path rule only when the agent reads a file it matches, so the rule never loads. Patterns match from the folder that holds the rule's `.claude/`, the way `.gitignore` lines do: one without a slash, such as `*.cs`, matches at any depth, and one with a slash inside is anchored there. Every file on disk counts except those under `.git`.
 
 ```text
 WARNING  rule-matches-nothing
@@ -24,4 +24,4 @@ Fix the patterns so they match the files the rule is for, relative to the folder
 
 ## Source
 
-[Claude Code memory: Path-specific rules](https://code.claude.com/docs/en/memory#path-specific-rules). Where patterns match from comes from the recordings in `scenarios/path-rules/` and `scenarios/nested-rules/`, on Claude Code 2.1.283.
+[Claude Code memory: Path-specific rules](https://code.claude.com/docs/en/memory#path-specific-rules). Where patterns match from comes from the recordings in `scenarios/path-rules/` and `scenarios/nested-rules/`, on Claude Code 2.1.283, and how they match from `scenarios/path-rules/` on 2.1.284: the docs call them glob patterns, but Claude Code matches them like `.gitignore` lines.
