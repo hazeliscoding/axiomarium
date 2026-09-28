@@ -1,0 +1,3 @@
+description: An empty AGENTS.override.md hides the AGENTS.md next to it from Codex, while Claude Code never reads override files.
+launch: .
+target: src/app.cs

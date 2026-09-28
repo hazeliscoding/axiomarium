@@ -1,0 +1,19 @@
+{
+  "recorded": "2026-09-28",
+  "claude-code": {
+    "version": "2.1.283",
+    "launch": [
+      {
+        "file": "repo/AGENTS.md",
+        "bytes": 56,
+        "scope": "Project",
+        "reason": "agents-md"
+      }
+    ],
+    "read": []
+  },
+  "codex": {
+    "version": "0.156.1",
+    "loaded": []
+  }
+}

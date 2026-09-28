@@ -1,0 +1,3 @@
+description: A small project_doc_max_bytes makes Codex cut the file that crosses it and drop the rest, while Claude Code has no such budget.
+launch: src/api
+target: src/api/orders.cs

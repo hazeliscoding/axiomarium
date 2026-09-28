@@ -1,0 +1,41 @@
+{
+  "recorded": "2026-09-28",
+  "claude-code": {
+    "version": "2.1.283",
+    "launch": [
+      {
+        "file": "repo/AGENTS.md",
+        "bytes": 80,
+        "scope": "Project",
+        "reason": "agents-md"
+      },
+      {
+        "file": "repo/src/AGENTS.md",
+        "bytes": 90,
+        "scope": "Project",
+        "reason": "agents-md"
+      },
+      {
+        "file": "repo/src/api/AGENTS.md",
+        "bytes": 64,
+        "scope": "Project",
+        "reason": "agents-md"
+      }
+    ],
+    "read": []
+  },
+  "codex": {
+    "version": "0.156.1",
+    "loaded": [
+      {
+        "file": "repo/AGENTS.md",
+        "bytes": 81
+      },
+      {
+        "file": "repo/src/AGENTS.md",
+        "bytes": 39,
+        "cut": true
+      }
+    ]
+  }
+}

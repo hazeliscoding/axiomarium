@@ -1,0 +1,71 @@
+{
+  "recorded": "2026-09-28",
+  "claude-code": {
+    "version": "2.1.283",
+    "launch": [
+      {
+        "file": "home/.claude/CLAUDE.md",
+        "bytes": 65,
+        "scope": "User",
+        "reason": "session_start"
+      },
+      {
+        "file": "home/.claude/rules/style.md",
+        "bytes": 66,
+        "scope": "User",
+        "reason": "session_start"
+      },
+      {
+        "file": "repo/CLAUDE.md",
+        "bytes": 69,
+        "scope": "Project",
+        "reason": "session_start"
+      },
+      {
+        "file": "repo/docs/testing.md",
+        "bytes": 54,
+        "scope": "Project",
+        "reason": "include"
+      },
+      {
+        "file": "repo/.claude/rules/always.md",
+        "bytes": 64,
+        "scope": "Project",
+        "reason": "session_start"
+      },
+      {
+        "file": "repo/CLAUDE.local.md",
+        "bytes": 72,
+        "scope": "Local",
+        "reason": "session_start"
+      }
+    ],
+    "read": [
+      {
+        "file": "repo/src/api/CLAUDE.md",
+        "bytes": 72,
+        "scope": "Project",
+        "reason": "nested_traversal"
+      },
+      {
+        "file": "repo/.claude/rules/api.md",
+        "bytes": 73,
+        "scope": "Project",
+        "reason": "path_glob_match"
+      }
+    ]
+  },
+  "codex": {
+    "version": "0.156.1",
+    "loaded": [
+      {
+        "file": "home/.codex/AGENTS.md",
+        "bytes": 70
+      },
+      {
+        "file": "repo/AGENTS.md",
+        "bytes": 57
+      }
+    ]
+  }
+}
