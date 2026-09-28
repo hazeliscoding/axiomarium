@@ -104,6 +104,34 @@
   },
   "codex": {
     "version": "0.156.1",
-    "loaded": []
+    "loaded": [],
+    "skills": [
+      {
+        "name": "imagegen",
+        "bundled": true,
+        "entry": "whole"
+      },
+      {
+        "name": "openai-docs",
+        "bundled": true,
+        "entry": "whole"
+      },
+      {
+        "name": "plugin-creator",
+        "bundled": true,
+        "entry": "whole"
+      },
+      {
+        "name": "skill-creator",
+        "bundled": true,
+        "entry": "whole"
+      },
+      {
+        "name": "skill-installer",
+        "bundled": true,
+        "entry": "whole"
+      }
+    ],
+    "hooks": []
   }
 }

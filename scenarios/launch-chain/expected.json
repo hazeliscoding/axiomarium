@@ -150,6 +150,34 @@
         "file": "repo/AGENTS.md",
         "bytes": 57
       }
-    ]
+    ],
+    "skills": [
+      {
+        "name": "imagegen",
+        "bundled": true,
+        "entry": "whole"
+      },
+      {
+        "name": "openai-docs",
+        "bundled": true,
+        "entry": "whole"
+      },
+      {
+        "name": "plugin-creator",
+        "bundled": true,
+        "entry": "whole"
+      },
+      {
+        "name": "skill-creator",
+        "bundled": true,
+        "entry": "whole"
+      },
+      {
+        "name": "skill-installer",
+        "bundled": true,
+        "entry": "whole"
+      }
+    ],
+    "hooks": []
   }
 }
