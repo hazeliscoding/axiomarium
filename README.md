@@ -100,14 +100,18 @@ AXM EXPLAIN // src/api/orders/OrderService.cs
   --  src/api/AGENTS.md          NOT LOADED  below the launch directory
 
 WARNING  agents-md-hidden
-         Codex reads AGENTS.md. Claude Code skips it, because CLAUDE.md doesn't import it.
-         Fix: add @AGENTS.md to CLAUDE.md.
+         Claude Code skips AGENTS.md, because CLAUDE.md exists and doesn't import it, so instructions written there for every agent never reach Claude Code.
+         Fix: Add @AGENTS.md to CLAUDE.md.
 
 WARNING  dead-import
-         CLAUDE.md:12 imports docs/testing.md, which does not exist.
-         Fix: restore the file, or remove the import.
+         CLAUDE.md:12 imports docs/testing.md, which does not exist, so Claude Code loads nothing in its place.
+         Fix: Restore the file, or remove the import.
 
-2 harnesses · 5 loaded · 4 not loaded · 2 warnings  (・_・;)
+WARNING  agents-md-hidden
+         Claude Code skips src/api/AGENTS.md, because CLAUDE.md exists and doesn't import it, so instructions written there for every agent never reach Claude Code.
+         Fix: Add a CLAUDE.md next to it that says @AGENTS.md.
+
+2 harnesses · 5 loaded · 4 not loaded · 3 warnings  (・_・;)
 ```
 
 ## Install

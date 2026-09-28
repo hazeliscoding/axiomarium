@@ -47,7 +47,19 @@ public class ExplainCommandTests
               02  AGENTS.md                  project             at launch
               --  src/api/AGENTS.md          NOT LOADED  below the launch directory
 
-            2 harnesses · 5 loaded · 4 not loaded
+            WARNING  agents-md-hidden
+                     Claude Code skips AGENTS.md, because CLAUDE.md exists and doesn't import it, so instructions written there for every agent never reach Claude Code.
+                     Fix: Add @AGENTS.md to CLAUDE.md.
+
+            WARNING  dead-import
+                     CLAUDE.md:2 imports docs/testing.md, which does not exist, so Claude Code loads nothing in its place.
+                     Fix: Restore the file, or remove the import.
+
+            WARNING  agents-md-hidden
+                     Claude Code skips src/api/AGENTS.md, because CLAUDE.md exists and doesn't import it, so instructions written there for every agent never reach Claude Code.
+                     Fix: Add a CLAUDE.md next to it that says @AGENTS.md.
+
+            2 harnesses · 5 loaded · 4 not loaded · 3 warnings
 
             """,
             output);
@@ -137,6 +149,11 @@ public class ExplainCommandTests
             """{"path":"src/api/AGENTS.md","rule":"codex/below-launch"}""",
             json["harnesses"]![1]!["dropped"]![0]!.ToJsonString());
 
+        Assert.Equal(
+            """{"id":"dead-import","severity":"warning","file":"CLAUDE.md","line":2,"message":"CLAUDE.md:2 imports docs/testing.md, which does not exist, so Claude Code loads nothing in its place.","fix":"Restore the file, or remove the import."}""",
+            json["findings"]![1]!.ToJsonString());
+        Assert.Null(json["findings"]![0]!["line"]);
+
         var rule = json["rules"]!["codex/below-launch"]!;
         Assert.Equal("below the launch directory", rule["label"]!.GetValue<string>());
         Assert.True(rule["leftToModel"]!.GetValue<bool>());
@@ -217,6 +234,6 @@ public class ExplainCommandTests
         var (_, fancy, _) = CliRun.Run(["explain", "src/api/orders.cs"], terminal: true, machine: TestMachine.For(vault.Root), currentDirectory: Path.Combine(vault.Root, "repo"));
 
         Assert.Contains("\u001b[", fancy);
-        Assert.Equal(plain, CliRun.StripColor(fancy).Replace($"  {Kaomoji.AllClear}", ""));
+        Assert.Equal(plain, CliRun.StripColor(fancy).Replace($"  {Kaomoji.WarningsOnly}", ""));
     }
 }

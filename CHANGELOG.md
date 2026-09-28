@@ -7,6 +7,7 @@ This file records the user-visible changes to `axm` and the vault's schemas. The
 ### Added
 
 - `axm explain <path>` shows which instruction files Claude Code and Codex load for a file, in context order, and which they drop, each with the rule that decides it. Rows say whether a file loads at launch or when the file is read, which `paths` patterns matched, which line imported it, and whether Codex's byte budget cut it. A file a harness leaves to the model shows as NOT LOADED, never as dropped. `--harness` picks one harness, `--cwd` sets the launch directory (the repo root by default), `--diff` shows only the files one harness loads, and `--json` prints the same result as JSON with `schemaVersion` 1. The models are confirmed against Claude Code 2.1.283 and Codex 0.156.1.
+- Nine instruction findings, shown by `axm explain`. `dead-import`, `import-too-deep`, `agents-md-hidden`, `rule-frontmatter-invalid`, `rule-matches-nothing`, `codex-byte-cap`, `codex-empty-override` and `dead-link` are warnings, and `duplicate-block` is info. Each says what is wrong, why it matters and what to do, and each is documented in `findings/<id>/finding.md`, with one fixture that fires it and one that doesn't. `explain` still exits 0 when it finds something, and its JSON lists the findings under `findings`.
 
 ## [0.1.0] - 2026-09-28
 

@@ -2,6 +2,7 @@ using System.Buffers;
 using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
+using Axiomarium.Core.Health;
 using Axiomarium.Core.Instructions;
 
 namespace Axiomarium.Cli;
@@ -16,13 +17,14 @@ public static class ExplainJson
     public const int SchemaVersion = 1;
 
     /// <summary>
-    /// Writes the explanation: the target and launch directory, each harness's loaded and dropped files, and
-    /// every rule they cite, by id. Paths are shown the way the text report shows them.
+    /// Writes the explanation: the target and launch directory, each harness's loaded and dropped files, the
+    /// findings, and every rule the files cite, by id. Paths are shown the way the text report shows them.
     /// </summary>
     /// <param name="output">Where to write. The JSON is indented and ends with a newline.</param>
     /// <param name="explanation">What each harness loads.</param>
+    /// <param name="findings">The findings in <paramref name="explanation"/>, in the order to list them.</param>
     /// <param name="home">The user's home folder, shown as <c>~</c>.</param>
-    public static void Write(TextWriter output, Explanation explanation, string home)
+    public static void Write(TextWriter output, Explanation explanation, IReadOnlyList<InstructionFinding> findings, string home)
     {
         string Show(string path) => DisplayPath.Of(path, explanation.RepoRoot, home);
         var rules = new Dictionary<string, HarnessRule>();
@@ -83,6 +85,29 @@ public static class ExplainJson
                 }
 
                 writer.WriteEndArray();
+                writer.WriteEndObject();
+            }
+
+            writer.WriteEndArray();
+            writer.WriteStartArray("findings");
+            foreach (var finding in findings)
+            {
+                writer.WriteStartObject();
+                writer.WriteString("id", finding.Id);
+                writer.WriteString("severity", finding.Severity switch
+                {
+                    Severity.Error => "error",
+                    Severity.Warning => "warning",
+                    _ => "info",
+                });
+                writer.WriteString("file", finding.File);
+                if (finding.Line is { } line)
+                {
+                    writer.WriteNumber("line", line);
+                }
+
+                writer.WriteString("message", finding.Message);
+                writer.WriteString("fix", finding.Fix);
                 writer.WriteEndObject();
             }
 

@@ -89,6 +89,11 @@ Axiomarium is my lab for building, testing and debugging AI coding environments 
   - **Block HTML comments** go with the blank lines after them, so an import inside one never loads, and `claudeMdExcludes` reaches imports.
   - **Bytes:** launch files are trimmed; files loaded on read are not; frontmatter is removed.
 - **One folder per finding,** as in pgcheckup: `findings/<id>/finding.md` plus `fixtures/fires/` and `fixtures/clean/`, each a tiny repo with a fake home. A test checks every finding folder: both fixtures exist, `finding.md` has its four sections, `fires` produces the finding and `clean` doesn't.
+- **How the findings decide (2026-09-28).** Findings read the resolutions, so they report only what a harness model loads or drops, and the fixtures are checked from the repo root, for a file in each folder that holds instruction files and a file each path rule matches.
+  - `rule-matches-nothing` checks project rules against every file on disk except under `.git`. User rules aren't checked, because they may match in another repo.
+  - `duplicate-block` compares paragraphs of 40 characters or more, with whitespace collapsed, and reports each pair of files once.
+  - `dead-link` checks relative Markdown links only, never URLs, anchors or absolute paths.
+  - `explain --json` gains a `findings` array (`id`, `severity`, `file`, `line` when there is one, `message` and `fix`) in shape 1, since v0.2 isn't released yet. `--diff` shows no findings. Severity gains `info`.
 - **`axm doctor` works in any repo.** It always checks the repo's instruction files for both harnesses, launched from the repo root, and runs the vault checks when a vault exists. Warnings don't fail it. `validate` stays vault-only, for CI.
 - **People who don't read code get the warning without asking.** A Claude Code SessionStart hook, `axm hook session-doctor`, runs the doctor's checks and starts the session with a short notice to the user and the model when something is wrong, and prints nothing otherwise. It aims for 200 ms, measured locally, and CI holds the native binary under 1 s.
 
@@ -185,7 +190,7 @@ What each harness actually reads for a file, and what it silently drops.
   - [x] on-demand files for the target: subdirectory CLAUDE files, and rules whose `paths` match, with the glob matcher extended to brackets, invalid patterns and the brace-expansion budget, and invalid frontmatter loading the rule for every file;
   - [x] AGENTS.md under each Project instructions mode, `claudeMdExcludes`, the 4 MiB file limit, and block-level HTML comments stripped before bytes are counted.
 - [x] `axm explain <path>`: loaded and dropped files with their rules, `--harness`, `--cwd`, `--diff` and `--json`.
-- [ ] Findings, each with `finding.md` and fires and clean fixtures, shown by `explain` and `doctor`:
+- [x] Findings, each with `finding.md` and fires and clean fixtures, shown by `explain` and `doctor`:
 
 | Finding | Severity | Fires when |
 |---|---|---|
@@ -199,7 +204,7 @@ What each harness actually reads for a file, and what it silently drops.
 | `duplicate-block` | info | The same paragraph loads from two different files |
 | `dead-link` | warning | A Markdown link in a loaded file points to a file that doesn't exist |
 
-- [ ] `axm doctor` in any repo: the instruction findings always, and the vault checks when a vault exists.
+- [ ] `axm doctor` in any repo: the instruction findings always, and the vault checks when a vault exists. The repo-wide pass reports the deliberate problems in this repo's scenarios and finding fixtures, so doctor needs a way to leave them out.
 - [ ] `hooks/session-doctor/` and `axm hook session-doctor`: confirm on the real harness which SessionStart output the user and the model see, then build the hook, silent when all is well. Under 200 ms locally, and a CI check that holds the native binary under 1 s.
 - [ ] Write-up, "What your agent actually reads", and a second VHS tape for an `axm explain` demo GIF.
 - [ ] Release v0.2.0.

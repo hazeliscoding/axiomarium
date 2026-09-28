@@ -224,17 +224,20 @@ public static class AxmCli
 
             var machine = session.Machine ?? Machine.FromEnvironment(session.Environment, session.CurrentDirectory);
             var explanation = Explainer.Explain(file, result.GetValue(cwd), harnesses, machine, session.CurrentDirectory);
-            if (asJson)
-            {
-                ExplainJson.Write(session.Output, explanation, machine.Home);
-            }
-            else if (asDiff)
+            if (asDiff)
             {
                 ExplainText.WriteDiff(session.Output, explanation, machine.Home, session.OutputStyle);
+                return Passed;
+            }
+
+            var findings = InstructionFindings.For(explanation, machine);
+            if (asJson)
+            {
+                ExplainJson.Write(session.Output, explanation, findings, machine.Home);
             }
             else
             {
-                ExplainText.Write(session.Output, explanation, machine.Home, session.OutputStyle);
+                ExplainText.Write(session.Output, explanation, findings, machine.Home, session.OutputStyle);
             }
 
             // Every instruction finding is a warning or info, so explain passes whenever it ran.

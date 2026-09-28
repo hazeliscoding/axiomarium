@@ -1,4 +1,5 @@
 using Axiomarium.Cli.Output;
+using Axiomarium.Core.Health;
 using Axiomarium.Core.Instructions;
 
 namespace Axiomarium.Cli;
@@ -6,12 +7,16 @@ namespace Axiomarium.Cli;
 /// <summary>The report <c>axm explain</c> prints: what each harness loads for a file, and what it drops.</summary>
 public static class ExplainText
 {
-    /// <summary>Writes the heading, one block per harness with its loaded files then its dropped ones, and the summary.</summary>
+    /// <summary>
+    /// Writes the heading, one block per harness with its loaded files then its dropped ones, each finding,
+    /// and the summary.
+    /// </summary>
     /// <param name="output">Where to write.</param>
     /// <param name="explanation">What each harness loads.</param>
+    /// <param name="findings">The findings in <paramref name="explanation"/>, in the order to show them.</param>
     /// <param name="home">The user's home folder, shown as <c>~</c>.</param>
     /// <param name="style">Whether to add color and a kaomoji. Without either, the text is identical.</param>
-    public static void Write(TextWriter output, Explanation explanation, string home, Style style)
+    public static void Write(TextWriter output, Explanation explanation, IReadOnlyList<InstructionFinding> findings, string home, Style style)
     {
         var ink = new Ink(output, style);
         var show = Shower(explanation, home);
@@ -42,12 +47,28 @@ public static class ExplainText
             ink.Line();
         }
 
+        foreach (var finding in findings)
+        {
+            WriteFinding(ink, finding);
+        }
+
         var count = explanation.Harnesses.Count;
+        var warnings = findings.Count(finding => finding.Severity == Severity.Warning);
+        var infos = findings.Count(finding => finding.Severity == Severity.Info);
         ink.Write($"{count} harness{(count == 1 ? "" : "es")}")
             .Write(" · ", Palette.Dim).Write($"{loaded.Count} loaded", Palette.Ok)
-            .Write(" · ", Palette.Dim).Write($"{dropped.Count} not loaded")
-            .Kaomoji(Kaomoji.AllClear, Palette.Ok)
-            .Line();
+            .Write(" · ", Palette.Dim).Write($"{dropped.Count} not loaded");
+        if (warnings > 0)
+        {
+            ink.Write(" · ", Palette.Dim).Write($"{warnings} warning{(warnings == 1 ? "" : "s")}", Palette.Warning);
+        }
+
+        if (infos > 0)
+        {
+            ink.Write(" · ", Palette.Dim).Write($"{infos} info", Palette.Dim);
+        }
+
+        ink.Kaomoji(Kaomoji.ForOutcome(0, warnings), warnings > 0 ? Palette.Warning : Palette.Ok).Line();
     }
 
     /// <summary>
@@ -97,6 +118,22 @@ public static class ExplainText
         Harness.Codex => "Codex",
         _ => throw new ArgumentOutOfRangeException(nameof(harness), harness, null),
     };
+
+    // The severity, then the id, and below them the message and the fix, lined up after the severity.
+    private static void WriteFinding(Ink ink, InstructionFinding finding)
+    {
+        var (label, color) = finding.Severity switch
+        {
+            Severity.Error => ("ERROR", Palette.Error),
+            Severity.Warning => ("WARNING", Palette.Warning),
+            _ => ("INFO", Palette.Dim),
+        };
+        var indent = new string(' ', label.Length + 2);
+        ink.Write(label, color).Write("  ").Write(finding.Id, Palette.Bold).Line();
+        ink.Write(indent).Write(finding.Message).Line();
+        ink.Write(indent).Write("Fix: ", Palette.Dim).Write(finding.Fix).Line();
+        ink.Line();
+    }
 
     private const string Dropped = "DROPPED";
     private const string NotLoaded = "NOT LOADED";
