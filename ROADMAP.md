@@ -108,7 +108,7 @@ Axiomarium is my lab for building, testing and debugging AI coding environments 
 - **What the research found about Claude Code skills (2026-09-28, the 2.1.284 docs and binary).**
   - At launch it lists managed skills, personal skills in `~/.claude/skills` (with those synced from claude.ai), project skills from the launch directory up to the git root, enabled plugins' skills as `plugin:skill`, and legacy `.claude/commands`. Enterprise beats personal, personal beats project, and a skill beats a command of the same name.
   - A `.claude/skills` below the launch directory joins the first time the agent reads or edits a file there. A skill with `paths` joins when the agent reads, writes or edits a matching file.
-  - The listing is a `skill_listing` attachment with entries such as `- name: description - when_to_use`. Each entry is cut at 1,536 characters, and the whole listing gets 1% of the context window at 4 characters a token: 8,000 characters at 200k. Over budget, built-ins keep their text, the other skills keep their descriptions in order of how often they're used, and the rest become names only.
+  - The listing is a `skill_listing` attachment with entries such as `- name: description - when_to_use`. Each entry is cut at 1,536 characters, and the whole listing gets 1% of the context window at 4 characters a token: 8,000 characters at 200k. Over budget, some entries become names only, chosen partly by how often each skill is used.
   - A skill with `disable-model-invocation`, a skill hidden by `skillOverrides`, and a plugin skill without a description are never listed.
 - **What the research found about Codex skills (2026-09-28, the 0.156.1 source).**
   - Everything is found at launch: `.agents/skills` from the project root down to the launch directory, each project `.codex/skills`, `$CODEX_HOME/skills` (deprecated) and its bundled `.system` skills, `~/.agents/skills`, and the admin folder.
@@ -121,6 +121,15 @@ Axiomarium is my lab for building, testing and debugging AI coding environments 
   - Codex loads hooks from managed `requirements.toml`, and from `hooks.json` and `[hooks]` in `config.toml` in the admin folder, `$CODEX_HOME` and each trusted project's `.codex`. None overrides another. A hook that isn't managed runs only when its SHA-256 matches the `trusted_hash` in the user config, and only `command` and `mcp_tool` handlers run.
   - **The docs are wrong:** a Codex matcher of only letters, digits, `_` and `|` is an exact list, not the regex the docs describe. The model follows the source.
   - A Codex `apply_patch` hook gets the whole patch and no file path, so no Codex hook can be scoped to one file.
+- **What the spike settled (2026-09-28, Claude Code 2.1.284 on Windows, Codex 0.156.1 on Linux).**
+  - Claude Code lists a skill by its folder name, even when its frontmatter `name` differs. Codex lists the frontmatter `name`, or the folder name when there is none.
+  - Claude Code leaves out a plugin skill without a description, and lists a skill whose frontmatter doesn't parse, or has no description, with its first body line. A nested skill's entry ends with `(from sub/.claude/skills — applies when working on files under sub/)`.
+  - Claude Code's 13 built-in skills take 6,230 of Haiku's 8,000 characters in a fresh home. Over budget, a plugin skill and two built-ins became names only, so the research's "built-ins keep their text" was wrong.
+  - Skills enabled on the claude.ai account sync into the fake home seconds after launch. The recorder sets `syncClaudeAiSkills: false` there, so no account skill reaches a recording.
+  - On Windows, Claude Code reads `.claude/settings.local.json` from the launch directory, like `.claude/settings.json`. The docs say the repo root elsewhere; that isn't recorded, because Claude Code is recorded on Windows only.
+  - Every Claude Code hook run reaches the transcript as a `hook_success` attachment with its command and output. The same handler in user and project settings ran once, `if` and both kinds of matcher behaved as documented, and a SessionStart hook with `if` never ran.
+  - Codex lists skills under a root table (`r0` = a folder, entries `(file: r0/name/SKILL.md)`), bundled first, then repo, then user, by name within each. A repo whose root holds `.claude-plugin/plugin.json` gets its skills named `plugin:skill`.
+  - Codex's `hooks/list` reports each hook's key (`<source path>:<event>:<group>:<handler>`), source, matcher and trust: `trusted`, `untrusted`, `modified` or `managed`. The hash covers the event, the matcher and the handler as canonical JSON, not the path, so `axm` can compute it and a recording can confirm it. The trust key holds the absolute path, so the recorder writes it at run time. A project's hooks don't load until the project is trusted, and a `prompt` handler is skipped with a warning.
 - **Hooks at three moments (2026-09-28).** `explain` shows the hooks that would run at `session-start`, `before-edit` and `after-edit`, the moments of the vault's hook schema, as RUNS or NOT RUN with the reason. A Codex edit hook runs on every edit, and `explain` says so. It assumes a trusted Claude Code workspace, as `claude -p` does, and says that too. The doctor lists every configured hook on every event, with whether it can run at all.
 - **Not modeled in v0.3,** and `explain` says so: Codex plugin skills and hooks, `--add-dir`, hooks in skill or subagent frontmatter, and hooks on a read.
 - **A budget states its assumption.** Where a listing's cut depends on what `axm` can't read, such as how often each skill is used or the model's context window, the output states its assumption (a 200k-token window) and never names the skill that loses its description. Claude Code's built-in skills aren't files, so the recorder saves their names and entry lengths for the confirmed version, and the model lists them as built in.
@@ -255,10 +264,10 @@ What each harness actually reads for a file, and what it silently drops.
 
 Which skills each harness offers the model for a file, and which hooks run.
 
-- [ ] Ground-truth spike: record one scenario with skills and hooks from each harness, Claude Code locally and Codex through `record-codex.yml`, and settle what the research left open: whether the listing shows a skill's `name` or its folder, whether a plugin skill without a description is left out, where `settings.local.json` is read on Windows, and whether hook runs reach the transcript.
+- [x] Ground-truth spike: record one scenario with skills and hooks from each harness, Claude Code locally and Codex through `record-codex.yml`, and settle what the research left open: whether the listing shows a skill's `name` or its folder, whether a plugin skill without a description is left out, where `settings.local.json` is read on Windows, and whether hook runs reach the transcript.
 - [ ] Scenarios and recorders: markers in skill descriptions and hook commands, `action: read | edit`, `skills` and `hooks` in `expected.json`, the Claude Code recorder reading `skill_listing` and hook events, `record-codex.yml`, and all 14 scenarios recorded again.
 - [ ] Claude Code skills: managed, personal, synced and project skills, enabled plugins and legacy commands, nested and `paths` skills when read, precedence, and the listing's format, caps and budget, with built-ins from the recording.
-- [ ] Codex skills: every root, `[[skills.config]]` and `agents/openai.yaml`, and the listing's format, caps and budget. `Machine` gains Codex's admin folder.
+- [ ] Codex skills: every root, `[[skills.config]]` and `agents/openai.yaml`, names (with a plugin repo's `plugin:skill`), and the listing's format, root table, caps and budget. `Machine` gains Codex's admin folder.
 - [ ] Hooks for both harnesses: sources, merging, trust, matchers and `if`, at `session-start`, `before-edit` and `after-edit`.
 - [ ] `axm explain`: SKILLS and HOOKS blocks for each harness, skills in `--diff`, and the new fields in `--json`.
 - [ ] `axm doctor`: SKILLS and HOOKS inventories and their counts, with `session-doctor` still under 1 s in CI.
@@ -272,7 +281,7 @@ Which skills each harness offers the model for a file, and which hooks run.
 | `skill-frontmatter-invalid` | warning | A `SKILL.md`'s frontmatter doesn't parse or has no description: Claude Code lists its first body line instead, and Codex skips it |
 | `skill-paths-match-nothing` | warning | A Claude Code skill's `paths` match no file in the repo, or a pattern is invalid, so it never becomes available |
 | `hook-never-runs` | warning | A hook's matcher isn't a valid regex, it sets `if` on an event that isn't a tool event, or Codex skips its handler type |
-| `codex-hook-untrusted` | warning | A Codex hook's hash doesn't match its `trusted_hash`, or its project isn't trusted, so it never runs |
+| `codex-hook-untrusted` | warning | A Codex hook was never trusted, changed since it was, or sits in a project that isn't trusted, so it never runs |
 
 - [ ] `axm triggers`: overlapping descriptions in each harness's listing and the vault's skills, with the terms they share.
 - [ ] Write-up, "Which skills your agent can see", on the demo scenario with skills and a hook added, and `docs/demo/explain.tape` updated to show them.
