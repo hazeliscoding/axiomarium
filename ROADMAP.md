@@ -161,8 +161,8 @@ The first NuGet push was rejected until the Trusted Publishing policy's reposito
 What each harness actually reads for a file, and what it silently drops.
 
 - [x] Ground-truth spike: record one scenario from each real harness, including user-level files in a fake home, without touching the real `~/.claude`. If Claude Code can't read a fake home cleanly, its user-level scenarios fall back to hand-checked expectations, marked as such.
-- [ ] Scenarios and the recorder: the `scenarios/<name>/` format, the recorder in `tools/`, and a test that replays every recording.
-- [ ] The core: the resolution (loaded, dropped and findings, each entry with its rule id) and the injected machine.
+- [x] Scenarios and the recorder: the `scenarios/<name>/` format, the recorder in `tools/`, the first four recordings (`launch-chain`, `agents-md-only`, `codex-byte-cap`, `codex-empty-override`), and a test that every scenario and recording is well formed.
+- [ ] The core: the resolution (loaded, dropped and findings, each entry with its rule id), the injected machine, and a test that replays every recording against the models.
 - [ ] Codex model:
   - [ ] the global file in `$CODEX_HOME`: `AGENTS.override.md`, then `AGENTS.md`, the first that isn't empty;
   - [ ] the chain from the project root (`project_root_markers`, `.git` by default) down to the launch directory, one file per directory (`AGENTS.override.md`, `AGENTS.md`, then `project_doc_fallback_filenames`), including the empty override;

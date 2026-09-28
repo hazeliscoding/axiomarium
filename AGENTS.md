@@ -18,6 +18,7 @@ Keep commands cross-platform (`dotnet`), because the owner develops on Windows. 
 - Run: `dotnet run --project src/Axiomarium.Cli -- doctor`.
 - Publish: `dotnet publish src/Axiomarium.Cli -c Release -r win-x64 -o out` (`linux-x64`, `osx-arm64`). Trim and AOT warnings fail it.
 - Test the published binary: set `AXM_BINARY` to it, then run `dotnet test --project tests/Axiomarium.Tests -- --filter-class Axiomarium.Tests.Cli.NativeBinaryTests`.
+- Record ground truth: `dotnet run --project tools/Axiomarium.GroundTruth -- [scenario ...] [--harness claude-code|codex]`. Codex runs offline. Each Claude Code recording is a short Haiku session on your login, which the recorder borrows for the run and deletes. Re-record after a harness update and review the diff of each `expected.json`.
 - NativeAOT publish on this Windows machine fails with `'vswhere.exe' is not recognized` unless the VS Installer folder is on PATH. Run it as `$env:PATH = "C:\Program Files (x86)\Microsoft Visual Studio\Installer;$env:PATH"; dotnet publish …`. That is an environment problem, not an AOT warning.
 
 ## Local, deterministic and honest (hard rules)
@@ -32,6 +33,7 @@ The tool is only worth trusting if these hold. Never break them, not even in deb
 - **Harness models follow the docs, then the real harness.** When you change a model, cite the doc section and update the docs date and harness version recorded in the model. If the docs and the real harness disagree, the real harness wins, and the disagreement goes into `ROADMAP.md` as a decision.
 - **Don't guess what the model will read.** Skills are "available", never "loaded". When a harness leaves loading to the model, such as a Codex AGENTS.md below the launch directory, report it as "not loaded by the harness".
 - **Tests never read the real machine.** Home, `CODEX_HOME`, managed-policy and settings locations are injected. Fixtures and docs use placeholder paths such as `/home/dev` and `C:\Users\dev`, never real ones.
+- **Scenarios are ground truth.** Each one in `scenarios/<name>/` is a tiny repo, a fake home, `scenario.yaml` and the recording in `expected.json`. Every Markdown file in it starts with its `MARKER <path>` line (after any frontmatter), so a recording can name the file even when a harness cuts it short. Only the recorder writes `expected.json`, never a person.
 
 ## Vault assets
 
