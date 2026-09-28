@@ -2,7 +2,7 @@ name: Record Codex
 
 # Codex on Windows finds ~/.agents/skills in the real profile folder whatever HOME says, so Codex is
 # recorded here, on Linux, offline and without a login. When a recording differs from the committed one,
-# the job fails: download the codex-recordings artifact into scenarios/, look at the diff and commit it.
+# the job fails: download the codex-recordings artifact, copy it over scenarios/, look at the diff and commit it.
 on:
   pull_request:
     paths:
@@ -33,7 +33,7 @@ jobs:
           if [ -n "$(git status --porcelain -- scenarios)" ]; then
             git status --short -- scenarios
             git diff -- scenarios
-            echo "::error::Codex recorded something the committed expected.json files don't have. Download the codex-recordings artifact into scenarios/, check the diff and commit it."
+            echo "::error::Codex recorded something the committed expected.json files don't have. Download the codex-recordings artifact, copy it over scenarios/, check the diff and commit it."
             exit 1
           fi
       - uses: actions/upload-artifact@v7
