@@ -95,6 +95,15 @@ jobs:
           fi
       - name: Pack the tool for this platform
         run: dotnet pack src/Axiomarium.Cli -c Release -r ${{ matrix.rid }} -o nupkg
+      - name: Check the package ships no symbols
+        shell: pwsh
+        run: |
+          Add-Type -AssemblyName System.IO.Compression.FileSystem
+          $package = Get-ChildItem nupkg -Filter "Axiomarium.${{ matrix.rid }}.*.nupkg" | Select-Object -First 1
+          $zip = [IO.Compression.ZipFile]::OpenRead($package.FullName)
+          $symbols = @($zip.Entries.FullName | Where-Object { $_ -match '\.(pdb|dbg)$|\.dSYM/' })
+          $zip.Dispose()
+          if ($symbols.Count -gt 0) { Write-Error "$($package.Name) ships symbols: $($symbols -join ', ')"; exit 1 }
       - name: Pack the pointer package
         if: matrix.rid == 'linux-x64'
         run: dotnet pack src/Axiomarium.Cli -c Release -o nupkg
