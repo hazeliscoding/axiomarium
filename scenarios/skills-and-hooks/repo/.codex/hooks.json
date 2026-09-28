@@ -1,0 +1,14 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo MARKER repo/.codex/hooks.json session-start"
+          }
+        ]
+      }
+    ]
+  }
+}

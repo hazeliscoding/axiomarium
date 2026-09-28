@@ -1,0 +1,37 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo MARKER repo/.claude/settings.json before-edit"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo MARKER repo/.claude/settings.json after-edit-src",
+            "if": "Edit(src/**)"
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo MARKER repo/.claude/settings.json after-edit-docs",
+            "if": "Edit(docs/**)"
+          }
+        ]
+      }
+    ]
+  }
+}
