@@ -50,7 +50,7 @@ public class NativeBinaryTests
         var (exitCode, output) = await RunAsync("--version");
 
         Assert.Equal(0, exitCode);
-        Assert.Equal("0.1.0-dev", output.Trim());
+        Assert.Equal(RepoRoot.Version, output.Trim());
     }
 
     [Fact(Skip = NoBinary, SkipUnless = nameof(HasBinary))]

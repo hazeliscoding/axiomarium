@@ -179,6 +179,6 @@ public class DoctorCommandTests
         var (exitCode, output, _) = CliRun.Run(["--version"], terminal: true);
 
         Assert.Equal(AxmCli.Passed, exitCode);
-        Assert.Equal($"0.1.0-dev  {Kaomoji.Version}\n", CliRun.StripColor(output));
+        Assert.Equal($"{RepoRoot.Version}  {Kaomoji.Version}\n", CliRun.StripColor(output));
     }
 }

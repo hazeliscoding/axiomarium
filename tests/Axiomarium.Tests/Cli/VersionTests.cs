@@ -23,6 +23,6 @@ public class VersionTests
             Environment.CurrentDirectory);
 
         Assert.Equal(AxmCli.Passed, exitCode);
-        Assert.Equal("0.1.0-dev", output.ToString().Trim());
+        Assert.Equal(RepoRoot.Version, output.ToString().Trim());
     }
 }
