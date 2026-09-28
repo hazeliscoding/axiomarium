@@ -30,6 +30,21 @@ public class SchemaValidatorTests
         Assert.Equal(["Allowed: experimental, stable"], error.Detail);
     }
 
+    // A form the validator doesn't understand would otherwise check nothing and pass everything.
+    [Theory]
+    [InlineData("""{"type":["string","null"]}""")]
+    [InlineData("""{"type":"object","additionalProperties":{"type":"string"}}""")]
+    public void Unsupported_keyword_forms_throw_instead_of_passing(string schema)
+    {
+        Assert.Throws<InvalidOperationException>(() => Validate("""{"a":"x"}""", schema));
+    }
+
+    [Fact]
+    public void Additional_properties_true_allows_unknown_fields()
+    {
+        Assert.Empty(Validate("""{"a":"x"}""", """{"type":"object","additionalProperties":true}"""));
+    }
+
     [Fact]
     public void Empty_value_for_an_enum_says_it_is_empty()
     {

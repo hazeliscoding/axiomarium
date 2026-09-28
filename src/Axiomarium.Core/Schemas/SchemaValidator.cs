@@ -12,8 +12,9 @@ namespace Axiomarium.Core.Schemas;
 /// </summary>
 /// <remarks>
 /// The subset is <see cref="SupportedKeywords"/>. <c>$ref</c> resolves only local <c>#/$defs/name</c>
-/// references, <c>type</c> takes a single type, and <c>additionalProperties</c> is only <c>false</c>.
-/// A schema that uses anything else is outside the contract; a test keeps the repo's schemas inside it.
+/// references, <c>type</c> takes a single type, and <c>additionalProperties</c> is <c>true</c> or <c>false</c>.
+/// A schema that uses anything else is outside the contract: the validator throws rather than skip a
+/// check it doesn't understand, and a test keeps the repo's schemas inside it.
 /// </remarks>
 public static class SchemaValidator
 {
@@ -37,6 +38,7 @@ public static class SchemaValidator
     /// Every error, in order: missing required fields, then each property in the schema's order, then
     /// unknown fields in the instance's order. Empty when the instance is valid.
     /// </returns>
+    /// <exception cref="InvalidOperationException">The schema uses a keyword form outside the supported subset.</exception>
     public static IReadOnlyList<SchemaError> Validate(JsonNode? instance, JsonObject schema, string path = "")
     {
         var errors = new List<SchemaError>();
@@ -51,7 +53,13 @@ public static class SchemaValidator
             schema = Resolve(reference.GetValue<string>(), root);
         }
 
-        if (schema["type"] is JsonValue type && !Matches(instance, type.GetValue<string>()))
+        var type = schema["type"];
+        if (type is not null && type.GetValueKind() != JsonValueKind.String)
+        {
+            throw new InvalidOperationException("Unsupported schema: type must name one type, such as \"string\".");
+        }
+
+        if (type is not null && !Matches(instance, type.GetValue<string>()))
         {
             var detail = type.GetValue<string>() == "string" && Kind(instance) is "a number" or "a whole number"
                 ? [$"Quote it: \"{instance!.ToJsonString()}\""]
@@ -131,7 +139,13 @@ public static class SchemaValidator
             }
         }
 
-        if (schema["additionalProperties"] is JsonValue additional && additional.GetValueKind() == JsonValueKind.False)
+        var additional = schema["additionalProperties"];
+        if (additional is not null && additional.GetValueKind() is not (JsonValueKind.True or JsonValueKind.False))
+        {
+            throw new InvalidOperationException("Unsupported schema: additionalProperties must be true or false.");
+        }
+
+        if (additional is not null && additional.GetValueKind() == JsonValueKind.False)
         {
             foreach (var (name, _) in obj)
             {
