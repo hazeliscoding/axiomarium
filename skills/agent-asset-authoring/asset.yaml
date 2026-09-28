@@ -1,0 +1,30 @@
+# yaml-language-server: $schema=../../schemas/asset.schema.json
+name: agent-asset-authoring
+kind: skill
+version: 0.1.0
+description: >-
+  How to write an Axiomarium asset: decide whether it should exist, pick its
+  kind, write its asset.yaml and content file, and get it through axm validate.
+maturity: experimental
+supports:
+  claude-code: experimental
+  codex: experimental
+  generic: full
+permissions:
+  filesystem: write
+  shell: read-only
+  network: none
+side_effects: reversible
+inputs:
+  - asset-idea
+outputs:
+  - asset-folder
+evals:
+  trigger: false
+  behavioral: false
+  regression: false
+skill:
+  use_when: >-
+    Creating an asset in an Axiomarium vault (a folder under agents/, skills/,
+    hooks/, policies/, workflows/ or experiments/ with an asset.yaml), or
+    changing an asset's asset.yaml or content file.

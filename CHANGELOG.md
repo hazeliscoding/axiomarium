@@ -20,5 +20,6 @@ This file records the user-visible changes to `axm` and the vault's schemas. The
 - Terminal output in color, with a kaomoji for the outcome. Output is plain when stdout isn't a terminal or `AXM_PLAIN` is set, and `NO_COLOR` turns color off.
 - `axm --version`.
 - The `determinism-auditor` agent.
+- The `agent-asset-authoring` skill: when an asset should exist at all, how to pick its kind, a manifest to copy (a test keeps it valid), and how to get it through `axm validate`.
 - The `scope-sheriff` hook asset: the `.axm/scope` contract, the Claude Code settings that wire it in, and its limits.
 - The `deterministic-boundaries` policy: nine rules for which decisions belong to code instead of the model. Eight are enforced by the determinism auditor, and one says that nothing enforces it yet.

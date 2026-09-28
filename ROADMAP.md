@@ -115,7 +115,7 @@ Agent configuration can be inspected and validated like software.
   - [x] `axm hook scope-sheriff`.
 - [ ] Five starter assets, all experimental:
   - [ ] `determinism-auditor` (agent): finds decisions an LLM shouldn't own, such as authorization, billing, irreversible actions, state transitions, invariants, retries and idempotency, and suggests the deterministic boundary.
-  - [ ] `agent-asset-authoring` (skill): how to write an asset and its manifest.
+  - [x] `agent-asset-authoring` (skill): how to write an asset and its manifest.
   - [x] `scope-sheriff` (hook): warns when an edit leaves the task's declared scope and asks the agent to explain why. `hook.md` has the `.axm/scope` contract and the settings that wire it into Claude Code.
   - [x] `deterministic-boundaries` (policy): which decisions belong to code, not to the model. Each rule names what enforces it, or says that nothing does yet.
   - [ ] `prompt-fossil` (experiment): the write-up and method that v0.7 builds on.
