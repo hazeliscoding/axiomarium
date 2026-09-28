@@ -128,13 +128,21 @@ Agent configuration can be inspected and validated like software.
   - [x] on Windows, virtual terminal mode is enabled for stdout but not stderr;
   - [x] the doctor's text assumes a valid manifest has a maturity and a version without saying so;
   - [x] a raw byte order mark sits in the source.
-- [ ] Release v0.1.0:
-  - [ ] the release workflow: binaries, `SHA256SUMS`, and release notes from `CHANGELOG.md`;
-  - [ ] the `Axiomarium` dotnet tool on NuGet through Trusted Publishing;
-  - [ ] a job that installs the release on fresh Linux, Windows and macOS runners and runs `axm validate`;
+- [x] Release v0.1.0:
+  - [x] the release workflow: binaries, `SHA256SUMS`, and release notes from `CHANGELOG.md`;
+  - [x] the `Axiomarium` dotnet tool on NuGet through Trusted Publishing;
+  - [x] a job that installs the release on fresh Linux, Windows and macOS runners and runs `axm validate`;
   - [x] install steps in the README.
 
 **Done when:** the five starter assets pass `axm validate` in CI; breaking a manifest field, a kind block, a reference or a maturity claim makes `validate` and `doctor` name the file, the field, and the allowed values or the missing evidence; `scope-sheriff` warns a real Claude Code session about an edit outside its scope; and v0.1.0 installs from GitHub Releases and from NuGet on fresh Linux, Windows and macOS runners.
+
+**Done (2026-09-28).** v0.1.0 is out on [GitHub Releases](https://github.com/hazeliscoding/axiomarium/releases/tag/v0.1.0) and on [NuGet](https://www.nuget.org/packages/Axiomarium).
+- The five starter assets pass `axm validate` in CI on all three platforms ([run](https://github.com/hazeliscoding/axiomarium/actions/runs/36434144871)), and a test names each of them.
+- Tests break a manifest field, a kind block, a reference and a maturity claim, and check that the error names the file, the field, and the allowed values or the missing evidence.
+- In headless Claude Code 2.1.283 sessions, the scope sheriff's warning reached the model for an edit outside `.axm/scope` and stayed silent for one inside it.
+- The release run installed the binary and the dotnet tool on fresh Linux, Windows and macOS runners and ran them ([run](https://github.com/hazeliscoding/axiomarium/actions/runs/36434175157)).
+
+The first NuGet push was rejected until the Trusted Publishing policy's repository owner was re-entered without a stray semicolon. The 7-day notice on the policy was the clue, because a public repository's policy is active at once.
 
 ## M2: v0.2, instruction intelligence
 
