@@ -1,0 +1,3 @@
+description: A rule folder below the launch directory, with one rule without paths and one with, next to a nested CLAUDE.md.
+launch: .
+target: src/api/orders.cs

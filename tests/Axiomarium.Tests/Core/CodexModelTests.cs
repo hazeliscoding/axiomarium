@@ -10,8 +10,7 @@ public class CodexModelTests
     private static Resolution Resolve(TempVault vault, string launch = "repo", string target = "repo/src/api/orders.cs") =>
         CodexModel.Resolve(Path.Combine(vault.Root, launch), Path.Combine(vault.Root, target), Machine(vault));
 
-    private static Machine Machine(TempVault vault) =>
-        new(Home: Path.Combine(vault.Root, "home"), CodexHome: Path.Combine(vault.Root, "home", ".codex"), ClaudeConfig: Path.Combine(vault.Root, "home", ".claude"));
+    private static Machine Machine(TempVault vault) => TestMachine.For(vault.Root);
 
     private static string Relative(TempVault vault, string path) => Path.GetRelativePath(vault.Root, path).Replace('\\', '/');
 

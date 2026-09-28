@@ -1,0 +1,3 @@
+description: "With the claude-md-and-agents-md setting, CLAUDE and AGENTS files at two levels above the launch directory and two below it."
+launch: src
+target: src/api/v1/orders.cs

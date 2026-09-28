@@ -1,0 +1,67 @@
+{
+  "recorded": "2026-09-28",
+  "claude-code": {
+    "version": "2.1.283",
+    "launch": [
+      {
+        "file": "repo/CLAUDE.md",
+        "bytes": 28,
+        "scope": "Project",
+        "reason": "session_start"
+      },
+      {
+        "file": "repo/.claude/CLAUDE.md",
+        "bytes": 51,
+        "scope": "Project",
+        "reason": "session_start"
+      },
+      {
+        "file": "repo/.claude/rules/rule.md",
+        "bytes": 40,
+        "scope": "Project",
+        "reason": "session_start"
+      },
+      {
+        "file": "repo/CLAUDE.local.md",
+        "bytes": 35,
+        "scope": "Local",
+        "reason": "session_start"
+      },
+      {
+        "file": "repo/AGENTS.md",
+        "bytes": 35,
+        "scope": "Project",
+        "reason": "agents-md"
+      },
+      {
+        "file": "repo/.claude/AGENTS.md",
+        "bytes": 58,
+        "scope": "Project",
+        "reason": "agents-md"
+      }
+    ],
+    "read": [
+      {
+        "file": "repo/src/api/AGENTS.md",
+        "bytes": 43,
+        "scope": "Project",
+        "reason": "agents-md"
+      },
+      {
+        "file": "repo/src/api/CLAUDE.md",
+        "bytes": 36,
+        "scope": "Project",
+        "reason": "nested_traversal"
+      }
+    ]
+  },
+  "codex": {
+    "version": "0.156.1",
+    "loaded": [
+      {
+        "file": "repo/AGENTS.md",
+        "bytes": 36
+      }
+    ]
+  }
+}

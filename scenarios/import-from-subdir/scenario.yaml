@@ -1,0 +1,3 @@
+description: Launched in a subdirectory, the root CLAUDE.md imports a file outside the working directory, which the docs call external.
+launch: src/app
+target: src/app/main.cs

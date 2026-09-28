@@ -69,7 +69,7 @@ public static class CodexModel
         LoadGlobal(machine.CodexHome, loaded, dropped);
 
         var launch = Path.GetFullPath(launchDirectory);
-        var root = ProjectRoot(launch, config.RootMarkers) ?? launch;
+        var root = ProjectRoot(launch, config.RootMarkers, machine.FileSystemRoot) ?? launch;
         string[] names = [OverrideName, AgentsName, .. config.FallbackFilenames];
         var untrusted = config.IsUntrusted(launch) || config.IsUntrusted(root);
         var remaining = config.MaxBytes;
@@ -137,13 +137,13 @@ public static class CodexModel
     }
 
     // The nearest directory at or above the launch directory that holds a root marker, such as .git.
-    private static string? ProjectRoot(string launch, IReadOnlyList<string> markers)
+    private static string? ProjectRoot(string launch, IReadOnlyList<string> markers, string fileSystemRoot)
     {
-        for (var directory = new DirectoryInfo(launch); directory is not null; directory = directory.Parent)
+        foreach (var directory in Paths.Upward(launch, fileSystemRoot))
         {
-            if (markers.Any(marker => Path.Exists(Path.Combine(directory.FullName, marker))))
+            if (markers.Any(marker => Path.Exists(Path.Combine(directory, marker))))
             {
-                return directory.FullName;
+                return directory;
             }
         }
 
@@ -190,9 +190,5 @@ public static class CodexModel
     private static List<string> Present(string directory, string[] names) =>
         [.. names.Select(name => Path.Combine(directory, name)).Where(File.Exists)];
 
-    private static bool SamePath(string left, string right) =>
-        string.Equals(
-            Path.TrimEndingDirectorySeparator(left),
-            Path.TrimEndingDirectorySeparator(right),
-            OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal);
+    private static bool SamePath(string left, string right) => Paths.Same(left, right);
 }

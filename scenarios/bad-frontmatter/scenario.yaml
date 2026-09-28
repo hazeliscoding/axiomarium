@@ -1,0 +1,3 @@
+description: Rules whose frontmatter doesn't parse, in three different ways, next to one that does.
+launch: .
+target: src/api/orders.cs

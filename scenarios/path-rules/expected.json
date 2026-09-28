@@ -1,0 +1,55 @@
+{
+  "recorded": "2026-09-28",
+  "claude-code": {
+    "version": "2.1.283",
+    "launch": [],
+    "read": [
+      {
+        "file": "home/.claude/rules/user-path.md",
+        "bytes": 56,
+        "scope": "User",
+        "reason": "path_glob_match"
+      },
+      {
+        "file": "repo/src/.claude/rules/relative.md",
+        "bytes": 60,
+        "scope": "Project",
+        "reason": "path_glob_match"
+      },
+      {
+        "file": "repo/src/api/.claude/rules/below.md",
+        "bytes": 72,
+        "scope": "Project",
+        "reason": "path_glob_match"
+      },
+      {
+        "file": "repo/.claude/rules/braces.md",
+        "bytes": 45,
+        "scope": "Project",
+        "reason": "path_glob_match"
+      },
+      {
+        "file": "repo/.claude/rules/bracket.md",
+        "bytes": 47,
+        "scope": "Project",
+        "reason": "path_glob_match"
+      },
+      {
+        "file": "repo/.claude/rules/comma.md",
+        "bytes": 50,
+        "scope": "Project",
+        "reason": "path_glob_match"
+      },
+      {
+        "file": "repo/.claude/rules/match.md",
+        "bytes": 45,
+        "scope": "Project",
+        "reason": "path_glob_match"
+      }
+    ]
+  },
+  "codex": {
+    "version": "0.156.1",
+    "loaded": []
+  }
+}

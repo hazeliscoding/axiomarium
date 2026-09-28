@@ -1,0 +1,3 @@
+description: "With the claude-md-and-agents-md setting, both CLAUDE and AGENTS files load; this shows where AGENTS.md goes among a directory's files."
+launch: .
+target: src/api/orders.cs

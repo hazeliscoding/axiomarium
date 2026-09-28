@@ -1,0 +1,5 @@
+{
+  "claudeMdExcludes": [
+    "**/docs/excluded.md"
+  ]
+}

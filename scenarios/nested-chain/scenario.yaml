@@ -1,0 +1,3 @@
+description: CLAUDE files, local files and rules at three levels above a launch directory, and one below it, show Claude Code's order.
+launch: src/api
+target: src/api/deep/handler.cs

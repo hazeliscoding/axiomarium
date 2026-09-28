@@ -1,0 +1,31 @@
+{
+  "recorded": "2026-09-28",
+  "claude-code": {
+    "version": "2.1.283",
+    "launch": [],
+    "read": [
+      {
+        "file": "repo/src/api/CLAUDE.md",
+        "bytes": 43,
+        "scope": "Project",
+        "reason": "nested_traversal"
+      },
+      {
+        "file": "repo/src/api/.claude/rules/plain.md",
+        "bytes": 54,
+        "scope": "Project",
+        "reason": "nested_traversal"
+      },
+      {
+        "file": "repo/src/api/.claude/rules/scoped.md",
+        "bytes": 53,
+        "scope": "Project",
+        "reason": "path_glob_match"
+      }
+    ]
+  },
+  "codex": {
+    "version": "0.156.1",
+    "loaded": []
+  }
+}

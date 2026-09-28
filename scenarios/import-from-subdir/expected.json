@@ -1,0 +1,31 @@
+{
+  "recorded": "2026-09-28",
+  "claude-code": {
+    "version": "2.1.283",
+    "launch": [
+      {
+        "file": "repo/CLAUDE.md",
+        "bytes": 75,
+        "scope": "Project",
+        "reason": "session_start"
+      },
+      {
+        "file": "repo/src/app/CLAUDE.md",
+        "bytes": 71,
+        "scope": "Project",
+        "reason": "session_start"
+      },
+      {
+        "file": "repo/src/app/notes.md",
+        "bytes": 66,
+        "scope": "Project",
+        "reason": "include"
+      }
+    ],
+    "read": []
+  },
+  "codex": {
+    "version": "0.156.1",
+    "loaded": []
+  }
+}

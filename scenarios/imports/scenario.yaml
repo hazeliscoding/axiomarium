@@ -1,0 +1,3 @@
+description: "'@' imports in every form the docs leave open: mid-line, in code, with punctuation, missing, cyclic, six hops deep, from CLAUDE.local.md, and outside the working directory."
+launch: .
+target: app.cs

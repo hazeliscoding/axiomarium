@@ -1,0 +1,92 @@
+{
+  "recorded": "2026-09-28",
+  "claude-code": {
+    "version": "2.1.283",
+    "launch": [
+      {
+        "file": "home/.claude/CLAUDE.md",
+        "bytes": 65,
+        "scope": "User",
+        "reason": "session_start"
+      },
+      {
+        "file": "home/.claude/rules/user-rule.md",
+        "bytes": 74,
+        "scope": "User",
+        "reason": "session_start"
+      },
+      {
+        "file": "repo/CLAUDE.md",
+        "bytes": 44,
+        "scope": "Project",
+        "reason": "session_start"
+      },
+      {
+        "file": "repo/.claude/CLAUDE.md",
+        "bytes": 73,
+        "scope": "Project",
+        "reason": "session_start"
+      },
+      {
+        "file": "repo/.claude/rules/root-rule.md",
+        "bytes": 70,
+        "scope": "Project",
+        "reason": "session_start"
+      },
+      {
+        "file": "repo/CLAUDE.local.md",
+        "bytes": 70,
+        "scope": "Local",
+        "reason": "session_start"
+      },
+      {
+        "file": "repo/src/CLAUDE.md",
+        "bytes": 54,
+        "scope": "Project",
+        "reason": "session_start"
+      },
+      {
+        "file": "repo/src/.claude/CLAUDE.md",
+        "bytes": 74,
+        "scope": "Project",
+        "reason": "session_start"
+      },
+      {
+        "file": "repo/src/.claude/rules/src-rule.md",
+        "bytes": 82,
+        "scope": "Project",
+        "reason": "session_start"
+      },
+      {
+        "file": "repo/src/CLAUDE.local.md",
+        "bytes": 73,
+        "scope": "Local",
+        "reason": "session_start"
+      },
+      {
+        "file": "repo/src/api/CLAUDE.md",
+        "bytes": 69,
+        "scope": "Project",
+        "reason": "session_start"
+      },
+      {
+        "file": "repo/src/api/.claude/rules/api-rule.md",
+        "bytes": 80,
+        "scope": "Project",
+        "reason": "session_start"
+      }
+    ],
+    "read": [
+      {
+        "file": "repo/src/api/deep/CLAUDE.md",
+        "bytes": 62,
+        "scope": "Project",
+        "reason": "nested_traversal"
+      }
+    ]
+  },
+  "codex": {
+    "version": "0.156.1",
+    "loaded": []
+  }
+}

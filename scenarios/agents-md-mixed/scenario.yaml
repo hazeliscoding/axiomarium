@@ -1,0 +1,3 @@
+description: "A root CLAUDE.md hides the root AGENTS.md, a nested AGENTS.md sits in a folder with no CLAUDE file, and CLAUDE.md holds HTML comments and an excluded import."
+launch: .
+target: src/api/orders.cs

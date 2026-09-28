@@ -1,0 +1,73 @@
+{
+  "recorded": "2026-09-28",
+  "claude-code": {
+    "version": "2.1.283",
+    "launch": [
+      {
+        "file": "repo/CLAUDE.md",
+        "bytes": 309,
+        "scope": "Project",
+        "reason": "session_start"
+      },
+      {
+        "file": "repo/docs/one.md",
+        "bytes": 29,
+        "scope": "Project",
+        "reason": "include"
+      },
+      {
+        "file": "repo/docs/cycle-a.md",
+        "bytes": 53,
+        "scope": "Project",
+        "reason": "include"
+      },
+      {
+        "file": "repo/docs/cycle-b.md",
+        "bytes": 53,
+        "scope": "Project",
+        "reason": "include"
+      },
+      {
+        "file": "repo/docs/depth-1.md",
+        "bytes": 53,
+        "scope": "Project",
+        "reason": "include"
+      },
+      {
+        "file": "repo/docs/depth-2.md",
+        "bytes": 53,
+        "scope": "Project",
+        "reason": "include"
+      },
+      {
+        "file": "repo/docs/depth-3.md",
+        "bytes": 53,
+        "scope": "Project",
+        "reason": "include"
+      },
+      {
+        "file": "repo/docs/depth-4.md",
+        "bytes": 53,
+        "scope": "Project",
+        "reason": "include"
+      },
+      {
+        "file": "repo/CLAUDE.local.md",
+        "bytes": 66,
+        "scope": "Local",
+        "reason": "session_start"
+      },
+      {
+        "file": "repo/docs/local-notes.md",
+        "bytes": 45,
+        "scope": "Local",
+        "reason": "include"
+      }
+    ],
+    "read": []
+  },
+  "codex": {
+    "version": "0.156.1",
+    "loaded": []
+  }
+}
