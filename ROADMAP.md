@@ -76,6 +76,7 @@ Axiomarium is my lab for building, testing and debugging AI coding environments 
 - **The logo is option 1B, "Bracketed":** the wordmark inside corner brackets, KAIRO's mark for the object in focus. Pink replaces KAIRO's signal red: `#f0569b` on dark backgrounds and `#c2185b` on light ones. The mark is an "A" in the same brackets. The lockup has no `AXM/CLI` tag, because the tag can't be read at README size.
 - **CLI output is colorful and a little playful.** KAIRO's structure stays: uppercase section labels, `//` separators, zero-padded indices and severity as a word. On top of it go colors from the brand palette and a kaomoji that matches the outcome (`ヽ(・∀・)ﾉ` all clear, `(╥﹏╥)` errors). The fun never carries meaning on its own: every kaomoji sits next to words that say the same thing. This departs from KAIRO's "no emoji, never jokey" voice on purpose.
 - **Plain output for machines.** When stdout isn't a terminal (pipes, CI, hooks, agents), or `AXM_PLAIN` is set, output has no color and no kaomoji. `NO_COLOR` turns color off. Terminal output is exactly the plain output plus color and kaomoji, and a test holds that.
+- **The README's terminal demo is a VHS tape,** `docs/demo/doctor.tape`. `.github/workflows/demo.yml` renders it with the `axm` release from NuGet whenever the tape changes in a pull request, and the GIF is committed after a look at it, so the demo always shows what users install.
 
 ## M0: Day 0 (as soon as possible)
 

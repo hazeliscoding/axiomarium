@@ -59,6 +59,8 @@ The vault provides the knowledge and behavior. `axm` provides the infrastructure
 
 `axm doctor` works today, and `axm explain` is planned for v0.2. In a terminal the output is in color, with a kaomoji for the outcome. Piped, in CI or read by an agent, it's plain text.
 
+![A terminal runs axm list, which shows the five starter assets. A one-line edit then raises the determinism auditor's maturity to tested, and axm doctor reports that the claim lacks its evidence.](docs/demo/doctor.gif)
+
 `axm doctor` catches a broken asset before any agent loads it:
 
 ```text
