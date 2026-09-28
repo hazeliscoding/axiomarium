@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/hazeliscoding/axiomarium/blob/main/schemas/axiomarium.schema.json",
+  "title": "Axiomarium repo configuration",
+  "description": "axiomarium.yaml at the repo root: how axm treats this repo. Every field is optional.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "doctor": {
+      "description": "How axm doctor checks the repo.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "ignore": {
+          "description": "Globs relative to the repo root for instruction files that are broken on purpose, such as test fixtures. The doctor doesn't list or check them, and says how many it left out. A trailing / covers everything under a folder.",
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        }
+      }
+    }
+  }
+}

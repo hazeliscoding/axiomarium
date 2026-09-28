@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Axiomarium.Core.Assets;
+using Axiomarium.Core.Instructions;
 using Axiomarium.Core.Manifests;
 using Axiomarium.Core.Registry;
 using Axiomarium.Core.Schemas;
@@ -14,6 +15,33 @@ namespace Axiomarium.Core.Health;
 public static class Doctor
 {
     private const string ManifestName = "asset.yaml";
+
+    /// <summary>
+    /// Examines any repo: its instruction files, launched from the repo root, always, and the vault checks
+    /// when the folder or the repo root is a vault. Reads <c>axiomarium.yaml</c> for what to leave out.
+    /// </summary>
+    /// <param name="folder">Where to start: the repo root is the nearest folder at or above it with a <c>.git</c>, or the folder itself.</param>
+    /// <param name="machine">Where the harnesses' user and managed files are.</param>
+    /// <returns>A report, or the reason the doctor couldn't run: nothing exists at the path, or the path is a file.</returns>
+    public static HealthResult Examine(string folder, Machine machine)
+    {
+        var start = Path.TrimEndingDirectorySeparator(Path.GetFullPath(folder));
+        if (File.Exists(start))
+        {
+            return new HealthResult(null, new VaultProblem(VaultProblemKind.NotAFolder, $"{start} is a file, not a folder."));
+        }
+
+        if (!Directory.Exists(start))
+        {
+            return new HealthResult(null, new VaultProblem(VaultProblemKind.FolderMissing, $"The folder {start} does not exist."));
+        }
+
+        var repoRoot = Instructions.Paths.Upward(start, machine.FileSystemRoot).FirstOrDefault(directory => Path.Exists(Path.Combine(directory, ".git"))) ?? start;
+        var vault = new[] { start, repoRoot }.Select(candidate => Run(candidate).Report).FirstOrDefault(report => report is not null);
+        var (config, problems) = RepoConfig.Load(repoRoot);
+        var instructions = InstructionFindings.Check(repoRoot, machine, config.DoctorIgnore);
+        return new HealthResult(new HealthReport(repoRoot, vault, problems, instructions), null);
+    }
 
     /// <summary>Examines the vault at <paramref name="vaultRoot"/>.</summary>
     /// <param name="vaultRoot">The directory that holds <c>agents/</c>, <c>skills/</c> and the other kind folders.</param>

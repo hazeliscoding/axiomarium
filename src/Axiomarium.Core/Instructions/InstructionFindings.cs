@@ -14,6 +14,17 @@ namespace Axiomarium.Core.Instructions;
 /// <param name="Fix">What to do about it, as a sentence.</param>
 public sealed record InstructionFinding(string Id, Severity Severity, string File, int? Line, string Message, string Fix);
 
+/// <summary>An instruction file in a repo check, and which harnesses load it.</summary>
+/// <param name="Path">The file, shown as <see cref="DisplayPath"/> shows paths.</param>
+/// <param name="LoadedBy">The harnesses that load it for some file in the repo, launched from the repo root. Empty when none does.</param>
+public sealed record InstructionFile(string Path, IReadOnlyList<Harness> LoadedBy);
+
+/// <summary>What <see cref="InstructionFindings.Check"/> found in a repo.</summary>
+/// <param name="Files">Every instruction file the harnesses load or drop, in the order they meet them, ignored files left out.</param>
+/// <param name="Findings">Each finding once, warnings first, then by file and line, ignored files left out.</param>
+/// <param name="Ignored">How many instruction files the ignore globs left out.</param>
+public sealed record InstructionCheck(IReadOnlyList<InstructionFile> Files, IReadOnlyList<InstructionFinding> Findings, int Ignored);
+
 /// <summary>Finds the problems in what the harnesses load. Each finding is documented in <c>findings/&lt;id&gt;/finding.md</c>.</summary>
 public static partial class InstructionFindings
 {
@@ -39,17 +50,30 @@ public static partial class InstructionFindings
     public static IReadOnlyList<InstructionFinding> For(Explanation explanation, Machine machine) =>
         Ordered(Find(explanation, new Context(explanation.RepoRoot, machine)));
 
-    /// <summary>
-    /// The findings for a whole repo, launched from its root: for a file in each folder that holds an
-    /// instruction file, and for a file each path rule matches.
-    /// </summary>
+    /// <summary>The findings for a whole repo, launched from its root. See <see cref="Check"/>.</summary>
     /// <param name="repoRoot">The repo's root folder. It needn't hold a <c>.git</c>.</param>
     /// <param name="machine">Where the home folder and the harnesses' user files are.</param>
     /// <returns>Each finding once, warnings first, then by file and line.</returns>
-    public static IReadOnlyList<InstructionFinding> ForRepo(string repoRoot, Machine machine)
+    public static IReadOnlyList<InstructionFinding> ForRepo(string repoRoot, Machine machine) => Check(repoRoot, machine, []).Findings;
+
+    /// <summary>
+    /// Checks a whole repo, launched from its root, as Claude Code and Codex: for a file in each folder that
+    /// holds an instruction file, and for a file each path rule matches.
+    /// </summary>
+    /// <param name="repoRoot">The repo's root folder. It needn't hold a <c>.git</c>.</param>
+    /// <param name="machine">Where the home folder and the harnesses' user files are.</param>
+    /// <param name="ignore">
+    /// Globs relative to the repo root for files that are broken on purpose. Files they match aren't
+    /// listed, and no finding about them is reported, but they still count as files a rule can match.
+    /// </param>
+    /// <returns>Every instruction file the harnesses load or drop, the findings, and how many instruction files were ignored.</returns>
+    public static InstructionCheck Check(string repoRoot, Machine machine, IReadOnlyList<Glob> ignore)
     {
         var root = Path.TrimEndingDirectorySeparator(Path.GetFullPath(repoRoot));
         var context = new Context(root, machine);
+        bool Ignored(string path) =>
+            Instructions.Paths.IsUnder(path, root) && !Instructions.Paths.Same(path, root) && ignore.Any(glob => glob.IsMatch(Relative(root, path)));
+
         var targets = new List<string> { Path.Combine(root, Probe) };
         foreach (var file in context.Files)
         {
@@ -59,7 +83,7 @@ public static partial class InstructionFindings
             }
         }
 
-        foreach (var rule in context.Files.Where(IsRule))
+        foreach (var rule in context.Files.Where(IsRule).Where(rule => !Ignored(rule)))
         {
             var frontmatter = Frontmatter.Read(File.ReadAllText(rule));
             if (frontmatter is { Valid: true, Paths: { } patterns } && context.FirstMatch(RuleBase(rule), patterns) is { } match)
@@ -69,10 +93,59 @@ public static partial class InstructionFindings
         }
 
         Harness[] harnesses = [Harness.ClaudeCode, Harness.Codex];
-        var findings = targets.Distinct(Context.PathComparer)
-            .SelectMany(target => Find(Explainer.Explain(target, root, harnesses, machine, root, repoRoot: root), context));
-        return Ordered(findings);
+        var explanations = targets.Where(target => !Ignored(target)).Distinct(Context.PathComparer)
+            .Select(target => Explainer.Explain(target, root, harnesses, machine, root, repoRoot: root))
+            .ToList();
+
+        // A file is listed once, in the order the harnesses first meet it, with every harness that loads it.
+        var files = new List<(string Path, List<Harness> LoadedBy)>();
+        void Meet(string path, Harness? loadedBy)
+        {
+            if (Ignored(path) || !File.Exists(path))
+            {
+                return;
+            }
+
+            var index = files.FindIndex(file => Instructions.Paths.Same(file.Path, path));
+            if (index < 0)
+            {
+                files.Add((path, []));
+                index = files.Count - 1;
+            }
+
+            if (loadedBy is { } harness && !files[index].LoadedBy.Contains(harness))
+            {
+                files[index].LoadedBy.Add(harness);
+            }
+        }
+
+        foreach (var harness in explanations.SelectMany(explanation => explanation.Harnesses))
+        {
+            foreach (var item in harness.Resolution.Loaded)
+            {
+                Meet(item.Path, harness.Harness);
+            }
+
+            foreach (var item in harness.Resolution.Dropped)
+            {
+                Meet(item.Path, null);
+            }
+        }
+
+        var findings = Ordered(explanations.SelectMany(explanation => Find(explanation, context)))
+            .Where(finding => !IgnoredShown(finding.File, ignore))
+            .ToList();
+        return new InstructionCheck(
+            [.. files.Select(file => new InstructionFile(context.Show(file.Path), [.. file.LoadedBy.Order()]))],
+            findings,
+            context.Files.Count(file => IsInstructionFile(file) && Ignored(file)));
     }
+
+    // Whether a path as findings show it is inside the repo and ignored. Home and absolute paths never are.
+    private static bool IgnoredShown(string shown, IReadOnlyList<Glob> ignore) =>
+        !shown.StartsWith('~') && !Path.IsPathRooted(shown) && ignore.Any(glob => glob.IsMatch(shown));
+
+    private static string Relative(string root, string path) => Path.GetRelativePath(root, path).Replace(Path.DirectorySeparatorChar, '/');
 
     private static IEnumerable<InstructionFinding> Find(Explanation explanation, Context context)
     {
@@ -362,6 +435,9 @@ public static partial class InstructionFindings
 
         return Path.GetFileName(file) is "CLAUDE.md" or "CLAUDE.local.md" or "AGENTS.md" or "AGENTS.override.md" ? folder : null;
     }
+
+    private static bool IsInstructionFile(string file) =>
+        Path.GetFileName(file) is "CLAUDE.md" or "CLAUDE.local.md" or "AGENTS.md" or "AGENTS.override.md" || IsRule(file);
 
     private static bool IsRule(string file) =>
         file.EndsWith(".md", StringComparison.Ordinal)
