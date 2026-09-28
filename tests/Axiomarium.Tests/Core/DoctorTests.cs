@@ -23,8 +23,23 @@ public class DoctorTests
         Assert.Empty(report.Diagnostics);
         var asset = Assert.Single(report.Assets);
         Assert.Equal(
-            new DiscoveredAsset(AssetKind.Agent, "determinism-auditor", "agents/determinism-auditor", "agents/determinism-auditor/asset.yaml", "experimental", "0.1.0"),
-            asset);
+            (AssetKind.Agent, "determinism-auditor", "agents/determinism-auditor", "agents/determinism-auditor/asset.yaml"),
+            (asset.Kind, asset.Name, asset.Folder, asset.ManifestFile));
+        Assert.Equal(("experimental", "0.1.0"), (asset.Manifest!.Maturity, asset.Manifest.Version));
+        Assert.Equal([("claude-code", "experimental"), ("generic", "full")], asset.Manifest.Supports.Select(pair => (pair.Key, pair.Value)));
+    }
+
+    [Fact]
+    public void An_invalid_manifest_carries_none_of_its_fields()
+    {
+        using var vault = new TempVault().Asset(
+            "agents/determinism-auditor",
+            SampleManifests.Valid.Replace("maturity: experimental", "maturity: production-ready"));
+
+        var asset = Assert.Single(Report(vault).Assets);
+
+        Assert.Equal("agents/determinism-auditor/asset.yaml", asset.ManifestFile);
+        Assert.Null(asset.Manifest);
     }
 
     [Fact]

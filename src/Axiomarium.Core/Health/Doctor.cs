@@ -79,7 +79,7 @@ public static class Doctor
         if (!files.Contains(ManifestName, StringComparer.Ordinal))
         {
             diagnostics.Add(new Diagnostic(Severity.Error, folder, null, $"Missing {ManifestName}", RenameHint(files, ManifestName, "asset.yml") ?? []));
-            return new DiscoveredAsset(kind, name, folder, null, null, null);
+            return new DiscoveredAsset(kind, name, folder, null, null);
         }
 
         var manifestFile = $"{folder}/{ManifestName}";
@@ -94,7 +94,7 @@ public static class Doctor
         catch (Exception problem) when (problem is not OutOfMemoryException)
         {
             diagnostics.Add(new Diagnostic(Severity.Error, manifestFile, null, $"Couldn't read {ManifestName}: {problem.Message}", []));
-            return new DiscoveredAsset(kind, name, folder, manifestFile, null, null);
+            return new DiscoveredAsset(kind, name, folder, manifestFile, null);
         }
     }
 
@@ -146,7 +146,7 @@ public static class Doctor
         if (parsed.Problem is { } problem)
         {
             diagnostics.Add(new Diagnostic(Severity.Error, manifestFile, problem.Location, problem.Message, []));
-            return new DiscoveredAsset(kind, name, folder, manifestFile, null, null);
+            return new DiscoveredAsset(kind, name, folder, manifestFile, null);
         }
 
         var errors = SchemaValidator.Validate(parsed.Root, SchemaCatalog.Asset);
@@ -165,7 +165,7 @@ public static class Doctor
 
         if (errors.Count > 0)
         {
-            return new DiscoveredAsset(kind, name, folder, manifestFile, null, null);
+            return new DiscoveredAsset(kind, name, folder, manifestFile, null);
         }
 
         var manifest = parsed.Root!.AsObject();
@@ -189,7 +189,7 @@ public static class Doctor
             found.Claims.Add(new MaturityClaim(manifestFile, Locate(parsed.Locations, "maturity"), kind, folder, Text(manifest, "maturity"), TrueEvals(manifest)));
         }
 
-        return new DiscoveredAsset(kind, name, folder, manifestFile, Text(manifest, "maturity"), Text(manifest, "version"));
+        return new DiscoveredAsset(kind, name, folder, manifestFile, Fields(manifest));
     }
 
     private static void ExamineBlocks(
@@ -230,6 +230,11 @@ public static class Doctor
     }
 
     private static string Text(JsonObject manifest, string field) => manifest[field]!.GetValue<string>();
+
+    private static AssetManifest Fields(JsonObject manifest) => new(
+        Text(manifest, "maturity"),
+        Text(manifest, "version"),
+        manifest["supports"]!.AsObject().ToDictionary(pair => pair.Key, pair => pair.Value!.GetValue<string>(), StringComparer.Ordinal));
 
     private static IReadOnlySet<string> TrueEvals(JsonObject manifest) =>
         manifest["evals"] is JsonObject evals

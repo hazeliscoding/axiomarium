@@ -54,14 +54,15 @@ public static class DoctorText
     {
         ink.Write("  ").Write($"{index:00}", Palette.Dim).Write("  ").Write(asset.Name.PadRight(nameWidth), Palette.Bold);
 
+        // An asset without manifest fields always has an error that says why.
         var diagnostics = report.DiagnosticsFor(asset).ToList();
-        if (diagnostics.Any(diagnostic => diagnostic.Severity == Severity.Error))
+        if (asset.Manifest is not { } manifest || diagnostics.Any(diagnostic => diagnostic.Severity == Severity.Error))
         {
             ink.Write("ERROR", Palette.Error).Line();
             return;
         }
 
-        ink.Write(asset.Maturity!.PadRight(14), Palette.Maturity(asset.Maturity)).Write(asset.Version!.PadRight(8), Palette.Dim);
+        ink.Write(manifest.Maturity.PadRight(14), Palette.Maturity(manifest.Maturity)).Write(manifest.Version.PadRight(8), Palette.Dim);
         if (diagnostics.Count > 0)
         {
             ink.Write("WARNING", Palette.Warning).Line();

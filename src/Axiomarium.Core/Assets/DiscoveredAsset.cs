@@ -5,6 +5,14 @@ namespace Axiomarium.Core.Assets;
 /// <param name="Name">Its folder name.</param>
 /// <param name="Folder">Its folder, relative to the vault root, with forward slashes.</param>
 /// <param name="ManifestFile">Its <c>asset.yaml</c>, relative to the vault root, or <see langword="null"/> when there is none.</param>
-/// <param name="Maturity">The manifest's maturity, when the manifest is valid.</param>
-/// <param name="Version">The manifest's version, when the manifest is valid.</param>
-public sealed record DiscoveredAsset(AssetKind Kind, string Name, string Folder, string? ManifestFile, string? Maturity, string? Version);
+/// <param name="Manifest">
+/// What its manifest says, when the manifest passes the asset schema. <see langword="null"/> when there
+/// is no manifest, or it can't be read or doesn't pass, and then the report has an error for it.
+/// </param>
+public sealed record DiscoveredAsset(AssetKind Kind, string Name, string Folder, string? ManifestFile, AssetManifest? Manifest);
+
+/// <summary>The fields of a manifest that passes the asset schema, which are therefore all present.</summary>
+/// <param name="Maturity">Its maturity, such as <c>experimental</c>.</param>
+/// <param name="Version">Its SemVer version.</param>
+/// <param name="Supports">Each harness it supports, such as <c>claude-code</c>, and how well: <c>full</c>, <c>partial</c> or <c>experimental</c>.</param>
+public sealed record AssetManifest(string Maturity, string Version, IReadOnlyDictionary<string, string> Supports);

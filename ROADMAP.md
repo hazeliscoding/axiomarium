@@ -125,7 +125,7 @@ Agent configuration can be inspected and validated like software.
   - [ ] only JSON-shaped numbers keep their source text, but the docs say all numbers do;
   - [ ] an empty maturity prints `null`, `--root <file>` says the folder doesn't exist, and a duplicate key `"a:b"` is reported as `a`;
   - [ ] on Windows, virtual terminal mode is enabled for stdout but not stderr;
-  - [ ] the doctor's text assumes a valid manifest has a maturity and a version without saying so;
+  - [x] the doctor's text assumes a valid manifest has a maturity and a version without saying so;
   - [ ] a raw byte order mark sits in the source.
 - [ ] Release v0.1.0:
   - [ ] the release workflow: binaries, `SHA256SUMS`, and release notes from `CHANGELOG.md`;
