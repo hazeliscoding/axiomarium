@@ -115,10 +115,13 @@ jobs:
     name: install on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
     env:
       VERSION: ${{ needs.check.outputs.version }}
+      # On Windows the SDK installs tools behind an axm.cmd launcher, which bash only runs by its full name.
+      AXM: ${{ runner.os == 'Windows' && 'axm.cmd' || 'axm' }}
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-dotnet@v6
@@ -135,8 +138,8 @@ jobs:
       - name: Run it from bash
         shell: bash
         run: |
-          axm --version
-          axm validate
+          "$AXM" --version
+          "$AXM" validate
       - name: Run it from PowerShell
         if: runner.os == 'Windows'
         shell: pwsh
@@ -206,6 +209,7 @@ jobs:
     name: verify on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
         include:
           - { os: ubuntu-latest, rid: linux-x64, archive: tar.gz }
@@ -243,8 +247,10 @@ jobs:
             sleep 30
           done
           exit 1
+      # By its full path, because the released binary is also on PATH.
       - name: Run the NuGet tool
         shell: bash
         run: |
-          "$HOME/.dotnet/tools/axm" --version
-          "$HOME/.dotnet/tools/axm" validate
+          tool="$HOME/.dotnet/tools/${{ runner.os == 'Windows' && 'axm.cmd' || 'axm' }}"
+          "$tool" --version
+          "$tool" validate
