@@ -11,7 +11,7 @@
 
 Axiomarium is my lab for engineering reliable AI coding environments. It holds the agents, skills, hooks, policies, workflows and evals I use, and `axm`, a local CLI that inspects, validates, tests and debugs them. It treats agent configuration as real software infrastructure: kept in git, inspectable, testable, portable, and able to learn from its failures. It's built for my own setup first, and it's public in case it's useful to you too.
 
-> **Status:** early development. v0.1 inspects and validates a vault of agent assets with `axm list`, `axm validate` and `axm doctor`, and `axm explain` follows in v0.2. See [ROADMAP.md](ROADMAP.md).
+> **Status:** early development. v0.2 shows what Claude Code and Codex actually load for a file with `axm explain`, and `axm doctor` checks the instruction files of any repo. v0.1's vault checks stay: `axm list`, `axm validate` and `axm doctor` in a vault. Skills and triggering follow in v0.3. See [ROADMAP.md](ROADMAP.md).
 
 ## The problem
 
@@ -57,7 +57,7 @@ The vault provides the knowledge and behavior. `axm` provides the infrastructure
 
 ## What it looks like
 
-`axm doctor` works today, and `axm explain` is planned for v0.2. In a terminal the output is in color, with a kaomoji for the outcome. Piped, in CI or read by an agent, it's plain text.
+`axm doctor` and `axm explain` work today. In a terminal the output is in color, with a kaomoji for the outcome. Piped, in CI or read by an agent, it's plain text.
 
 ![A terminal runs axm list, which shows the five starter assets. A one-line edit then raises the determinism auditor's maturity to tested, and axm doctor reports that the claim lacks its evidence.](docs/demo/doctor.gif)
 
@@ -129,13 +129,14 @@ This is the demo in [`scenarios/demo`](scenarios/demo), and both harnesses were 
 - **Download** the archive for your platform (Linux x64, Windows x64 or macOS arm64) from the [latest release](https://github.com/hazeliscoding/axiomarium/releases/latest), check it against `SHA256SUMS`, and put `axm` on your `PATH`.
 - **Or install the .NET tool**, which needs the .NET 10 SDK: `dotnet tool install -g Axiomarium`. To try it without installing, run `dnx Axiomarium doctor`.
 
-Then, in a vault such as this repo:
+Then, in any repo:
 
 ```text
-axm list
-axm validate
-axm doctor
+axm doctor                     every instruction file, which harness loads it, and what's wrong
+axm explain src/app/main.cs    what Claude Code and Codex load for that file, and what they drop
 ```
+
+In a vault such as this repo, `axm list` and `axm validate` check the assets too, and `axm doctor` adds them to its report.
 
 A few platform notes:
 

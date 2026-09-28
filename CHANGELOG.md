@@ -4,6 +4,10 @@ This file records the user-visible changes to `axm` and the vault's schemas. The
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-09-28
+
+Instruction intelligence: what Claude Code and Codex actually load for a file, what they silently drop, and why.
+
 ### Added
 
 - `axm explain <path>` shows which instruction files Claude Code and Codex load for a file, in context order, and which they drop, each with the rule that decides it. Rows say whether a file loads at launch or when the file is read, which `paths` patterns matched, which line imported it, and whether Codex's byte budget cut it. A file a harness leaves to the model shows as NOT LOADED, never as dropped. `--harness` picks one harness, `--cwd` sets the launch directory (the repo root by default), `--diff` shows only the files one harness loads, and `--json` prints the same result as JSON with `schemaVersion` 1. The models are confirmed against Claude Code 2.1.284 and Codex 0.156.1.
@@ -41,5 +45,6 @@ The asset model: agent configuration can be inspected and validated like softwar
   - the `deterministic-boundaries` policy: nine rules for which decisions belong to code instead of the model, eight of them enforced by the determinism auditor;
   - the `prompt-fossil` experiment: the method for finding instructions that cost tokens but no longer change behavior. Designed, not run yet.
 
-[Unreleased]: https://github.com/hazeliscoding/axiomarium/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/hazeliscoding/axiomarium/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/hazeliscoding/axiomarium/releases/tag/v0.2.0
 [0.1.0]: https://github.com/hazeliscoding/axiomarium/releases/tag/v0.1.0
