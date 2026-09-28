@@ -5,6 +5,18 @@
     <RootNamespace>Axiomarium.Cli</RootNamespace>
     <PublishAot>true</PublishAot>
     <TrimmerSingleWarn>false</TrimmerSingleWarn>
+    <!-- The dotnet tool: a pointer package, Axiomarium, and one NativeAOT package per platform, each packed on its own OS. -->
+    <PackAsTool>true</PackAsTool>
+    <PackageId>Axiomarium</PackageId>
+    <ToolCommandName>axm</ToolCommandName>
+    <ToolPackageRuntimeIdentifiers>linux-x64;win-x64;osx-arm64</ToolPackageRuntimeIdentifiers>
+    <Description>Build, test, and debug your AI coding environment like software.</Description>
+    <Authors>Hazel Granados</Authors>
+    <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/hazeliscoding/axiomarium</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/hazeliscoding/axiomarium</RepositoryUrl>
+    <PackageTags>ai;agents;claude-code;codex;cli</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
     <!-- The LibraryImport source generator for the Windows console calls emits unsafe code. -->
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
@@ -16,5 +28,8 @@
   </ItemGroup>
   <ItemGroup>
     <InternalsVisibleTo Include="Axiomarium.Tests" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\README.md" Pack="true" PackagePath="\" />
   </ItemGroup>
 </Project>

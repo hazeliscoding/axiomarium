@@ -5,5 +5,11 @@
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <!-- The docs are for readers of the source; the published binary doesn't need them. -->
     <PublishDocumentationFile>false</PublishDocumentationFile>
+    <PublishReferencesDocumentationFiles>false</PublishReferencesDocumentationFiles>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+    <!-- Released binaries ship without symbols: the native .pdb is several times the size of the binary. -->
+    <DebugType>none</DebugType>
+    <DebugSymbols>false</DebugSymbols>
   </PropertyGroup>
 </Project>
