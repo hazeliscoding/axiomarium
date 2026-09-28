@@ -1,0 +1,3 @@
+description: "The demo in the write-up and the README: a shop whose CLAUDE.md hides the AGENTS.md every other agent reads, and imports a file someone renamed."
+launch: .
+target: src/api/orders.cs

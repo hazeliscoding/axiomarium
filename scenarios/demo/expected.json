@@ -1,0 +1,41 @@
+{
+  "recorded": "2026-09-28",
+  "claude-code": {
+    "version": "2.1.284",
+    "launch": [
+      {
+        "file": "home/.claude/CLAUDE.md",
+        "bytes": 49,
+        "scope": "User",
+        "reason": "session_start"
+      },
+      {
+        "file": "repo/CLAUDE.md",
+        "bytes": 130,
+        "scope": "Project",
+        "reason": "session_start"
+      }
+    ],
+    "read": [
+      {
+        "file": "repo/.claude/rules/api.md",
+        "bytes": 97,
+        "scope": "Project",
+        "reason": "path_glob_match"
+      }
+    ]
+  },
+  "codex": {
+    "version": "0.156.1",
+    "loaded": [
+      {
+        "file": "home/.codex/AGENTS.md",
+        "bytes": 48
+      },
+      {
+        "file": "repo/AGENTS.md",
+        "bytes": 180
+      }
+    ]
+  }
+}
