@@ -12,7 +12,7 @@ WARNING  agents-md-hidden
          Fix: Add @AGENTS.md to CLAUDE.md.
 ```
 
-The finding doesn't fire when the user's Project instructions setting turns AGENTS.md off on purpose.
+The finding doesn't fire when the user's Project instructions setting turns AGENTS.md off on purpose, or for an AGENTS.md above the repo, such as one in the home folder, which serves other folders too.
 
 ## Why it matters
 

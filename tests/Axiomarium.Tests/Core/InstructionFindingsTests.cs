@@ -87,6 +87,17 @@ public class InstructionFindingsTests
     }
 
     [Fact]
+    public void Agents_md_above_the_repo_is_not_the_repos_problem()
+    {
+        using var vault = new TempVault()
+            .Write("AGENTS.md", "for a folder of projects\n")
+            .Write("repo/CLAUDE.md", "project\n")
+            .Write("repo/AGENTS.md", "agents\n");
+
+        Assert.Equal(["AGENTS.md"], Check(vault).Where(finding => finding.Id == "agents-md-hidden").Select(finding => finding.File));
+    }
+
+    [Fact]
     public void Agents_md_the_claude_file_imports_is_not_hidden()
     {
         using var vault = new TempVault().Write("repo/CLAUDE.md", "@AGENTS.md\n").Write("repo/AGENTS.md", "agents\n");

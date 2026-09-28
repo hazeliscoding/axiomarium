@@ -177,13 +177,16 @@ public static partial class InstructionFindings
             importedBy.TryAdd(Path.GetFullPath(item.Path), item.Via!);
         }
 
+        // An AGENTS.md above the repo serves other folders too, so hiding it is a choice, not this repo's problem.
+        bool InRepo(string path) => context.RepoRoot is not { } root || Instructions.Paths.IsUnder(path, root);
+
         foreach (var dropped in resolution.Dropped)
         {
             var rule = dropped.Rule;
             var finding =
                 rule == ClaudeCodeRules.MissingImport ? DeadImport(dropped, context)
                 : rule == ClaudeCodeRules.ImportTooDeep ? ImportTooDeep(dropped, importedBy, context)
-                : rule == ClaudeCodeRules.AgentsMdHidden ? AgentsMdHidden(dropped, context)
+                : rule == ClaudeCodeRules.AgentsMdHidden && InRepo(dropped.Path) ? AgentsMdHidden(dropped, context)
                 : rule == ClaudeCodeRules.InvalidFrontmatter ? new InstructionFinding(
                     "rule-frontmatter-invalid", Severity.Warning, context.Show(dropped.Path), 1,
                     $"{context.Show(dropped.Path)} has frontmatter that doesn't parse, so Claude Code never loads the rule.",
