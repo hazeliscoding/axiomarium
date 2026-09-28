@@ -35,7 +35,7 @@ The tool is only worth trusting if these hold. Never break them, not even in deb
 
 ## Vault assets
 
-- One folder per asset under `agents/`, `skills/`, `hooks/`, `policies/`, `workflows/` or `experiments/`, with an `asset.yaml` manifest that validates against `schemas/asset.schema.json`, and its content in Markdown. Create a folder with its first asset, never as an empty placeholder.
+- One folder per asset under `agents/`, `skills/`, `hooks/`, `policies/`, `workflows/` or `experiments/`, with an `asset.yaml` manifest that validates against `schemas/asset.schema.json`, and its content in a Markdown file named after its kind: `agent.md`, `skill.md`, `hook.md`, `policy.md`, `workflow.md` or `experiment.md`. File names are matched exactly, on every platform. Create a folder with its first asset, never as an empty placeholder.
 - Assets are canonical and vendor neutral. Never put harness-specific files (`.claude/`, `.agents/`, `.github/`) inside an asset. Adapters generate those.
 - An asset's `version` follows SemVer. Bump it when the asset's behavior changes.
 - Schemas in `schemas/` are the single source of truth and are embedded in the binary. `SchemaValidator` supports only the keywords in `SchemaValidator.SupportedKeywords`. To use another keyword, extend the validator and its tests first; a test fails if a schema uses an unsupported one.

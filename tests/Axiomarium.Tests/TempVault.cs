@@ -15,6 +15,21 @@ internal sealed class TempVault : IDisposable
         return this;
     }
 
+    /// <summary>Writes an asset: <c>asset.yaml</c> and the content file its kind folder calls for, such as <c>agent.md</c>.</summary>
+    public TempVault Asset(string folder, string manifest) =>
+        Write($"{folder}/asset.yaml", manifest).Write($"{folder}/{ContentFiles[folder[..folder.IndexOf('/')]]}", $"# {folder}\n");
+
+    // Spelled out rather than taken from the core, so a wrong name in the core fails a test.
+    private static readonly Dictionary<string, string> ContentFiles = new()
+    {
+        ["agents"] = "agent.md",
+        ["skills"] = "skill.md",
+        ["hooks"] = "hook.md",
+        ["policies"] = "policy.md",
+        ["workflows"] = "workflow.md",
+        ["experiments"] = "experiment.md",
+    };
+
     /// <summary>Creates an empty folder.</summary>
     public TempVault Folder(string relativePath)
     {

@@ -100,7 +100,7 @@ Agent configuration can be inspected and validated like software.
 - [x] Discovery across `agents/`, `skills/`, `hooks/`, `policies/`, `workflows/` and `experiments/`, and the `asset` schema. Manifest errors name the file, the field and the allowed values. (Done in M0.)
 - [x] `CHANGELOG.md`, with the work so far under Unreleased.
 - [ ] Asset structure:
-  - [ ] the content file named after the kind, and a check that it exists and isn't empty;
+  - [x] the content file named after the kind, and a check that it exists and isn't empty;
   - [ ] `schemas/skill.schema.json`, `hook.schema.json` and `policy.schema.json`, and a check that each of those kinds has its block and no asset has another kind's block;
   - [ ] reference checks: `enforced_by` targets and eval folders.
 - [ ] `registry/maturity.yaml` and its schema, and a check that each maturity claim has its evidence.

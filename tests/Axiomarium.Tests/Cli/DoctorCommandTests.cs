@@ -30,11 +30,11 @@ public class DoctorCommandTests
         """;
 
     private static TempVault HealthyVault() =>
-        new TempVault().Write("agents/determinism-auditor/asset.yaml", SampleManifests.Valid);
+        new TempVault().Asset("agents/determinism-auditor", SampleManifests.Valid);
 
     private static TempVault BrokenVault() =>
-        new TempVault().Write(
-            "agents/determinism-auditor/asset.yaml",
+        new TempVault().Asset(
+            "agents/determinism-auditor",
             SampleManifests.Valid.Replace("maturity: experimental", "maturity: production-ready"));
 
     [Fact]
@@ -64,8 +64,8 @@ public class DoctorCommandTests
     public void Kinds_get_their_own_blocks_and_indices_run_across_them()
     {
         using var vault = new TempVault()
-            .Write("agents/determinism-auditor/asset.yaml", SampleManifests.Valid)
-            .Write("hooks/scope-sheriff/asset.yaml", TempVault.Manifest("hook", "scope-sheriff"));
+            .Asset("agents/determinism-auditor", SampleManifests.Valid)
+            .Asset("hooks/scope-sheriff", TempVault.Manifest("hook", "scope-sheriff"));
 
         var (_, output, _) = CliRun.Run(["doctor", "--root", vault.Root]);
 

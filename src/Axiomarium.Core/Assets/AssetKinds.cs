@@ -34,4 +34,9 @@ public static class AssetKinds
         AssetKind.Experiment => "experiment",
         _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, null),
     };
+
+    /// <summary>The Markdown file that holds an asset's content, named after its kind, such as <c>agent.md</c>.</summary>
+    /// <param name="kind">The kind.</param>
+    /// <returns>The file name, inside the asset's folder.</returns>
+    public static string ContentFile(this AssetKind kind) => $"{kind.ManifestName()}.md";
 }

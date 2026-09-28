@@ -56,8 +56,8 @@ public class NativeBinaryTests
     [Fact(Skip = NoBinary, SkipUnless = nameof(HasBinary))]
     public async Task Doctor_names_the_field_in_a_broken_manifest()
     {
-        using var vault = new TempVault().Write(
-            "agents/determinism-auditor/asset.yaml",
+        using var vault = new TempVault().Asset(
+            "agents/determinism-auditor",
             SampleManifests.Valid.Replace("maturity: experimental", "maturity: production-ready"));
 
         var (exitCode, output) = await RunAsync("doctor", "--root", vault.Root);

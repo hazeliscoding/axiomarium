@@ -56,11 +56,15 @@ public static class Doctor
     {
         var folder = $"{kind.Folder()}/{name}";
         var directory = Path.Combine(vaultRoot, kind.Folder(), name);
-        var manifestPath = Path.Combine(directory, ManifestName);
-        if (!File.Exists(manifestPath))
+
+        // Names are compared exactly, because Windows and macOS would find agent.md as Agent.md and
+        // Linux wouldn't, and the vault has to mean the same thing on every platform.
+        var files = Directory.EnumerateFiles(directory).Select(Path.GetFileName).OfType<string>().ToList();
+        ExamineContent(kind, folder, directory, files, diagnostics);
+
+        if (!files.Contains(ManifestName, StringComparer.Ordinal))
         {
-            var hint = File.Exists(Path.Combine(directory, "asset.yml")) ? ["Rename asset.yml to asset.yaml."] : Array.Empty<string>();
-            diagnostics.Add(new Diagnostic(Severity.Error, folder, null, $"Missing {ManifestName}", hint));
+            diagnostics.Add(new Diagnostic(Severity.Error, folder, null, $"Missing {ManifestName}", RenameHint(files, ManifestName, "asset.yml") ?? []));
             return new DiscoveredAsset(kind, name, folder, null, null, null);
         }
 
@@ -70,13 +74,46 @@ public static class Doctor
         // the vault is still checked and the user learns which file is at fault.
         try
         {
-            return ExamineManifest(kind, name, folder, manifestFile, File.ReadAllText(manifestPath), diagnostics);
+            return ExamineManifest(kind, name, folder, manifestFile, File.ReadAllText(Path.Combine(directory, ManifestName)), diagnostics);
         }
         catch (Exception problem) when (problem is not OutOfMemoryException)
         {
             diagnostics.Add(new Diagnostic(Severity.Error, manifestFile, null, $"Couldn't read {ManifestName}: {problem.Message}", []));
             return new DiscoveredAsset(kind, name, folder, manifestFile, null, null);
         }
+    }
+
+    private static void ExamineContent(AssetKind kind, string folder, string directory, List<string> files, List<Diagnostic> diagnostics)
+    {
+        var content = kind.ContentFile();
+        if (!files.Contains(content, StringComparer.Ordinal))
+        {
+            var detail = RenameHint(files, content) ?? ["An asset keeps its content in a Markdown file named after its kind."];
+            diagnostics.Add(new Diagnostic(Severity.Error, folder, null, $"Missing {content}", detail));
+            return;
+        }
+
+        var contentFile = $"{folder}/{content}";
+        try
+        {
+            if (string.IsNullOrWhiteSpace(File.ReadAllText(Path.Combine(directory, content))))
+            {
+                diagnostics.Add(new Diagnostic(Severity.Error, contentFile, null, $"{content} is empty", ["Write the asset's content in it."]));
+            }
+        }
+        catch (Exception problem) when (problem is not OutOfMemoryException)
+        {
+            diagnostics.Add(new Diagnostic(Severity.Error, contentFile, null, $"Couldn't read {content}: {problem.Message}", []));
+        }
+    }
+
+    // A file that differs only in case, or goes by a known misspelling, is almost certainly the one meant.
+    private static string[]? RenameHint(List<string> files, string expected, params string[] misspellings)
+    {
+        var found = files.FirstOrDefault(file =>
+            string.Equals(file, expected, StringComparison.OrdinalIgnoreCase)
+            || misspellings.Contains(file, StringComparer.OrdinalIgnoreCase));
+        return found is null ? null : [$"Rename {found} to {expected}."];
     }
 
     private static DiscoveredAsset ExamineManifest(

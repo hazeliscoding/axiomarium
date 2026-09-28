@@ -16,7 +16,7 @@ public class DoctorTests
     [Fact]
     public void A_valid_agent_has_no_diagnostics()
     {
-        using var vault = new TempVault().Write("agents/determinism-auditor/asset.yaml", SampleManifests.Valid);
+        using var vault = new TempVault().Asset("agents/determinism-auditor", SampleManifests.Valid);
 
         var report = Report(vault);
 
@@ -30,8 +30,8 @@ public class DoctorTests
     [Fact]
     public void Unknown_maturity_points_at_its_line()
     {
-        using var vault = new TempVault().Write(
-            "agents/determinism-auditor/asset.yaml",
+        using var vault = new TempVault().Asset(
+            "agents/determinism-auditor",
             SampleManifests.Valid.Replace("maturity: experimental", "maturity: production-ready"));
 
         var diagnostic = Assert.Single(Report(vault).Diagnostics);
@@ -46,8 +46,8 @@ public class DoctorTests
     [Fact]
     public void Missing_field_points_at_the_top_of_the_file()
     {
-        using var vault = new TempVault().Write(
-            "agents/determinism-auditor/asset.yaml",
+        using var vault = new TempVault().Asset(
+            "agents/determinism-auditor",
             SampleManifests.Valid.Replace("version: 0.1.0\n", ""));
 
         var diagnostic = Assert.Single(Report(vault).Diagnostics);
@@ -59,7 +59,7 @@ public class DoctorTests
     [Fact]
     public void Missing_manifest_is_an_error()
     {
-        using var vault = new TempVault().Folder("agents/empty");
+        using var vault = new TempVault().Write("agents/empty/agent.md", "# empty\n");
 
         var report = Report(vault);
 
@@ -74,7 +74,9 @@ public class DoctorTests
     [Fact]
     public void Asset_yml_gets_a_rename_hint()
     {
-        using var vault = new TempVault().Write("agents/determinism-auditor/asset.yml", SampleManifests.Valid);
+        using var vault = new TempVault()
+            .Write("agents/determinism-auditor/asset.yml", SampleManifests.Valid)
+            .Write("agents/determinism-auditor/agent.md", "# determinism-auditor\n");
 
         var diagnostic = Assert.Single(Report(vault).Diagnostics);
 
@@ -83,9 +85,95 @@ public class DoctorTests
     }
 
     [Fact]
+    public void Manifest_name_must_match_exactly()
+    {
+        using var vault = new TempVault()
+            .Write("agents/determinism-auditor/Asset.yaml", SampleManifests.Valid)
+            .Write("agents/determinism-auditor/agent.md", "# determinism-auditor\n");
+
+        var diagnostic = Assert.Single(Report(vault).Diagnostics);
+
+        Assert.Equal("Missing asset.yaml", diagnostic.Message);
+        Assert.Equal(["Rename Asset.yaml to asset.yaml."], diagnostic.Detail);
+    }
+
+    [Fact]
+    public void Missing_content_file_is_an_error()
+    {
+        using var vault = new TempVault().Write("agents/determinism-auditor/asset.yaml", SampleManifests.Valid);
+
+        var report = Report(vault);
+
+        var diagnostic = Assert.Single(report.Diagnostics);
+        Assert.Equal(Severity.Error, diagnostic.Severity);
+        Assert.Equal("agents/determinism-auditor", diagnostic.File);
+        Assert.Null(diagnostic.Location);
+        Assert.Equal("Missing agent.md", diagnostic.Message);
+        Assert.Equal(["An asset keeps its content in a Markdown file named after its kind."], diagnostic.Detail);
+    }
+
+    [Theory]
+    [InlineData("agent", "agents", "agent.md")]
+    [InlineData("skill", "skills", "skill.md")]
+    [InlineData("hook", "hooks", "hook.md")]
+    [InlineData("policy", "policies", "policy.md")]
+    [InlineData("workflow", "workflows", "workflow.md")]
+    [InlineData("experiment", "experiments", "experiment.md")]
+    public void Each_kind_has_its_own_content_file(string kind, string folder, string contentFile)
+    {
+        using var vault = new TempVault().Write($"{folder}/x/asset.yaml", TempVault.Manifest(kind, "x"));
+
+        Assert.Contains(Report(vault).Diagnostics, diagnostic => diagnostic.Message == $"Missing {contentFile}");
+    }
+
+    [Fact]
+    public void Content_file_name_must_match_exactly()
+    {
+        using var vault = new TempVault()
+            .Write("agents/determinism-auditor/asset.yaml", SampleManifests.Valid)
+            .Write("agents/determinism-auditor/Agent.md", "# determinism-auditor\n");
+
+        var diagnostic = Assert.Single(Report(vault).Diagnostics);
+
+        Assert.Equal("Missing agent.md", diagnostic.Message);
+        Assert.Equal(["Rename Agent.md to agent.md."], diagnostic.Detail);
+    }
+
+    [Fact]
+    public void Blank_content_file_is_an_error()
+    {
+        using var vault = new TempVault()
+            .Asset("agents/determinism-auditor", SampleManifests.Valid)
+            .Write("agents/determinism-auditor/agent.md", " \n\n");
+
+        var diagnostic = Assert.Single(Report(vault).Diagnostics);
+
+        Assert.Equal("agents/determinism-auditor/agent.md", diagnostic.File);
+        Assert.Null(diagnostic.Location);
+        Assert.Equal("agent.md is empty", diagnostic.Message);
+        Assert.Equal(["Write the asset's content in it."], diagnostic.Detail);
+    }
+
+    [Fact]
+    public void Unreadable_content_file_is_an_error_and_the_rest_still_run()
+    {
+        using var vault = new TempVault()
+            .Asset("agents/determinism-auditor", SampleManifests.Valid)
+            .Asset("agents/other-agent", TempVault.Manifest("agent", "other-agent"));
+        using var locked = MakeUnreadable(Path.Combine(vault.Root, "agents", "determinism-auditor", "agent.md"));
+
+        var report = Report(vault);
+
+        var diagnostic = Assert.Single(report.Diagnostics);
+        Assert.Equal("agents/determinism-auditor/agent.md", diagnostic.File);
+        Assert.StartsWith("Couldn't read agent.md: ", diagnostic.Message);
+        Assert.Equal(["determinism-auditor", "other-agent"], report.Assets.Select(asset => asset.Name));
+    }
+
+    [Fact]
     public void Empty_manifest_is_an_error()
     {
-        using var vault = new TempVault().Write("agents/determinism-auditor/asset.yaml", "");
+        using var vault = new TempVault().Asset("agents/determinism-auditor", "");
 
         var diagnostic = Assert.Single(Report(vault).Diagnostics);
 
@@ -95,7 +183,7 @@ public class DoctorTests
     [Fact]
     public void Name_must_match_the_folder()
     {
-        using var vault = new TempVault().Write("agents/other/asset.yaml", SampleManifests.Valid);
+        using var vault = new TempVault().Asset("agents/other", SampleManifests.Valid);
 
         var diagnostic = Assert.Single(Report(vault).Diagnostics);
 
@@ -106,7 +194,7 @@ public class DoctorTests
     [Fact]
     public void Kind_must_match_the_folder()
     {
-        using var vault = new TempVault().Write("skills/determinism-auditor/asset.yaml", SampleManifests.Valid);
+        using var vault = new TempVault().Asset("skills/determinism-auditor", SampleManifests.Valid);
 
         var report = Report(vault);
 
@@ -119,7 +207,7 @@ public class DoctorTests
     [Fact]
     public void Duplicate_key_is_reported_with_its_line()
     {
-        using var vault = new TempVault().Write("agents/determinism-auditor/asset.yaml", "name: a\nname: b\n");
+        using var vault = new TempVault().Asset("agents/determinism-auditor", "name: a\nname: b\n");
 
         var diagnostic = Assert.Single(Report(vault).Diagnostics);
 
@@ -131,8 +219,8 @@ public class DoctorTests
     public void Unreadable_manifest_is_an_error_and_the_rest_still_run()
     {
         using var vault = new TempVault()
-            .Write("agents/determinism-auditor/asset.yaml", SampleManifests.Valid)
-            .Write("agents/other-agent/asset.yaml", TempVault.Manifest("agent", "other-agent"));
+            .Asset("agents/determinism-auditor", SampleManifests.Valid)
+            .Asset("agents/other-agent", TempVault.Manifest("agent", "other-agent"));
         using var locked = MakeUnreadable(Path.Combine(vault.Root, "agents", "determinism-auditor", "asset.yaml"));
 
         var report = Report(vault);
@@ -180,7 +268,7 @@ public class DoctorTests
     public void Hidden_folders_and_loose_files_are_ignored()
     {
         using var vault = new TempVault()
-            .Write("agents/determinism-auditor/asset.yaml", SampleManifests.Valid)
+            .Asset("agents/determinism-auditor", SampleManifests.Valid)
             .Write("agents/.draft/asset.yaml", "not: [valid")
             .Write("agents/README.md", "# Agents\n");
 
@@ -194,9 +282,9 @@ public class DoctorTests
     public void Assets_are_ordered_by_kind_then_name()
     {
         using var vault = new TempVault()
-            .Write("skills/b/asset.yaml", TempVault.Manifest("skill", "b"))
-            .Write("agents/z/asset.yaml", TempVault.Manifest("agent", "z"))
-            .Write("agents/a/asset.yaml", TempVault.Manifest("agent", "a"));
+            .Asset("skills/b", TempVault.Manifest("skill", "b"))
+            .Asset("agents/z", TempVault.Manifest("agent", "z"))
+            .Asset("agents/a", TempVault.Manifest("agent", "a"));
 
         var report = Report(vault);
 
@@ -208,8 +296,8 @@ public class DoctorTests
     public void Paths_use_forward_slashes()
     {
         using var vault = new TempVault()
-            .Write("agents/determinism-auditor/asset.yaml", SampleManifests.Valid.Replace("kind: agent", "kind: nope"))
-            .Folder("hooks/empty");
+            .Asset("agents/determinism-auditor", SampleManifests.Valid.Replace("kind: agent", "kind: nope"))
+            .Write("hooks/empty/hook.md", "# empty\n");
 
         var report = Report(vault);
 
