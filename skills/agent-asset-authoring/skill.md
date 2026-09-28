@@ -60,7 +60,7 @@ skill:
 - **version** is SemVer, starting at `0.1.0`. Bump it when the asset's behavior changes. Quote any version that YAML would read as a number, such as `"1.0"`.
 - **description** says what the asset does, in one or two sentences.
 - **maturity** starts at `experimental`. Raise it only when the evidence `registry/maturity.yaml` requires exists: usage entries in `docs/dogfooding.md` that link to the asset, and eval files. `axm validate` fails a claim without its evidence.
-- **supports** lists only harnesses you have tried, each as `full`, `partial` or `experimental`. `generic` means the content works as plain instructions anywhere.
+- **supports** lists the harnesses the asset is meant for: `experimental` while it's unproven there, `partial` once it works with known gaps, `full` once it works as intended. `generic` means the content works as plain instructions anywhere.
 - **permissions** and **side_effects** state the most the asset needs and the worst it can change. Don't round down.
 - **inputs** and **outputs** are kebab-case nouns.
 - **evals**: set a flag to `true` only when the asset's `evals/<type>/` folder has files.
