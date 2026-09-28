@@ -1,0 +1,147 @@
+{
+  "recorded": "2026-09-28",
+  "claude-code": {
+    "version": "2.1.284",
+    "launch": [],
+    "read": [],
+    "skills": {
+      "launch": [
+        {
+          "name": "deploy",
+          "file": "home/.claude/skills/deploy/SKILL.md",
+          "entry": "whole",
+          "chars": 86
+        },
+        {
+          "name": "broken",
+          "file": "repo/.claude/skills/broken/SKILL.md",
+          "entry": "whole",
+          "chars": 84
+        },
+        {
+          "name": "init",
+          "file": "repo/.claude/skills/init/SKILL.md",
+          "entry": "whole",
+          "chars": 105
+        },
+        {
+          "name": "lint",
+          "file": "repo/.claude/skills/lint/SKILL.md",
+          "entry": "whole",
+          "chars": 64
+        },
+        {
+          "name": "short",
+          "file": "repo/.claude/skills/short/SKILL.md",
+          "entry": "name-only",
+          "chars": 7
+        },
+        {
+          "name": "tables",
+          "file": "repo/.claude/skills/tables/SKILL.md",
+          "entry": "whole",
+          "chars": 98
+        },
+        {
+          "name": "tools:format",
+          "file": "repo/.claude/commands/tools/format.md",
+          "entry": "whole",
+          "chars": 78
+        },
+        {
+          "name": "dataviz",
+          "builtIn": true,
+          "entry": "whole",
+          "chars": 1447
+        },
+        {
+          "name": "update-config",
+          "builtIn": true,
+          "entry": "whole",
+          "chars": 707
+        },
+        {
+          "name": "keybindings-help",
+          "builtIn": true,
+          "entry": "whole",
+          "chars": 248
+        },
+        {
+          "name": "code-review",
+          "builtIn": true,
+          "entry": "whole",
+          "chars": 853
+        },
+        {
+          "name": "simplify",
+          "builtIn": true,
+          "entry": "whole",
+          "chars": 188
+        },
+        {
+          "name": "fewer-permission-prompts",
+          "builtIn": true,
+          "entry": "whole",
+          "chars": 191
+        },
+        {
+          "name": "loop",
+          "builtIn": true,
+          "entry": "whole",
+          "chars": 344
+        },
+        {
+          "name": "schedule",
+          "builtIn": true,
+          "entry": "whole",
+          "chars": 381
+        },
+        {
+          "name": "claude-api",
+          "builtIn": true,
+          "entry": "whole",
+          "chars": 1082
+        },
+        {
+          "name": "workflow-authoring",
+          "builtIn": true,
+          "entry": "whole",
+          "chars": 252
+        },
+        {
+          "name": "run",
+          "builtIn": true,
+          "entry": "whole",
+          "chars": 368
+        },
+        {
+          "name": "security-review",
+          "builtIn": true,
+          "entry": "whole",
+          "chars": 90
+        }
+      ],
+      "read": [
+        {
+          "name": "src:deploy",
+          "file": "repo/src/.claude/skills/deploy/SKILL.md",
+          "entry": "whole",
+          "chars": 223
+        },
+        {
+          "name": "orders",
+          "file": "repo/src/api/.claude/skills/orders/SKILL.md",
+          "entry": "whole",
+          "chars": 168
+        },
+        {
+          "name": "star-ts",
+          "file": "repo/.claude/skills/star-ts/SKILL.md",
+          "entry": "whole",
+          "chars": 93
+        }
+      ]
+    },
+    "hooks": []
+  }
+}

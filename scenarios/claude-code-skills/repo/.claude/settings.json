@@ -1,0 +1,6 @@
+{
+  "skillOverrides": {
+    "quiet": "off",
+    "short": "name-only"
+  }
+}
