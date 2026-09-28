@@ -120,12 +120,12 @@ Agent configuration can be inspected and validated like software.
   - [x] `deterministic-boundaries` (policy): which decisions belong to code, not to the model. Each rule names what enforces it, or says that nothing does yet.
   - [x] `prompt-fossil` (experiment): the write-up and method that v0.7 builds on.
 - [x] Write-up in `docs/assets.md`: why assets carry manifests, and what each maturity level promises.
-- [ ] M0 review leftovers:
+- [x] M0 review leftovers:
   - [x] the no-vault hint is chosen by reading the core's message text;
   - [x] the validator silently ignores a non-string `type` and a schema-valued `additionalProperties`;
   - [x] only JSON-shaped numbers keep their source text, but the docs say all numbers do;
   - [x] an empty maturity prints `null`, `--root <file>` says the folder doesn't exist, and a duplicate key `"a:b"` is reported as `a`;
-  - [ ] on Windows, virtual terminal mode is enabled for stdout but not stderr;
+  - [x] on Windows, virtual terminal mode is enabled for stdout but not stderr;
   - [x] the doctor's text assumes a valid manifest has a maturity and a version without saying so;
   - [x] a raw byte order mark sits in the source.
 - [ ] Release v0.1.0:

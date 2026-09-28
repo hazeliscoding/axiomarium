@@ -37,7 +37,8 @@ public static class AxmCli
     /// <param name="environment">The process's environment variables, for <c>NO_COLOR</c>, <c>AXM_PLAIN</c> and <c>TERM</c>.</param>
     /// <param name="outputRedirected">Whether <paramref name="output"/> is a file or pipe rather than a terminal.</param>
     /// <param name="errorRedirected">Whether <paramref name="error"/> is a file or pipe rather than a terminal.</param>
-    /// <param name="virtualTerminal">Whether the terminal understands ANSI escape codes.</param>
+    /// <param name="outputVirtualTerminal">Whether the terminal behind <paramref name="output"/> understands ANSI escape codes.</param>
+    /// <param name="errorVirtualTerminal">Whether the terminal behind <paramref name="error"/> understands ANSI escape codes.</param>
     /// <param name="currentDirectory">The directory commands default to.</param>
     /// <returns>
     /// 0, 1 or 2. See <see cref="Passed"/>, <see cref="ErrorsFound"/> and <see cref="CouldNotRun"/>.
@@ -52,11 +53,12 @@ public static class AxmCli
         IReadOnlyDictionary<string, string?> environment,
         bool outputRedirected,
         bool errorRedirected,
-        bool virtualTerminal,
+        bool outputVirtualTerminal,
+        bool errorVirtualTerminal,
         string currentDirectory)
     {
-        var outputStyle = Style.For(outputRedirected, environment, virtualTerminal);
-        var errorStyle = Style.For(errorRedirected, environment, virtualTerminal);
+        var outputStyle = Style.For(outputRedirected, environment, outputVirtualTerminal);
+        var errorStyle = Style.For(errorRedirected, environment, errorVirtualTerminal);
 
         var root = new RootCommand("Build, test, and debug your AI coding environment like software.");
         foreach (var option in root.Options.OfType<VersionOption>())

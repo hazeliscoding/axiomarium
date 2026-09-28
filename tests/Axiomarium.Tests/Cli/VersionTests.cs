@@ -18,7 +18,8 @@ public class VersionTests
             new Dictionary<string, string?>(),
             outputRedirected: true,
             errorRedirected: true,
-            virtualTerminal: false,
+            outputVirtualTerminal: false,
+            errorVirtualTerminal: false,
             Environment.CurrentDirectory);
 
         Assert.Equal(AxmCli.Passed, exitCode);

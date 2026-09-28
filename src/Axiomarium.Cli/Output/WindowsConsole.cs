@@ -5,22 +5,33 @@ namespace Axiomarium.Cli.Output;
 /// <summary>Turns on ANSI escape codes in the Windows console.</summary>
 internal static partial class WindowsConsole
 {
-    private const int StdOutputHandle = -11;
     private const uint EnableVirtualTerminalProcessing = 0x0004;
+
+    /// <summary>A standard stream that can be a console.</summary>
+    public enum Stream
+    {
+        /// <summary>Standard output.</summary>
+        Output = -11,
+
+        /// <summary>Standard error.</summary>
+        Error = -12,
+    }
 
     /// <summary>
     /// Windows Terminal understands ANSI codes already, but the classic console host only does after
-    /// this mode is set. Without it, colors would print as raw escape codes.
+    /// this mode is set. Without it, colors would print as raw escape codes. Each stream is set on its
+    /// own, because stdout can be redirected to a file while stderr is still the console.
     /// </summary>
-    /// <returns>Whether the console now understands ANSI codes. Always true off Windows.</returns>
-    public static bool TryEnableVirtualTerminal()
+    /// <param name="stream">The stream to set.</param>
+    /// <returns>Whether that stream's console now understands ANSI codes. Always true off Windows.</returns>
+    public static bool TryEnableVirtualTerminal(Stream stream)
     {
         if (!OperatingSystem.IsWindows())
         {
             return true;
         }
 
-        var handle = GetStdHandle(StdOutputHandle);
+        var handle = GetStdHandle((int)stream);
         if (handle == IntPtr.Zero || handle == new IntPtr(-1) || !GetConsoleMode(handle, out var mode))
         {
             return false;

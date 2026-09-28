@@ -6,13 +6,17 @@ namespace Axiomarium.Tests.Cli;
 /// <summary>Runs <see cref="AxmCli"/> in process and captures what it writes.</summary>
 internal static partial class CliRun
 {
-    /// <summary>Runs axm as if stdout and stderr were files (plain output), or a terminal, with <paramref name="stdin"/> as its input.</summary>
+    /// <summary>
+    /// Runs axm as if stdout and stderr were files (plain output), or a terminal, with <paramref name="stdin"/>
+    /// as its input. <paramref name="virtualTerminal"/> covers both streams unless <paramref name="errorVirtualTerminal"/> says otherwise.
+    /// </summary>
     public static (int ExitCode, string Output, string Error) Run(
         string[] args,
         bool terminal = false,
         Dictionary<string, string?>? environment = null,
         bool virtualTerminal = true,
-        string stdin = "")
+        string stdin = "",
+        bool? errorVirtualTerminal = null)
     {
         var output = new StringWriter { NewLine = "\n" };
         var error = new StringWriter { NewLine = "\n" };
@@ -24,7 +28,8 @@ internal static partial class CliRun
             environment ?? [],
             outputRedirected: !terminal,
             errorRedirected: !terminal,
-            virtualTerminal,
+            outputVirtualTerminal: virtualTerminal,
+            errorVirtualTerminal: errorVirtualTerminal ?? virtualTerminal,
             Environment.CurrentDirectory);
         return (exitCode, output.ToString(), error.ToString());
     }

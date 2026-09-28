@@ -12,8 +12,6 @@ foreach (DictionaryEntry variable in Environment.GetEnvironmentVariables())
     environment[(string)variable.Key] = (string?)variable.Value;
 }
 
-var terminal = !Console.IsOutputRedirected || !Console.IsErrorRedirected;
-
 // Hook input is UTF-8 JSON, whatever the console's input code page.
 using var input = new StreamReader(Console.OpenStandardInput(), new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
 
@@ -25,5 +23,6 @@ return AxmCli.Run(
     environment,
     Console.IsOutputRedirected,
     Console.IsErrorRedirected,
-    virtualTerminal: terminal && WindowsConsole.TryEnableVirtualTerminal(),
+    outputVirtualTerminal: !Console.IsOutputRedirected && WindowsConsole.TryEnableVirtualTerminal(WindowsConsole.Stream.Output),
+    errorVirtualTerminal: !Console.IsErrorRedirected && WindowsConsole.TryEnableVirtualTerminal(WindowsConsole.Stream.Error),
     Environment.CurrentDirectory);

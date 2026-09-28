@@ -151,6 +151,17 @@ public class DoctorCommandTests
         Assert.Equal(plain, CliRun.StripColor(fancy).Replace($"  {Kaomoji.CouldNotRun}", ""));
     }
 
+    // With stdout redirected to a file, only stderr is a console, and only its mode decides its color.
+    [Fact]
+    public void Stderr_color_follows_stderrs_own_terminal()
+    {
+        using var vault = new TempVault().Folder("docs");
+
+        var (_, _, error) = CliRun.Run(["doctor", "--root", vault.Root], terminal: true, virtualTerminal: false, errorVirtualTerminal: true);
+
+        Assert.Contains("\u001b[", error);
+    }
+
     [Theory]
     [InlineData(0, 0, Kaomoji.AllClear)]
     [InlineData(0, 2, Kaomoji.WarningsOnly)]
