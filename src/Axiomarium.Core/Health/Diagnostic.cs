@@ -10,6 +10,9 @@ public enum Severity
 
     /// <summary>Something is likely wrong, but nothing is broken yet.</summary>
     Warning,
+
+    /// <summary>Nothing is wrong, but something is wasted, such as a paragraph that loads twice. Never fails a command.</summary>
+    Info,
 }
 
 /// <summary>One problem the doctor found.</summary>

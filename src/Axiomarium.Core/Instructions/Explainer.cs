@@ -48,12 +48,15 @@ public static class Explainer
     /// <param name="harnesses">The harnesses to resolve, in the order to report them.</param>
     /// <param name="machine">Where the harnesses' user and managed files are.</param>
     /// <param name="currentDirectory">What relative paths are relative to.</param>
+    /// <param name="repoRoot">The repo the file is in, or <see langword="null"/> to find it by the nearest <c>.git</c> above the file.</param>
     /// <returns>Each harness's resolution.</returns>
-    public static Explanation Explain(string target, string? launchDirectory, IReadOnlyList<Harness> harnesses, Machine machine, string currentDirectory)
+    public static Explanation Explain(
+        string target, string? launchDirectory, IReadOnlyList<Harness> harnesses, Machine machine, string currentDirectory, string? repoRoot = null)
     {
         var file = Path.GetFullPath(target, currentDirectory);
-        var repoRoot = Paths.Upward(Path.GetDirectoryName(file)!, machine.FileSystemRoot)
-            .FirstOrDefault(directory => Path.Exists(Path.Combine(directory, ".git")));
+        repoRoot = repoRoot is not null
+            ? Path.GetFullPath(repoRoot, currentDirectory)
+            : Paths.Upward(Path.GetDirectoryName(file)!, machine.FileSystemRoot).FirstOrDefault(directory => Path.Exists(Path.Combine(directory, ".git")));
         var launch = launchDirectory is not null ? Path.GetFullPath(launchDirectory, currentDirectory) : repoRoot ?? currentDirectory;
         var resolutions = harnesses.Select(harness => harness switch
         {
