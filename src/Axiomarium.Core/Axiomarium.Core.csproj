@@ -4,6 +4,7 @@
     <IsAotCompatible>true</IsAotCompatible>
   </PropertyGroup>
   <ItemGroup>
+    <PackageReference Include="Tomlyn" />
     <PackageReference Include="YamlDotNet" />
   </ItemGroup>
   <ItemGroup>
