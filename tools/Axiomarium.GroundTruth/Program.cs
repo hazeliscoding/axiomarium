@@ -4,8 +4,10 @@ using Axiomarium.GroundTruth;
 //
 //   dotnet run --project tools/Axiomarium.GroundTruth -- [scenario ...] [--harness claude-code|codex]
 //
-// With no scenarios it records them all. Codex runs offline; each Claude Code recording is a short Haiku
-// session on your login, which the recorder borrows for the run and deletes afterwards.
+// With no scenarios it records them all. Codex runs offline, on Linux or macOS only: on Windows it reads
+// ~/.agents/skills from the real profile folder, so .github/workflows/record-codex.yml records it. Each
+// Claude Code recording is a short Haiku session on your login, which the recorder borrows for the run
+// and deletes afterwards.
 
 if (args is ["hook-log", var logFolder])
 {
@@ -27,6 +29,18 @@ for (var i = 0; i < args.Length; i++)
     {
         names.Add(args[i]);
     }
+}
+
+if (OperatingSystem.IsWindows() && harnesses.Contains(Recorder.Codex))
+{
+    if (harnesses.Count == 1)
+    {
+        Console.Error.WriteLine("Codex can't be recorded on Windows, where it reads your real ~/.agents/skills. Run .github/workflows/record-codex.yml instead.");
+        return 1;
+    }
+
+    harnesses.Remove(Recorder.Codex);
+    Console.WriteLine("Recording Claude Code only: .github/workflows/record-codex.yml records Codex.");
 }
 
 var folder = FindScenarios();
