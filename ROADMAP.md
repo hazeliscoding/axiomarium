@@ -27,6 +27,7 @@ Axiomarium is my lab for building, testing and debugging AI coding environments 
 
 - **Stack:** .NET 10 with NativeAOT, System.CommandLine, YamlDotNet and xunit.v3. NativeAOT keeps startup fast for hooks that run on every session or tool call. Rust was considered, but .NET stays because it is my main stack and versioned releases solve distribution.
 - **Manifests are validated by our own small validator** for the subset of JSON Schema 2020-12 our schemas use, and the schema files stay the single source of truth, embedded in the binary. JsonSchema.Net moved to a maintenance-fee EULA, which is friction for anyone using `axm` at work, and Corvus compiles validators at runtime, which NativeAOT can't do. A test fails if a schema uses a keyword the validator doesn't support.
+- **Codex's `config.toml` is read with Tomlyn** (BSD-2-Clause) through a source-generated `TomlSerializerContext`, which keeps it NativeAOT-clean. Its reflection-based API is flagged under NativeAOT, so the core never calls it.
 - **No Spectre.Console.** The output is simple enough for a plain writer with ANSI colors, as in pgcheckup, and startup stays fast for hooks. `axm doctor` on this repo takes about 60 ms.
 - **YAML follows the 1.2 core schema:** `yes` and `on` stay strings, and a number JSON can write as is keeps its source text, so an error can say `Quote it: "1.0"`. Other number forms, such as hex, octal, `+1` or `.5`, become their value.
 - **The doctor checks each asset in isolation.** YamlDotNet sometimes throws exceptions that aren't `YamlException`, and reports some errors (tab indentation) at line 1. So reading YAML never throws, a wrong line is replaced by the real one or by none, and anything unexpected while checking one manifest becomes an error on that file while the rest of the vault is still checked.
@@ -162,12 +163,12 @@ What each harness actually reads for a file, and what it silently drops.
 
 - [x] Ground-truth spike: record one scenario from each real harness, including user-level files in a fake home, without touching the real `~/.claude`. If Claude Code can't read a fake home cleanly, its user-level scenarios fall back to hand-checked expectations, marked as such.
 - [x] Scenarios and the recorder: the `scenarios/<name>/` format, the recorder in `tools/`, the first four recordings (`launch-chain`, `agents-md-only`, `codex-byte-cap`, `codex-empty-override`), and a test that every scenario and recording is well formed.
-- [ ] The core: the resolution (loaded, dropped and findings, each entry with its rule id), the injected machine, and a test that replays every recording against the models.
-- [ ] Codex model:
-  - [ ] the global file in `$CODEX_HOME`: `AGENTS.override.md`, then `AGENTS.md`, the first that isn't empty;
-  - [ ] the chain from the project root (`project_root_markers`, `.git` by default) down to the launch directory, one file per directory (`AGENTS.override.md`, `AGENTS.md`, then `project_doc_fallback_filenames`), including the empty override;
-  - [ ] the 32 KiB `project_doc_max_bytes` budget: the crossing file cut, later files dropped, the global file exempt;
-  - [ ] untrusted projects, and files below the launch directory reported as "not loaded by the harness".
+- [x] The core: the resolution (loaded, dropped and findings, each entry with its rule id), the injected machine, and a test that replays every recording against the models.
+- [x] Codex model:
+  - [x] the global file in `$CODEX_HOME`: `AGENTS.override.md`, then `AGENTS.md`, the first that isn't empty;
+  - [x] the chain from the project root (`project_root_markers`, `.git` by default) down to the launch directory, one file per directory (`AGENTS.override.md`, `AGENTS.md`, then `project_doc_fallback_filenames`), including the empty override;
+  - [x] the 32 KiB `project_doc_max_bytes` budget: the crossing file cut, later files dropped, the global file exempt;
+  - [x] untrusted projects, and files below the launch directory reported as "not loaded by the harness".
 - [ ] Claude Code model:
   - [ ] the launch-time chain: managed policy, `~/.claude/CLAUDE.md` and `~/.claude/rules/`, then each directory from the filesystem root down to the launch directory (`CLAUDE.md`, `.claude/CLAUDE.md`, then `CLAUDE.local.md`), then `.claude/rules/**/*.md` without `paths`;
   - [ ] `@path` imports: relative, absolute and `~` paths, at most 4 hops, skipped inside code spans and fenced blocks, cycles detected, and external imports marked as needing approval;
