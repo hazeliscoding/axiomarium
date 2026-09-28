@@ -28,7 +28,7 @@ Axiomarium is my lab for building, testing and debugging AI coding environments 
 - **Stack:** .NET 10 with NativeAOT, System.CommandLine, YamlDotNet and xunit.v3. NativeAOT keeps startup fast for hooks that run on every session or tool call. Rust was considered, but .NET stays because it is my main stack and versioned releases solve distribution.
 - **Manifests are validated by our own small validator** for the subset of JSON Schema 2020-12 our schemas use, and the schema files stay the single source of truth, embedded in the binary. JsonSchema.Net moved to a maintenance-fee EULA, which is friction for anyone using `axm` at work, and Corvus compiles validators at runtime, which NativeAOT can't do. A test fails if a schema uses a keyword the validator doesn't support.
 - **No Spectre.Console.** The output is simple enough for a plain writer with ANSI colors, as in pgcheckup, and startup stays fast for hooks. `axm doctor` on this repo takes about 60 ms.
-- **YAML follows the 1.2 core schema:** `yes` and `on` stay strings, and numbers keep their source text, so an error can say `Quote it: "1.0"`.
+- **YAML follows the 1.2 core schema:** `yes` and `on` stay strings, and a number JSON can write as is keeps its source text, so an error can say `Quote it: "1.0"`. Other number forms, such as hex, octal, `+1` or `.5`, become their value.
 - **The doctor checks each asset in isolation.** YamlDotNet sometimes throws exceptions that aren't `YamlException`, and reports some errors (tab indentation) at line 1. So reading YAML never throws, a wrong line is replaced by the real one or by none, and anything unexpected while checking one manifest becomes an error on that file while the rest of the vault is still checked.
 - **The version is `0.1.0-dev`** until the v0.1.0 release.
 - **Projects:** `Axiomarium.Core` (assets, schemas, registry, instruction resolution) and `Axiomarium.Cli`. `Axiomarium.Eval` and `Axiomarium.Adapters` arrive with their milestones.
@@ -123,7 +123,7 @@ Agent configuration can be inspected and validated like software.
 - [ ] M0 review leftovers:
   - [x] the no-vault hint is chosen by reading the core's message text;
   - [x] the validator silently ignores a non-string `type` and a schema-valued `additionalProperties`;
-  - [ ] only JSON-shaped numbers keep their source text, but the docs say all numbers do;
+  - [x] only JSON-shaped numbers keep their source text, but the docs say all numbers do;
   - [x] an empty maturity prints `null`, `--root <file>` says the folder doesn't exist, and a duplicate key `"a:b"` is reported as `a`;
   - [ ] on Windows, virtual terminal mode is enabled for stdout but not stderr;
   - [x] the doctor's text assumes a valid manifest has a maturity and a version without saying so;

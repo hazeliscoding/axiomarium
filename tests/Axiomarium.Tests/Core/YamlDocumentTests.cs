@@ -24,6 +24,14 @@ public class YamlDocumentTests
     }
 
     [Fact]
+    public void Numbers_json_cannot_write_as_is_become_their_value()
+    {
+        var result = YamlDocument.Parse("a: +1\nb: .5\nc: 01\nd: 0o17\n");
+
+        Assert.Equal("""{"a":1,"b":0.5,"c":1,"d":15}""", result.Root!.ToJsonString());
+    }
+
+    [Fact]
     public void Records_key_locations_for_nested_paths()
     {
         var result = YamlDocument.Parse("name: x\nsupports:\n  claude-code: full\ninputs:\n  - a\n");
