@@ -107,7 +107,7 @@ Axiomarium is my lab for building, testing and debugging AI coding environments 
 - **The logo is option 1B, "Bracketed":** the wordmark inside corner brackets, KAIRO's mark for the object in focus. Pink replaces KAIRO's signal red: `#f0569b` on dark backgrounds and `#c2185b` on light ones. The mark is an "A" in the same brackets. The lockup has no `AXM/CLI` tag, because the tag can't be read at README size.
 - **CLI output is colorful and a little playful.** KAIRO's structure stays: uppercase section labels, `//` separators, zero-padded indices and severity as a word. On top of it go colors from the brand palette and a kaomoji that matches the outcome (`ヽ(・∀・)ﾉ` all clear, `(╥﹏╥)` errors). The fun never carries meaning on its own: every kaomoji sits next to words that say the same thing. This departs from KAIRO's "no emoji, never jokey" voice on purpose.
 - **Plain output for machines.** When stdout isn't a terminal (pipes, CI, hooks, agents), or `AXM_PLAIN` is set, output has no color and no kaomoji. `NO_COLOR` turns color off. Terminal output is exactly the plain output plus color and kaomoji, and a test holds that.
-- **The README's terminal demo is a VHS tape,** `docs/demo/doctor.tape`. `.github/workflows/demo.yml` renders it with the `axm` release from NuGet whenever the tape changes in a pull request, and the GIF is committed after a look at it, so the demo always shows what users install.
+- **The README's terminal demos are VHS tapes,** `docs/demo/doctor.tape` and `docs/demo/explain.tape`. `.github/workflows/demo.yml` renders them with the `axm` release from NuGet whenever a tape changes in a pull request, and the GIFs are committed after a look at them, so the demos always show what users install.
 
 ## M0: Day 0 (as soon as possible)
 
@@ -211,9 +211,17 @@ What each harness actually reads for a file, and what it silently drops.
 - [x] `axm doctor` in any repo: the instruction findings always, and the vault checks when a vault exists, with `axiomarium.yaml` to leave out files that are broken on purpose.
 - [x] `hooks/session-doctor/` and `axm hook session-doctor`: confirm on the real harness which SessionStart output the user and the model see, then build the hook, silent when all is well. Under 200 ms locally, and a CI check that holds the native binary under 1 s.
 - [x] Write-up, "What your agent actually reads", on the recorded demo scenario in `scenarios/demo/`, and a second VHS tape for an `axm explain` demo GIF. The tape renders once v0.2.0 is on NuGet, because the demo workflow installs the release.
-- [ ] Release v0.2.0, then render `docs/demo/explain.tape` with the release and add the GIF to the README.
+- [x] Release v0.2.0, then render `docs/demo/explain.tape` with the release and add the GIF to the README.
 
 **Done when:** every scenario matches what the real Claude Code and Codex recorded, `--diff` on the demo scenario shows an instruction only one harness loads, all nine findings pass their fixtures, a fresh Claude Code session on the demo scenario opens with the doctor's notice, and v0.2.0 installs from GitHub Releases and NuGet on fresh runners.
+
+**Done (2026-09-28).** v0.2.0 is out on [GitHub Releases](https://github.com/hazeliscoding/axiomarium/releases/tag/v0.2.0) and on [NuGet](https://www.nuget.org/packages/Axiomarium).
+- All 14 scenarios were recorded again on Claude Code 2.1.284 and Codex 0.156.1, and both models reproduce every recording in CI ([run](https://github.com/hazeliscoding/axiomarium/actions/runs/36473235289)).
+- On the demo scenario, `axm explain --diff` lists three files only Claude Code loads and two only Codex loads: the two agents share no instructions.
+- All nine findings fire on their `fires` fixture and stay silent on their `clean` one.
+- A fresh headless Claude Code 2.1.284 session on the demo scenario, with `session-doctor` wired in, opened with the doctor's notice, and asked what the session start reported, the model named the problems.
+- The release run installed the binary and the dotnet tool on fresh Linux, Windows and macOS runners and ran them ([run](https://github.com/hazeliscoding/axiomarium/actions/runs/36473272914)). On Windows and macOS the first attempt gave up after ten minutes, before NuGet listed the platform packages, and passed on a re-run. The release workflow now waits up to thirty.
+- The owner checked the colors and kaomoji in Windows Terminal.
 
 ## M3: v0.3, skills and triggering
 
