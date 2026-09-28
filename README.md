@@ -82,20 +82,22 @@ ERROR  agents/scope-reviewer/asset.yaml:5
 `axm explain` shows what each harness loads for a file, and what it silently drops:
 
 ```text
-$ axm explain src/api/orders/OrderService.cs --harness all
+$ axm explain src/api/orders/OrderService.cs
 
-CLAUDE CODE // launched at repo root
-  01  ~/.claude/CLAUDE.md          user                at launch
-  02  CLAUDE.md                    project             at launch
-  03  .claude/rules/backend.md     paths: src/api/**   when the file is read
-  --  AGENTS.md                    DROPPED  CLAUDE.md exists and doesn't import it
-  --  src/api/AGENTS.md            DROPPED  CLAUDE.md exists and doesn't import it
-  --  docs/testing.md              DROPPED  imported by CLAUDE.md:12, file is missing
+AXM EXPLAIN // src/api/orders/OrderService.cs
 
-CODEX // launched at repo root
-  01  ~/.codex/AGENTS.md           global              at launch
-  02  AGENTS.md                    project             at launch
-  --  src/api/AGENTS.md            NOT LOADED  below the launch directory
+  CLAUDE CODE // launched at the repo root
+  01  ~/.claude/CLAUDE.md        user                at launch
+  02  CLAUDE.md                  project             at launch
+  03  .claude/rules/backend.md   paths: src/api/**   when the file is read
+  --  docs/testing.md            DROPPED     file is missing, imported by CLAUDE.md:12
+  --  AGENTS.md                  DROPPED     a CLAUDE file exists and doesn't import it
+  --  src/api/AGENTS.md          DROPPED     a CLAUDE file exists and doesn't import it
+
+  CODEX // launched at the repo root
+  01  ~/.codex/AGENTS.md         global              at launch
+  02  AGENTS.md                  project             at launch
+  --  src/api/AGENTS.md          NOT LOADED  below the launch directory
 
 WARNING  agents-md-hidden
          Codex reads AGENTS.md. Claude Code skips it, because CLAUDE.md doesn't import it.

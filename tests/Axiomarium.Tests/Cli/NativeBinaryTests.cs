@@ -13,9 +13,14 @@ public class NativeBinaryTests
 
     private static string Binary => Environment.GetEnvironmentVariable("AXM_BINARY") ?? "";
 
-    private static Task<(int ExitCode, string Output)> RunAsync(params string[] args) => RunWithInputAsync(null, args);
+    private static Task<(int ExitCode, string Output)> RunAsync(params string[] args) => StartAsync(null, [], args);
 
-    private static async Task<(int ExitCode, string Output)> RunWithInputAsync(string? stdin, params string[] args)
+    private static Task<(int ExitCode, string Output)> RunWithInputAsync(string? stdin, params string[] args) => StartAsync(stdin, [], args);
+
+    private static Task<(int ExitCode, string Output)> RunWithEnvironmentAsync(Dictionary<string, string> environment, params string[] args) =>
+        StartAsync(null, environment, args);
+
+    private static async Task<(int ExitCode, string Output)> StartAsync(string? stdin, Dictionary<string, string> environment, string[] args)
     {
         var start = new ProcessStartInfo(Binary)
         {
@@ -28,6 +33,11 @@ public class NativeBinaryTests
         foreach (var arg in args)
         {
             start.ArgumentList.Add(arg);
+        }
+
+        foreach (var (name, value) in environment)
+        {
+            start.Environment[name] = value;
         }
 
         using var process = Process.Start(start)!;
@@ -91,5 +101,29 @@ public class NativeBinaryTests
         Assert.Equal(0, exitCode);
         var context = System.Text.Json.Nodes.JsonNode.Parse(output)!["hookSpecificOutput"]!["additionalContext"]!.GetValue<string>();
         Assert.StartsWith("src/billing/résumé.txt is outside this task's scope", context);
+    }
+
+    [Fact(Skip = NoBinary, SkipUnless = nameof(HasBinary))]
+    public async Task Explain_reads_the_codex_config()
+    {
+        using var vault = new TempVault()
+            .Folder("repo/.git")
+            .Write("home/.codex/config.toml", "project_doc_max_bytes = 16\n")
+            .Write("repo/AGENTS.md", new string('a', 40) + "\n");
+        var home = Path.Combine(vault.Root, "home");
+        var environment = new Dictionary<string, string>
+        {
+            ["HOME"] = home,
+            ["USERPROFILE"] = home,
+            ["CODEX_HOME"] = Path.Combine(home, ".codex"),
+            ["CLAUDE_CONFIG_DIR"] = Path.Combine(home, ".claude"),
+        };
+
+        // Codex only: Claude Code would walk up past the test folder into the real machine.
+        var (exitCode, output) = await RunWithEnvironmentAsync(environment, "explain", Path.Combine(vault.Root, "repo", "app.cs"), "--harness", "codex", "--json");
+
+        Assert.Equal(0, exitCode);
+        var agents = System.Text.Json.Nodes.JsonNode.Parse(output)!["harnesses"]![0]!["loaded"]![0]!;
+        Assert.Equal((16, true), (agents["bytes"]!.GetValue<int>(), agents["cut"]!.GetValue<bool>()));
     }
 }

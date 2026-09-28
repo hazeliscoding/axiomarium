@@ -16,7 +16,9 @@ internal static partial class CliRun
         Dictionary<string, string?>? environment = null,
         bool virtualTerminal = true,
         string stdin = "",
-        bool? errorVirtualTerminal = null)
+        bool? errorVirtualTerminal = null,
+        Axiomarium.Core.Instructions.Machine? machine = null,
+        string? currentDirectory = null)
     {
         var output = new StringWriter { NewLine = "\n" };
         var error = new StringWriter { NewLine = "\n" };
@@ -30,7 +32,8 @@ internal static partial class CliRun
             errorRedirected: !terminal,
             outputVirtualTerminal: virtualTerminal,
             errorVirtualTerminal: errorVirtualTerminal ?? virtualTerminal,
-            Environment.CurrentDirectory);
+            currentDirectory ?? Environment.CurrentDirectory,
+            machine);
         return (exitCode, output.ToString(), error.ToString());
     }
 

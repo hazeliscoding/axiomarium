@@ -5,6 +5,7 @@ using Axiomarium.Cli.Output;
 using Axiomarium.Core.Assets;
 using Axiomarium.Core.Health;
 using Axiomarium.Core.Hooks;
+using Axiomarium.Core.Instructions;
 
 namespace Axiomarium.Cli;
 
@@ -34,12 +35,16 @@ public static class AxmCli
     /// <param name="input">Standard input, which hook commands read. Read only by commands that need it.</param>
     /// <param name="output">Where reports and help go.</param>
     /// <param name="error">Where problems that stop a command go.</param>
-    /// <param name="environment">The process's environment variables, for <c>NO_COLOR</c>, <c>AXM_PLAIN</c> and <c>TERM</c>.</param>
+    /// <param name="environment">
+    /// The process's environment variables: <c>NO_COLOR</c>, <c>AXM_PLAIN</c> and <c>TERM</c> for output, and
+    /// the home and harness folders <c>axm explain</c> reads unless <paramref name="machine"/> is given.
+    /// </param>
     /// <param name="outputRedirected">Whether <paramref name="output"/> is a file or pipe rather than a terminal.</param>
     /// <param name="errorRedirected">Whether <paramref name="error"/> is a file or pipe rather than a terminal.</param>
     /// <param name="outputVirtualTerminal">Whether the terminal behind <paramref name="output"/> understands ANSI escape codes.</param>
     /// <param name="errorVirtualTerminal">Whether the terminal behind <paramref name="error"/> understands ANSI escape codes.</param>
     /// <param name="currentDirectory">The directory commands default to.</param>
+    /// <param name="machine">Where the harnesses' user and managed files are, or <see langword="null"/> to take them from <paramref name="environment"/>. Tests pass their own.</param>
     /// <returns>
     /// 0, 1 or 2. See <see cref="Passed"/>, <see cref="ErrorsFound"/> and <see cref="CouldNotRun"/>.
     /// Bad arguments and unexpected failures return 2, never 1, except for <c>axm hook</c> commands,
@@ -55,7 +60,8 @@ public static class AxmCli
         bool errorRedirected,
         bool outputVirtualTerminal,
         bool errorVirtualTerminal,
-        string currentDirectory)
+        string currentDirectory,
+        Machine? machine = null)
     {
         var outputStyle = Style.For(outputRedirected, environment, outputVirtualTerminal);
         var errorStyle = Style.For(errorRedirected, environment, errorVirtualTerminal);
@@ -66,10 +72,11 @@ public static class AxmCli
             option.Action = new VersionAction(output, outputStyle);
         }
 
-        var session = new Session(output, error, outputStyle, errorStyle, currentDirectory);
+        var session = new Session(output, error, outputStyle, errorStyle, currentDirectory, environment, machine);
         root.Subcommands.Add(VaultCommand("doctor", "Check the vault's health: list every asset, then every problem.", ReportText.WriteDoctor, session));
         root.Subcommands.Add(VaultCommand("validate", "Check every asset and print only the problems, for CI and hooks.", ReportText.WriteValidate, session));
         root.Subcommands.Add(ListCommand(session));
+        root.Subcommands.Add(ExplainCommand(session));
         root.Subcommands.Add(HookCommand(input, session));
 
         var parsed = root.Parse(args);
@@ -168,6 +175,80 @@ public static class AxmCli
         return command;
     }
 
+    private static Command ExplainCommand(Session session)
+    {
+        var target = new Argument<string>("path") { Description = "The file to explain. It needn't exist yet, but its folder must." };
+        var harness = new Option<string>("--harness") { Description = "Only this harness.", DefaultValueFactory = _ => "all" };
+        harness.AcceptOnlyFromAmong("all", Harness.ClaudeCode.Name(), Harness.Codex.Name());
+        var cwd = new Option<string?>("--cwd") { Description = "Where the harness starts. Defaults to the repo root, or the current directory outside a repo." };
+        var diff = new Option<bool>("--diff") { Description = "Only the files one harness loads and the other doesn't." };
+        var json = new Option<bool>("--json") { Description = "Print JSON. Its shape is a contract, versioned by schemaVersion." };
+
+        var command = new Command("explain", "Show which instruction files each harness loads for a file, and which it drops, each with its rule.");
+        command.Arguments.Add(target);
+        command.Options.Add(harness);
+        command.Options.Add(cwd);
+        command.Options.Add(diff);
+        command.Options.Add(json);
+        command.SetAction(result =>
+        {
+            Harness[] harnesses = result.GetValue(harness) switch
+            {
+                "claude-code" => [Harness.ClaudeCode],
+                "codex" => [Harness.Codex],
+                _ => [Harness.ClaudeCode, Harness.Codex],
+            };
+            var (asDiff, asJson) = (result.GetValue(diff), result.GetValue(json));
+            if (asDiff && asJson)
+            {
+                return CouldNotRunWith(session, "--diff is for reading, and --json already lists what each harness loads.", "Drop one of them.");
+            }
+
+            if (asDiff && harnesses.Length != 2)
+            {
+                return CouldNotRunWith(session, "--diff compares two harnesses, so it can't take --harness.", "Drop --harness to compare Claude Code and Codex.");
+            }
+
+            var path = result.GetValue(target)!;
+            var file = Path.GetFullPath(path, session.CurrentDirectory);
+            if (Directory.Exists(file))
+            {
+                return CouldNotRunWith(session, $"{path} is a folder.", "Pass a file in it. The file needn't exist yet.");
+            }
+
+            var folders = new[] { Path.GetDirectoryName(file)!, result.GetValue(cwd) is { } launch ? Path.GetFullPath(launch, session.CurrentDirectory) : null };
+            if (folders.OfType<string>().FirstOrDefault(folder => !Directory.Exists(folder)) is { } missing)
+            {
+                return CouldNotRunWith(session, $"The folder {missing} doesn't exist.", hint: null);
+            }
+
+            var machine = session.Machine ?? Machine.FromEnvironment(session.Environment, session.CurrentDirectory);
+            var explanation = Explainer.Explain(file, result.GetValue(cwd), harnesses, machine, session.CurrentDirectory);
+            if (asJson)
+            {
+                ExplainJson.Write(session.Output, explanation, machine.Home);
+            }
+            else if (asDiff)
+            {
+                ExplainText.WriteDiff(session.Output, explanation, machine.Home, session.OutputStyle);
+            }
+            else
+            {
+                ExplainText.Write(session.Output, explanation, machine.Home, session.OutputStyle);
+            }
+
+            // Every instruction finding is a warning or info, so explain passes whenever it ran.
+            return Passed;
+        });
+        return command;
+    }
+
+    private static int CouldNotRunWith(Session session, string message, string? hint)
+    {
+        WriteCouldNotRun(session.Error, session.ErrorStyle, [message], hint);
+        return CouldNotRun;
+    }
+
     private static Option<string> RootOption(Session session) => new("--root")
     {
         Description = "The vault to check. Defaults to the current directory.",
@@ -210,7 +291,9 @@ public static class AxmCli
     }
 
     // What every command writes to, and how, for one run of axm.
-    private sealed record Session(TextWriter Output, TextWriter Error, Style OutputStyle, Style ErrorStyle, string CurrentDirectory);
+    private sealed record Session(
+        TextWriter Output, TextWriter Error, Style OutputStyle, Style ErrorStyle, string CurrentDirectory,
+        IReadOnlyDictionary<string, string?> Environment, Machine? Machine);
 
     private sealed class VersionAction(TextWriter output, Style style) : SynchronousCommandLineAction
     {
