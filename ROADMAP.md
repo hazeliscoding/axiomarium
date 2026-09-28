@@ -104,6 +104,30 @@ Axiomarium is my lab for building, testing and debugging AI coding environments 
 ### Skills and hooks (v0.3)
 
 - **v0.3 is skills and hooks, and trigger testing moves to v0.4 (2026-09-28).** M3 as first planned held two things: deterministic skill and hook discovery, and trigger tests that run a model. They ship apart. v0.3 models which skills each harness offers the model and which hooks run, and `axm triggers` finds overlapping descriptions without a model. v0.4 generates trigger prompts and runs them. Every later milestone moves down one, and the versions in the decisions above follow.
+- **Skills are part of the resolution (2026-09-28).** Each harness model returns the skills it would list for the file, next to the instruction files: AVAILABLE, `at-launch` or `when-read`, or NOT LISTED with the reason, each citing its rule. Nothing ever says a skill loaded.
+- **What the research found about Claude Code skills (2026-09-28, the 2.1.284 docs and binary).**
+  - At launch it lists managed skills, personal skills in `~/.claude/skills` (with those synced from claude.ai), project skills from the launch directory up to the git root, enabled plugins' skills as `plugin:skill`, and legacy `.claude/commands`. Enterprise beats personal, personal beats project, and a skill beats a command of the same name.
+  - A `.claude/skills` below the launch directory joins the first time the agent reads or edits a file there. A skill with `paths` joins when the agent reads, writes or edits a matching file.
+  - The listing is a `skill_listing` attachment with entries such as `- name: description - when_to_use`. Each entry is cut at 1,536 characters, and the whole listing gets 1% of the context window at 4 characters a token: 8,000 characters at 200k. Over budget, built-ins keep their text, the other skills keep their descriptions in order of how often they're used, and the rest become names only.
+  - A skill with `disable-model-invocation`, a skill hidden by `skillOverrides`, and a plugin skill without a description are never listed.
+- **What the research found about Codex skills (2026-09-28, the 0.156.1 source).**
+  - Everything is found at launch: `.agents/skills` from the project root down to the launch directory, each project `.codex/skills`, `$CODEX_HOME/skills` (deprecated) and its bundled `.system` skills, `~/.agents/skills`, and the admin folder.
+  - Two skills with the same name are both listed, and a `$name` mention then selects neither.
+  - The listing is a `<skills_instructions>` developer message. Each description is cut at 1,024 characters, and the whole fits `skills.max_context_tokens`, else 2% of the context window, else 8,000 characters. Over budget, descriptions shrink in turn, then skills are dropped from the end.
+  - Disabled skills, skills whose `agents/openai.yaml` sets `allow_implicit_invocation: false` or lists `products` without `codex`, and invalid `SKILL.md` files are never listed.
+  - **The docs are wrong:** Codex reads project `.codex/skills` in untrusted projects, where the config reference says untrusted projects skip project `.codex/` layers. The model follows the source.
+- **What the research found about hooks (2026-09-28).**
+  - Claude Code merges hooks from managed settings, `~/.claude/settings.json`, the launch directory's `.claude/settings.json` (not its ancestors'), `settings.local.json` and enabled plugins, and runs a handler defined in two settings files once. A matcher of only letters, digits, `_`, `-`, spaces, `,` and `|` is an exact list, and anything else is an unanchored regex. `if` scopes a tool hook to paths, such as `Edit(src/**)`, and a hook on any other event with `if` set never runs.
+  - Codex loads hooks from managed `requirements.toml`, and from `hooks.json` and `[hooks]` in `config.toml` in the admin folder, `$CODEX_HOME` and each trusted project's `.codex`. None overrides another. A hook that isn't managed runs only when its SHA-256 matches the `trusted_hash` in the user config, and only `command` and `mcp_tool` handlers run.
+  - **The docs are wrong:** a Codex matcher of only letters, digits, `_` and `|` is an exact list, not the regex the docs describe. The model follows the source.
+  - A Codex `apply_patch` hook gets the whole patch and no file path, so no Codex hook can be scoped to one file.
+- **Hooks at three moments (2026-09-28).** `explain` shows the hooks that would run at `session-start`, `before-edit` and `after-edit`, the moments of the vault's hook schema, as RUNS or NOT RUN with the reason. A Codex edit hook runs on every edit, and `explain` says so. It assumes a trusted Claude Code workspace, as `claude -p` does, and says that too. The doctor lists every configured hook on every event, with whether it can run at all.
+- **Not modeled in v0.3,** and `explain` says so: Codex plugin skills and hooks, `--add-dir`, hooks in skill or subagent frontmatter, and hooks on a read.
+- **A budget states its assumption.** Where a listing's cut depends on what `axm` can't read, such as how often each skill is used or the model's context window, the output states its assumption (a 200k-token window) and never names the skill that loses its description. Claude Code's built-in skills aren't files, so the recorder saves their names and entry lengths for the confirmed version, and the model lists them as built in.
+- **Codex is recorded in CI.** On Windows Codex finds `~/.agents/skills` through the Known Folder profile, whatever `HOME` says, so a local recording would read the owner's real skills. `.github/workflows/record-codex.yml` installs the confirmed Codex on Ubuntu and records every scenario offline: `codex debug prompt-input` for the listing, and `codex app-server`'s `hooks/list` for each hook with its trust. It runs on demand and on pull requests that touch `scenarios/`, uploads the recordings, and fails when they differ from what's committed. The local recorder refuses Codex on Windows. Whether a Codex hook fires needs a model turn, so the model's hook matching follows the source at 0.156.1 and isn't recorded.
+- **Scenario skills and hooks carry markers.** The listing shows descriptions, not bodies, so each scenario skill's description starts with its marker, and each scenario hook command prints its marker. `scenario.yaml` gains `action: read | edit`. A recording that lists an unmarked skill that isn't a built-in fails, and nothing of that skill is written.
+- **`explain --json` stays shape 1.** Each harness gains `skills`, `notListed`, `listing` and `hooks`. No existing field changes, so `schemaVersion` stays 1.
+- **`axm triggers` finds overlap, not collisions.** For each harness it compares every skill listed from the repo root, plus the vault's skills as they'd be listed after sync (their description and `use_when`), on the text the model sees. A term weighs more the rarer it is in that listing, and each pair above a fixed threshold is shown with the terms it shares. It exits 0 whenever it ran and isn't a doctor finding, because only `triggers test` in v0.4 can call a pair a collision.
 
 ### Brand
 
@@ -229,8 +253,32 @@ What each harness actually reads for a file, and what it silently drops.
 
 ## M3: v0.3, skills and hooks
 
-- [ ] Skill and hook discovery for each harness: Claude Code (`.claude/skills`, `~/.claude/skills`, plugins, and hooks in settings) and Codex (`.agents/skills`, `~/.agents/skills` and `hooks.json`). `axm explain` lists the matching skills as available, never loaded, and the hooks that would run. (Moved from v0.2.)
-- [ ] `axm triggers`: skills whose descriptions overlap, and the terms they share.
+Which skills each harness offers the model for a file, and which hooks run.
+
+- [ ] Ground-truth spike: record one scenario with skills and hooks from each harness, Claude Code locally and Codex through `record-codex.yml`, and settle what the research left open: whether the listing shows a skill's `name` or its folder, whether a plugin skill without a description is left out, where `settings.local.json` is read on Windows, and whether hook runs reach the transcript.
+- [ ] Scenarios and recorders: markers in skill descriptions and hook commands, `action: read | edit`, `skills` and `hooks` in `expected.json`, the Claude Code recorder reading `skill_listing` and hook events, `record-codex.yml`, and all 14 scenarios recorded again.
+- [ ] Claude Code skills: managed, personal, synced and project skills, enabled plugins and legacy commands, nested and `paths` skills when read, precedence, and the listing's format, caps and budget, with built-ins from the recording.
+- [ ] Codex skills: every root, `[[skills.config]]` and `agents/openai.yaml`, and the listing's format, caps and budget. `Machine` gains Codex's admin folder.
+- [ ] Hooks for both harnesses: sources, merging, trust, matchers and `if`, at `session-start`, `before-edit` and `after-edit`.
+- [ ] `axm explain`: SKILLS and HOOKS blocks for each harness, skills in `--diff`, and the new fields in `--json`.
+- [ ] `axm doctor`: SKILLS and HOOKS inventories and their counts, with `session-doctor` still under 1 s in CI.
+- [ ] Findings, each with `finding.md` and fires and clean fixtures, shown by `explain` and `doctor`:
+
+| Finding | Severity | Fires when |
+|---|---|---|
+| `skill-name-clash` | warning | Two skills share a name: in Claude Code one hides the other, and in Codex both are listed and `$name` selects neither |
+| `skill-description-cut` | warning | A skill's entry is longer than its harness's cap (1,536 characters in Claude Code, 1,024 in Codex), so the model sees it cut |
+| `skill-listing-over-budget` | warning | A harness's listing, built-ins included, is over its budget at the stated window, so some descriptions are cut or dropped |
+| `skill-frontmatter-invalid` | warning | A `SKILL.md`'s frontmatter doesn't parse or has no description: Claude Code lists its first body line instead, and Codex skips it |
+| `skill-paths-match-nothing` | warning | A Claude Code skill's `paths` match no file in the repo, or a pattern is invalid, so it never becomes available |
+| `hook-never-runs` | warning | A hook's matcher isn't a valid regex, it sets `if` on an event that isn't a tool event, or Codex skips its handler type |
+| `codex-hook-untrusted` | warning | A Codex hook's hash doesn't match its `trusted_hash`, or its project isn't trusted, so it never runs |
+
+- [ ] `axm triggers`: overlapping descriptions in each harness's listing and the vault's skills, with the terms they share.
+- [ ] Write-up, "Which skills your agent can see", on the demo scenario with skills and a hook added, and `docs/demo/explain.tape` updated to show them.
+- [ ] Release v0.3.0, then render the tape with the release.
+
+**Done when:** every scenario matches what the real Claude Code and Codex recorded, skill listings and hooks included; `axm explain` on the demo scenario shows a skill only one harness lists and a hook only one harness would run for the file; all seven findings pass their fixtures; `axm triggers` on my own setup names each overlapping pair with the terms it shares; and v0.3.0 installs from GitHub Releases and NuGet on fresh runners.
 
 ## M4: v0.4, trigger testing
 
