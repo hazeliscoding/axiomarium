@@ -62,5 +62,5 @@ Confirmed against Claude Code 2.1.283 on 2026-09-27, following the Claude Code h
 
 - **Only file-editing tools.** An edit made through the shell, such as `sed -i` or a script, isn't seen.
 - **Claude Code only.** Codex support waits until its hooks are confirmed against the real harness.
-- **It only asks.** Whether agents actually explain edits they chose themselves is a question for behavioral evals, which arrive in v0.4. In the first sessions, the model received the warning but didn't explain an edit the user had asked for.
-- **No evidence yet.** Recording each out-of-scope edit waits for the evidence store in v0.5.
+- **It only asks.** Whether agents actually explain edits they chose themselves is a question for behavioral evals, which arrive in v0.5. In the first sessions, the model received the warning but didn't explain an edit the user had asked for.
+- **No evidence yet.** Recording each out-of-scope edit waits for the evidence store in v0.6.

@@ -1,6 +1,6 @@
 # Prompt fossil
 
-**Status:** designed, not run. v0.4 brings the eval runner this needs, and v0.7 turns the method into `axm fossil`.
+**Status:** designed, not run. v0.5 brings the eval runner this needs, and v0.8 turns the method into `axm fossil`.
 
 ## Hypothesis
 
