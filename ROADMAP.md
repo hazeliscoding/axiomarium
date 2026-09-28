@@ -265,7 +265,7 @@ What each harness actually reads for a file, and what it silently drops.
 Which skills each harness offers the model for a file, and which hooks run.
 
 - [x] Ground-truth spike: record one scenario with skills and hooks from each harness, Claude Code locally and Codex through `record-codex.yml`, and settle what the research left open: whether the listing shows a skill's `name` or its folder, whether a plugin skill without a description is left out, where `settings.local.json` is read on Windows, and whether hook runs reach the transcript.
-- [ ] Scenarios and recorders: markers in skill descriptions and hook commands, `action: read | edit`, `skills` and `hooks` in `expected.json`, the Claude Code recorder reading `skill_listing` and hook events, `record-codex.yml`, and all 14 scenarios recorded again.
+- [x] Scenarios and recorders: markers in skill descriptions and hook commands, `action: read | edit`, `skills` and `hooks` in `expected.json`, the Claude Code recorder reading `skill_listing` and hook events, `record-codex.yml`, and all 14 scenarios recorded again.
 - [ ] Claude Code skills: managed, personal, synced and project skills, enabled plugins and legacy commands, nested and `paths` skills when read, precedence, and the listing's format, caps and budget, with built-ins from the recording.
 - [ ] Codex skills: every root, `[[skills.config]]` and `agents/openai.yaml`, names (with a plugin repo's `plugin:skill`), and the listing's format, root table, caps and budget. `Machine` gains Codex's admin folder.
 - [ ] Hooks for both harnesses: sources, merging, trust, matchers and `if`, at `session-start`, `before-edit` and `after-edit`.
