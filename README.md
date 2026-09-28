@@ -88,29 +88,29 @@ In a repo without a vault, `axm doctor` checks only the instruction files. Their
 `axm explain` shows what each harness loads for a file, and what it silently drops:
 
 ```text
-$ axm explain src/api/orders/OrderService.cs
+$ axm explain src/api/orders.cs
 
-AXM EXPLAIN // src/api/orders/OrderService.cs
+AXM EXPLAIN // src/api/orders.cs
 
   CLAUDE CODE // launched at the repo root
-  01  ~/.claude/CLAUDE.md        user                at launch
-  02  CLAUDE.md                  project             at launch
-  03  .claude/rules/backend.md   paths: src/api/**   when the file is read
-  --  docs/testing.md            DROPPED     file is missing, imported by CLAUDE.md:12
-  --  AGENTS.md                  DROPPED     a CLAUDE file exists and doesn't import it
-  --  src/api/AGENTS.md          DROPPED     a CLAUDE file exists and doesn't import it
+  01  ~/.claude/CLAUDE.md    user                at launch
+  02  CLAUDE.md              project             at launch
+  03  .claude/rules/api.md   paths: src/api/**   when the file is read
+  --  docs/testing.md        DROPPED     file is missing, imported by CLAUDE.md:6
+  --  AGENTS.md              DROPPED     a CLAUDE file exists and doesn't import it
+  --  src/api/AGENTS.md      DROPPED     a CLAUDE file exists and doesn't import it
 
   CODEX // launched at the repo root
-  01  ~/.codex/AGENTS.md         global              at launch
-  02  AGENTS.md                  project             at launch
-  --  src/api/AGENTS.md          NOT LOADED  below the launch directory
+  01  ~/.codex/AGENTS.md     global              at launch
+  02  AGENTS.md              project             at launch
+  --  src/api/AGENTS.md      NOT LOADED  below the launch directory
 
 WARNING  agents-md-hidden
          Claude Code skips AGENTS.md, because CLAUDE.md exists and doesn't import it, so instructions written there for every agent never reach Claude Code.
          Fix: Add @AGENTS.md to CLAUDE.md.
 
 WARNING  dead-import
-         CLAUDE.md:12 imports docs/testing.md, which does not exist, so Claude Code loads nothing in its place.
+         CLAUDE.md:6 imports docs/testing.md, which does not exist, so Claude Code loads nothing in its place.
          Fix: Restore the file, or remove the import.
 
 WARNING  agents-md-hidden
@@ -119,6 +119,8 @@ WARNING  agents-md-hidden
 
 2 harnesses · 5 loaded · 4 not loaded · 3 warnings  (・_・;)
 ```
+
+This is the demo in [`scenarios/demo`](scenarios/demo), and both harnesses were recorded loading exactly these files. [What your agent actually reads](docs/what-your-agent-reads.md) walks through it, and through what else the recordings found.
 
 ## Install
 

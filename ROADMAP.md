@@ -210,8 +210,8 @@ What each harness actually reads for a file, and what it silently drops.
 
 - [x] `axm doctor` in any repo: the instruction findings always, and the vault checks when a vault exists, with `axiomarium.yaml` to leave out files that are broken on purpose.
 - [x] `hooks/session-doctor/` and `axm hook session-doctor`: confirm on the real harness which SessionStart output the user and the model see, then build the hook, silent when all is well. Under 200 ms locally, and a CI check that holds the native binary under 1 s.
-- [ ] Write-up, "What your agent actually reads", and a second VHS tape for an `axm explain` demo GIF.
-- [ ] Release v0.2.0.
+- [x] Write-up, "What your agent actually reads", on the recorded demo scenario in `scenarios/demo/`, and a second VHS tape for an `axm explain` demo GIF. The tape renders once v0.2.0 is on NuGet, because the demo workflow installs the release.
+- [ ] Release v0.2.0, then render `docs/demo/explain.tape` with the release and add the GIF to the README.
 
 **Done when:** every scenario matches what the real Claude Code and Codex recorded, `--diff` on the demo scenario shows an instruction only one harness loads, all nine findings pass their fixtures, a fresh Claude Code session on the demo scenario opens with the doctor's notice, and v0.2.0 installs from GitHub Releases and NuGet on fresh runners.
 
