@@ -1,0 +1,38 @@
+name: Demo
+
+# Renders docs/demo/doctor.gif, the terminal demo in the README, from docs/demo/doctor.tape. It uses
+# the axm release on NuGet, so the demo shows what users install. The rendered GIF is an artifact;
+# commit it by hand after looking at it.
+on:
+  pull_request:
+    paths:
+      - docs/demo/doctor.tape
+      - .github/workflows/demo.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+      - name: Install axm from NuGet
+        run: dotnet tool install -g Axiomarium
+      # The kaomoji need CJK glyphs, which the runner's fonts don't have.
+      - name: Install fonts for the kaomoji
+        run: sudo apt-get update && sudo apt-get install -y fonts-noto-cjk
+      - uses: charmbracelet/vhs-action@v2
+        with:
+          path: docs/demo/doctor.tape
+          install-fonts: true
+      - uses: actions/upload-artifact@v7
+        with:
+          name: demo
+          path: docs/demo/doctor.gif
+          if-no-files-found: error
