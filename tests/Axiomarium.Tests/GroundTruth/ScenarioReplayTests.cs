@@ -76,6 +76,40 @@ public class ScenarioReplayTests
         }
     }
 
+    // Over budget, Claude Code drops descriptions by how often each skill was used, which the model doesn't
+    // guess, so then only the names and the listing's size are compared.
+    [Theory]
+    [MemberData(nameof(Scenarios))]
+    public void The_claude_code_skills_match_the_recording(string name)
+    {
+        using var run = Copy(name);
+        var scenario = Axiomarium.GroundTruth.Scenario.Load(Path.Combine(ScenariosFolder, name));
+        var recording = JsonNode.Parse(File.ReadAllText(Path.Combine(ScenariosFolder, name, "expected.json")))!["claude-code"]!["skills"]!;
+        var overBudget = recording["overBudget"];
+
+        var resolution = ClaudeCodeModel.Resolve(
+            Path.Combine(run.Root, "repo", scenario.Launch),
+            Path.Combine(run.Root, "repo", scenario.Target),
+            TestMachine.For(run.Root));
+
+        foreach (var (timing, key) in new[] { (LoadTiming.AtLaunch, "launch"), (LoadTiming.OnRead, "read") })
+        {
+            Assert.Equal(
+                recording[key]!.AsArray().Select(entry => (
+                    entry!["name"]!.GetValue<string>(),
+                    entry["file"]?.GetValue<string>(),
+                    overBudget is null ? entry["entry"]!.GetValue<string>() : null,
+                    overBudget is null ? entry["chars"]!.GetValue<int>() : 0)),
+                resolution.Skills.Where(skill => skill.Timing == timing).Select(skill => (
+                    skill.Name,
+                    skill.Path is null ? null : TestMachine.Relative(run.Root, skill.Path),
+                    overBudget is null ? skill.NameOnly ? "name-only" : skill.Cut ? "cut" : "whole" : null,
+                    overBudget is null ? skill.Chars : 0)));
+        }
+
+        Assert.Equal(overBudget?["chars"]?.GetValue<int>(), resolution.Listing!.OverBudget ? resolution.Listing.Chars : null);
+    }
+
     // A copy with the .git marker the recorder's `git init` gives each run, which a scenario can't hold.
     private static TempVault Copy(string name)
     {

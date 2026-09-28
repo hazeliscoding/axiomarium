@@ -95,7 +95,17 @@ public sealed record LoadedInstruction(
 /// <param name="Via">Where it was imported from, when it's an import.</param>
 public sealed record DroppedInstruction(string Path, HarnessRule Rule, ImportSite? Via = null);
 
-/// <summary>What a harness loads for a file, and what it drops.</summary>
+/// <summary>What a harness loads for a file, what it drops, and the skills it lists for the model.</summary>
 /// <param name="Loaded">The files the model sees, in context order.</param>
 /// <param name="Dropped">The files that exist but don't reach the model.</param>
-public sealed record Resolution(IReadOnlyList<LoadedInstruction> Loaded, IReadOnlyList<DroppedInstruction> Dropped);
+public sealed record Resolution(IReadOnlyList<LoadedInstruction> Loaded, IReadOnlyList<DroppedInstruction> Dropped)
+{
+    /// <summary>The skills the harness lists for the model, in listing order: those at launch, then those that join when the agent reads or edits the file.</summary>
+    public IReadOnlyList<AvailableSkill> Skills { get; init; } = [];
+
+    /// <summary>The skills the harness finds but doesn't list for the model, each with the rule that keeps it out.</summary>
+    public IReadOnlyList<UnlistedSkill> NotListed { get; init; } = [];
+
+    /// <summary>The listing's size at launch against its budget, or <see langword="null"/> when the harness has no skills model.</summary>
+    public SkillListing? Listing { get; init; }
+}
