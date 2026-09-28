@@ -53,7 +53,91 @@
         "scope": "Project",
         "reason": "path_glob_match"
       }
-    ]
+    ],
+    "skills": {
+      "launch": [
+        {
+          "name": "dataviz",
+          "builtIn": true,
+          "entry": "whole",
+          "chars": 1447
+        },
+        {
+          "name": "update-config",
+          "builtIn": true,
+          "entry": "whole",
+          "chars": 707
+        },
+        {
+          "name": "keybindings-help",
+          "builtIn": true,
+          "entry": "whole",
+          "chars": 248
+        },
+        {
+          "name": "code-review",
+          "builtIn": true,
+          "entry": "whole",
+          "chars": 853
+        },
+        {
+          "name": "simplify",
+          "builtIn": true,
+          "entry": "whole",
+          "chars": 188
+        },
+        {
+          "name": "fewer-permission-prompts",
+          "builtIn": true,
+          "entry": "whole",
+          "chars": 191
+        },
+        {
+          "name": "loop",
+          "builtIn": true,
+          "entry": "whole",
+          "chars": 344
+        },
+        {
+          "name": "schedule",
+          "builtIn": true,
+          "entry": "whole",
+          "chars": 381
+        },
+        {
+          "name": "claude-api",
+          "builtIn": true,
+          "entry": "whole",
+          "chars": 1082
+        },
+        {
+          "name": "workflow-authoring",
+          "builtIn": true,
+          "entry": "whole",
+          "chars": 252
+        },
+        {
+          "name": "run",
+          "builtIn": true,
+          "entry": "whole",
+          "chars": 368
+        },
+        {
+          "name": "init",
+          "builtIn": true,
+          "entry": "whole",
+          "chars": 67
+        },
+        {
+          "name": "security-review",
+          "builtIn": true,
+          "entry": "whole",
+          "chars": 90
+        }
+      ],
+      "read": []
+    },
+    "hooks": []
   },
   "codex": {
     "version": "0.156.1",
