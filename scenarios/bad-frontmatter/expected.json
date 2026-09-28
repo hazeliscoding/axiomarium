@@ -2,7 +2,14 @@
   "recorded": "2026-09-28",
   "claude-code": {
     "version": "2.1.284",
-    "launch": [],
+    "launch": [
+      {
+        "file": "repo/.claude/rules/still-broken.md",
+        "bytes": 56,
+        "scope": "Project",
+        "reason": "session_start"
+      }
+    ],
     "read": [
       {
         "file": "repo/.claude/rules/tab-indent.md",

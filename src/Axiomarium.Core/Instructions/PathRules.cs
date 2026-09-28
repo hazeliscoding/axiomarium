@@ -8,7 +8,8 @@ namespace Axiomarium.Core.Instructions;
 /// <param name="Frontmatter">What its frontmatter says.</param>
 internal sealed record RuleFile(string Path, string Base, RuleFrontmatter Frontmatter)
 {
-    public bool Always => Frontmatter is { Valid: true, Paths: null };
+    // A rule whose frontmatter doesn't parse loads for every file, as one without paths does.
+    public bool Always => Frontmatter.Paths is null;
 
     public bool Scoped => Frontmatter is { Valid: true, Paths: not null };
 

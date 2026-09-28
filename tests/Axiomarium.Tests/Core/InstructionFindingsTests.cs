@@ -106,15 +106,15 @@ public class InstructionFindingsTests
     }
 
     [Fact]
-    public void Rule_frontmatter_invalid_says_the_rule_never_loads()
+    public void Rule_frontmatter_invalid_says_the_rule_loads_for_every_file()
     {
-        using var vault = new TempVault().Write("repo/.claude/rules/api.md", "---\npaths: [src/api/**\n---\napi\n");
+        using var vault = new TempVault().Write("repo/.claude/rules/api.md", "---\npaths:\n  - \"src/api/**\"\n bad: indent\n---\napi\n");
 
         var finding = Single(vault, "rule-frontmatter-invalid");
 
         Assert.Equal((".claude/rules/api.md", 1), (finding.File, finding.Line));
-        Assert.Equal(".claude/rules/api.md has frontmatter that doesn't parse, so Claude Code never loads the rule.", finding.Message);
-        Assert.Equal("Fix the YAML between the --- lines: close every bracket and quote, and quote patterns that start with * or {.", finding.Fix);
+        Assert.Equal(".claude/rules/api.md has frontmatter that doesn't parse, so Claude Code ignores all of it and loads the rule for every file.", finding.Message);
+        Assert.Equal("Fix the YAML between the --- lines, such as its indentation, so the rule's paths count again.", finding.Fix);
     }
 
     [Fact]

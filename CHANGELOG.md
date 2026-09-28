@@ -4,6 +4,10 @@ This file records the user-visible changes to `axm` and the vault's schemas. The
 
 ## [Unreleased]
 
+### Fixed
+
+- A Claude Code rule whose frontmatter doesn't parse loads for every file, as the docs say, and `axm explain` now shows it loaded. `rule-frontmatter-invalid` said such a rule never loads. Claude Code quotes values that look like YAML syntax and parses again first, so the finding now fires only on YAML that still doesn't parse, such as a line indented wrongly, and an unclosed bracket in `paths` becomes a pattern that matches nothing, which `rule-matches-nothing` reports.
+
 ## [0.2.0] - 2026-09-28
 
 Instruction intelligence: what Claude Code and Codex actually load for a file, what they silently drop, and why.
