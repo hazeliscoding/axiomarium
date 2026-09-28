@@ -46,6 +46,15 @@ public class MaturityRegistryTests
         Assert.Equal(["trigger"], tested.SkillEvals);
     }
 
+    // The write-up repeats each promise for readers without axm, so it must not drift from the registry.
+    [Fact]
+    public void The_write_up_states_every_levels_promise()
+    {
+        var writeUp = File.ReadAllText(Path.Combine(RepoRoot.Path, "docs", "assets.md"));
+
+        Assert.All(MaturityRegistry.Levels, level => Assert.Contains($"| {level.Name} | {level.Promise} |", writeUp));
+    }
+
     [Fact]
     public void Experimental_needs_no_evidence()
     {

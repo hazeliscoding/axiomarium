@@ -119,7 +119,7 @@ Agent configuration can be inspected and validated like software.
   - [x] `scope-sheriff` (hook): warns when an edit leaves the task's declared scope and asks the agent to explain why. `hook.md` has the `.axm/scope` contract and the settings that wire it into Claude Code.
   - [x] `deterministic-boundaries` (policy): which decisions belong to code, not to the model. Each rule names what enforces it, or says that nothing does yet.
   - [x] `prompt-fossil` (experiment): the write-up and method that v0.7 builds on.
-- [ ] Write-up in `docs/assets.md`: why assets carry manifests, and what each maturity level promises.
+- [x] Write-up in `docs/assets.md`: why assets carry manifests, and what each maturity level promises.
 - [ ] M0 review leftovers:
   - [x] the no-vault hint is chosen by reading the core's message text;
   - [ ] the validator silently ignores a non-string `type` and a schema-valued `additionalProperties`;

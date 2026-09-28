@@ -36,7 +36,7 @@ Axiomarium treats that as an engineering problem.
 
 ## Two parts
 
-**The vault** holds agents, skills, hooks, policies, workflows, schemas, evals, experiments and write-ups. It is all Markdown, YAML and JSON Schema, so you can read it without `axm`. Every asset carries a manifest that says what it is, which harnesses it supports, what it's allowed to touch, how it's tested and how far it can be trusted.
+**The vault** holds agents, skills, hooks, policies, workflows, schemas, evals, experiments and write-ups. It is all Markdown, YAML and JSON Schema, so you can read it without `axm`. Every asset carries a manifest that says what it is, which harnesses it supports, what it's allowed to touch, how it's tested and how far it can be trusted. [Why assets carry manifests](docs/assets.md).
 
 **`axm`** is the engineering around the vault:
 
