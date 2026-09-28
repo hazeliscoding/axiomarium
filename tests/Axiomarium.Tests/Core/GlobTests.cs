@@ -29,6 +29,11 @@ public class GlobTests
     [InlineData("src/api/**", "SRC/api/orders.cs", false)]
     [InlineData("README.md", "README.md", true)]
     [InlineData("README.md", "docs/README.md", false)]
+    [InlineData("src/[a]pi/**", "src/api/orders.cs", true)]
+    [InlineData("src/[a-c]pi/**", "src/bpi/orders.cs", true)]
+    [InlineData("src/[!a]pi/**", "src/api/orders.cs", false)]
+    [InlineData("src/[^a]pi/**", "src/xpi/orders.cs", true)]
+    [InlineData("src/[/]api", "src/[/]api", false)]
     public void Matches_relative_paths(string pattern, string path, bool expected)
     {
         Assert.True(Glob.TryParse(pattern, out var glob, out _));
@@ -40,6 +45,7 @@ public class GlobTests
     [InlineData("src/{api", "'{' at column 5 is never closed.")]
     [InlineData("src/api}/**", "'}' at column 8 has no '{' before it.")]
     [InlineData("", "The pattern is empty.")]
+    [InlineData("src/[api/**", "'[' at column 5 is never closed.")]
     public void Invalid_pattern_says_why(string pattern, string expected)
     {
         Assert.False(Glob.TryParse(pattern, out var glob, out var problem));

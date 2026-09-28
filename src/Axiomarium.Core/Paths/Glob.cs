@@ -7,7 +7,8 @@ namespace Axiomarium.Core.Paths;
 /// <summary>A glob pattern for relative paths with forward slashes.</summary>
 /// <remarks>
 /// <c>*</c> matches within one folder, <c>**</c> across any number of folders, <c>?</c> one character
-/// other than <c>/</c>, and <c>{a,b}</c> either alternative, nested as needed. A pattern that ends with
+/// other than <c>/</c>, <c>[a-c]</c> or <c>[!a]</c> one character from a class (never <c>/</c>), and
+/// <c>{a,b}</c> either alternative, nested as needed. A pattern that ends with
 /// <c>/</c> matches everything under that folder. Everything else is literal, and matching is
 /// case-sensitive, so a pattern means the same thing on every platform.
 /// </remarks>
@@ -71,6 +72,19 @@ public sealed class Glob
                     openBraces.Pop();
                     regex.Append(')');
                     break;
+                case '[':
+                    // A ']' right after the '[' (or its '!' or '^') is part of the class, not its end.
+                    var first = i + 1 < source.Length && source[i + 1] is '!' or '^' ? i + 2 : i + 1;
+                    var close = source.IndexOf(']', Math.Min(first + 1, source.Length));
+                    if (close < 0)
+                    {
+                        problem = $"'[' at column {i + 1} is never closed.";
+                        return false;
+                    }
+
+                    regex.Append(Bracket(source[(i + 1)..close]));
+                    i = close;
+                    break;
                 default:
                     regex.Append(Regex.Escape(source[i].ToString()));
                     break;
@@ -86,6 +100,24 @@ public sealed class Glob
         glob = new Glob(pattern, new Regex(regex.Append('$').ToString(), RegexOptions.CultureInvariant));
         problem = null;
         return true;
+    }
+
+    // A bracket class such as [a-c] or [!a], which never matches '/', like '*' and '?'.
+    private static string Bracket(string content)
+    {
+        var negated = content.Length > 0 && content[0] is '!' or '^';
+        var members = new StringBuilder();
+        foreach (var character in negated ? content[1..] : content)
+        {
+            if (character == '/')
+            {
+                continue;
+            }
+
+            members.Append(character is '\\' or ']' or '[' or '^' ? "\\" + character : character.ToString());
+        }
+
+        return negated ? $"[^/{members}]" : members.Length == 0 ? "(?!)" : $"[{members}]";
     }
 
     /// <summary>Whether <paramref name="path"/> matches.</summary>
