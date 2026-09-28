@@ -89,6 +89,17 @@ public class YamlDocumentTests
         Assert.Equal(new SourceLocation(2, 1), result.Problem.Location);
     }
 
+    [Theory]
+    [InlineData("\"a:b\": 1\n\"a:b\": 2\n")]
+    [InlineData("'a:b': 1\n'a:b': 2\n")]
+    public void Quoted_duplicate_key_is_named_whole(string yaml)
+    {
+        var result = YamlDocument.Parse(yaml);
+
+        Assert.Equal("Duplicate key \"a:b\".", result.Problem!.Message);
+        Assert.Equal(2, result.Problem.Location!.Value.Line);
+    }
+
     [Fact]
     public void Tab_indentation_points_at_the_tab_line()
     {

@@ -245,9 +245,12 @@ public static partial class YamlDocument
             if (line >= 0 && line < lines.Length)
             {
                 var from = Math.Max(0, (int)problem.Start.Column - 1);
-                var rest = lines[line].TrimEnd('\r')[Math.Min(from, lines[line].TrimEnd('\r').Length)..];
+                var rest = lines[line].TrimEnd('\r')[Math.Min(from, lines[line].TrimEnd('\r').Length)..].TrimStart();
+
+                // A quoted key can hold a colon, so it ends at its closing quote.
+                var close = rest.Length > 0 && rest[0] is '"' or '\'' ? rest.IndexOf(rest[0], 1) : -1;
                 var colon = rest.IndexOf(':');
-                var key = (colon >= 0 ? rest[..colon] : rest).Trim().Trim('"', '\'');
+                var key = close > 0 ? rest[1..close] : (colon >= 0 ? rest[..colon] : rest).Trim();
                 if (key.Length > 0)
                 {
                     return $"Duplicate key \"{key}\".";
