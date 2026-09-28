@@ -120,6 +120,34 @@
         "bytes": 39,
         "cut": true
       }
-    ]
+    ],
+    "skills": [
+      {
+        "name": "imagegen",
+        "bundled": true,
+        "entry": "whole"
+      },
+      {
+        "name": "openai-docs",
+        "bundled": true,
+        "entry": "whole"
+      },
+      {
+        "name": "plugin-creator",
+        "bundled": true,
+        "entry": "whole"
+      },
+      {
+        "name": "skill-creator",
+        "bundled": true,
+        "entry": "whole"
+      },
+      {
+        "name": "skill-installer",
+        "bundled": true,
+        "entry": "whole"
+      }
+    ],
+    "hooks": []
   }
 }

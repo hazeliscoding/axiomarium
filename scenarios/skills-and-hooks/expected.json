@@ -129,5 +129,64 @@
         "hook": "PostToolUse:Edit"
       }
     ]
+  },
+  "codex": {
+    "version": "0.156.1",
+    "loaded": [],
+    "skills": [
+      {
+        "name": "imagegen",
+        "bundled": true,
+        "entry": "whole"
+      },
+      {
+        "name": "openai-docs",
+        "bundled": true,
+        "entry": "whole"
+      },
+      {
+        "name": "plugin-creator",
+        "bundled": true,
+        "entry": "whole"
+      },
+      {
+        "name": "skill-creator",
+        "bundled": true,
+        "entry": "whole"
+      },
+      {
+        "name": "skill-installer",
+        "bundled": true,
+        "entry": "whole"
+      },
+      {
+        "name": "deploy",
+        "file": "repo/.agents/skills/deploy/SKILL.md",
+        "entry": "whole"
+      },
+      {
+        "name": "personal",
+        "file": "home/.agents/skills/personal/SKILL.md",
+        "entry": "whole"
+      }
+    ],
+    "hooks": [
+      {
+        "file": "home/.codex/hooks.json",
+        "label": "after-edit",
+        "event": "postToolUse",
+        "matcher": "apply_patch",
+        "trust": "untrusted",
+        "hash": "sha256:8a53dcd76c15d30381e5da92e23c27cb7db272023e66f720d8d140c9ba934f14"
+      },
+      {
+        "file": "home/.codex/hooks.json",
+        "label": "session-start",
+        "event": "sessionStart",
+        "matcher": "startup",
+        "trust": "untrusted",
+        "hash": "sha256:16cd69abb7459ea04618376afd10da7b06c0365fb2d2b118de955a7e6e79e4c4"
+      }
+    ]
   }
 }
