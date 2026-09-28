@@ -54,6 +54,7 @@ Axiomarium is my lab for building, testing and debugging AI coding environments 
 - **`inspect` and `init` move to v0.9.** `inspect` would duplicate `detect`, and `init` has nothing to write until it can detect a stack and install assets. Until then a vault is recognized by its kind folders.
 - **Hooks run through `axm`.** The harness calls `axm hook <name>`, which reads the hook's JSON on stdin. It needs no extra runtime on any OS, starts fast, and keeps the hook's logic in the tested core, where the protocol for each harness lives. A hook command never exits with 2, because Claude Code reads 2 as "block": bad input exits with 1 and a message.
 - **The scope sheriff reads the task's scope from `.axm/scope`:** one glob per line, relative to the repo root, written by the agent or the user at the start of a task. Without the file the hook is silent. An edit outside the scope sends the agent a message asking why, and is never blocked. Recording evidence waits for the v0.5 evidence store.
+- **Claude Code hooks, confirmed on 2.1.283 (2026-09-27).** The hooks docs don't say which output of a tool hook reaches the model, so headless sessions settled it. A `PostToolUse` hook's `hookSpecificOutput.additionalContext` reaches the model without blocking anything, and so does a `PreToolUse` one. `decision: "block"` with a `reason` on `PostToolUse` also reaches it. `permissionDecision: "allow"` with a `permissionDecisionReason` on `PreToolUse` reaches only the user. The hook reads `tool_name`, `cwd` and `tool_input.file_path` (`tool_input.notebook_path` for NotebookEdit), which are absolute paths. The editing tools are Write, Edit and NotebookEdit; MultiEdit no longer exists. So the scope sheriff runs after the edit (`after-edit`, which only fires for an edit that happened) and warns through `additionalContext`.
 - **Releases** build the NativeAOT binaries on each OS, publish the `Axiomarium` dotnet tool as .NET 10 per-platform NativeAOT packages, and push to NuGet with Trusted Publishing, so no API key is stored. If NativeAOT tool packages don't work, the tool falls back to a framework-dependent build. A job on fresh runners installs each release and runs it.
 
 ### Instruction compiler (v0.2)
@@ -109,7 +110,7 @@ Agent configuration can be inspected and validated like software.
   - [x] `axm validate`: every check, printing only the problems, with exit codes for CI.
   - [x] `axm doctor`: rebuilt on the same result as `validate`, plus the inventory.
 - [ ] Scope sheriff:
-  - [ ] Ground truth: log what a real Claude Code hook receives for Write, Edit, MultiEdit and NotebookEdit, confirm which hook output reaches the model, and record the Claude Code version and the docs date.
+  - [x] Ground truth: log what a real Claude Code hook receives for Write, Edit, MultiEdit and NotebookEdit, confirm which hook output reaches the model, and record the Claude Code version and the docs date.
   - [ ] A glob matcher in the core (`*`, `**`, `?` and `{a,b}`), for v0.2 to extend.
   - [ ] `axm hook scope-sheriff`.
 - [ ] Five starter assets, all experimental:
