@@ -26,6 +26,24 @@ internal enum InstructionFiles
 /// <param name="Excludes"><c>claudeMdExcludes</c> from every layer, matched against absolute paths.</param>
 internal sealed record ClaudeSettings(InstructionFiles Mode, IReadOnlyList<Glob> Excludes)
 {
+    /// <summary><c>skillOverrides</c> merged across the layers: each skill's state, such as <c>off</c> or <c>name-only</c>.</summary>
+    public IReadOnlyDictionary<string, string> SkillOverrides { get; init; } = new Dictionary<string, string>();
+
+    /// <summary>Whether <c>disableBundledSkills</c> turns the built-in skills off.</summary>
+    public bool BuiltInsOff { get; init; }
+
+    /// <summary>Whether <c>syncClaudeAiSkills</c> is false, which stops loading the skills synced from claude.ai.</summary>
+    public bool SyncOff { get; init; }
+
+    /// <summary><c>skillListingBudgetFraction</c>: the share of the context window the skill listing gets.</summary>
+    public double ListingBudgetFraction { get; init; } = 0.01;
+
+    /// <summary><c>skillListingMaxDescChars</c>: where one entry's text is cut.</summary>
+    public int ListingMaxDescChars { get; init; } = 1536;
+
+    /// <summary>The plugins <c>enabledPlugins</c> turns on, merged across the layers, by id such as <c>tools@market</c>, in id order.</summary>
+    public IReadOnlyList<string> EnabledPlugins { get; init; } = [];
+
     public static ClaudeSettings Load(Machine machine, string launch)
     {
         var managed = Read(Path.Combine(machine.ClaudeManaged, "managed-settings.json"));
@@ -42,7 +60,45 @@ internal sealed record ClaudeSettings(InstructionFiles Mode, IReadOnlyList<Glob>
             .Select(pattern => Glob.TryParse(pattern.Replace('\\', '/'), out var glob, out _) ? glob : null)
             .OfType<Glob>()
             .ToList();
-        return new ClaudeSettings(mode, excludes);
+
+        // Managed settings win, then local, then project, then user.
+        JsonNode?[] byPrecedence = [managed, local, project, user];
+        JsonValue? First(string key, JsonValueKind kind) =>
+            byPrecedence.Select(layer => layer?[key]).OfType<JsonValue>().FirstOrDefault(value => value.GetValueKind() == kind);
+        var overrides = new Dictionary<string, string>(StringComparer.Ordinal);
+        var plugins = new Dictionary<string, bool>(StringComparer.Ordinal);
+        foreach (var layer in byPrecedence.Reverse())
+        {
+            foreach (var (name, state) in layer?["skillOverrides"] as JsonObject ?? [])
+            {
+                if (state is JsonValue value && value.GetValueKind() == JsonValueKind.String)
+                {
+                    overrides[name] = value.GetValue<string>();
+                }
+            }
+
+            foreach (var (id, enabled) in layer?["enabledPlugins"] as JsonObject ?? [])
+            {
+                if (enabled?.GetValueKind() is JsonValueKind.True or JsonValueKind.False)
+                {
+                    plugins[id] = enabled.GetValueKind() == JsonValueKind.True;
+                }
+            }
+        }
+
+        return new ClaudeSettings(mode, excludes)
+        {
+            SkillOverrides = overrides,
+            EnabledPlugins = [.. plugins.Where(plugin => plugin.Value).Select(plugin => plugin.Key).Order(StringComparer.Ordinal)],
+            BuiltInsOff = byPrecedence
+                .Select(layer => layer?["disableBundledSkills"]?.GetValueKind())
+                .FirstOrDefault(kind => kind is JsonValueKind.True or JsonValueKind.False) == JsonValueKind.True,
+
+            // A repository can't turn the sync off, so only user, local and managed settings count.
+            SyncOff = new[] { managed, local, user }.Any(layer => layer?["syncClaudeAiSkills"]?.GetValueKind() == JsonValueKind.False),
+            ListingBudgetFraction = First("skillListingBudgetFraction", JsonValueKind.Number) is { } fraction && fraction.TryGetValue<double>(out var share) ? share : 0.01,
+            ListingMaxDescChars = First("skillListingMaxDescChars", JsonValueKind.Number) is { } cap && cap.TryGetValue<int>(out var chars) ? chars : 1536,
+        };
     }
 
     public bool IsExcluded(string path)
@@ -64,8 +120,8 @@ internal sealed record ClaudeSettings(InstructionFiles Mode, IReadOnlyList<Glob>
             }
             : null;
 
-    // A settings file that doesn't parse contributes nothing.
-    private static JsonNode? Read(string path)
+    // A settings file that doesn't parse contributes nothing, and neither does a plugin record.
+    internal static JsonNode? Read(string path)
     {
         if (!File.Exists(path))
         {

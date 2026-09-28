@@ -22,24 +22,71 @@ internal sealed record RuleFile(string Path, string Base, RuleFrontmatter Frontm
             : [];
 
     /// <summary>Whether the rule's patterns match <paramref name="file"/>.</summary>
+    public bool Matches(string file) => PathPatterns.Match(Frontmatter.Paths ?? [], Base, file);
+}
+
+/// <summary>Matches <c>paths</c> patterns, which rules and skills share, against a file.</summary>
+internal static class PathPatterns
+{
+    /// <summary>Whether any of <paramref name="patterns"/> matches <paramref name="file"/>, relative to <paramref name="baseDirectory"/>.</summary>
     /// <remarks>
-    /// A pattern that isn't valid matches nothing, and the others still count. The patterns share a
-    /// budget of 1,000 brace expansions; past it a pattern is used unexpanded, and its literal braces
-    /// match nothing.
+    /// A file outside the base folder never matches. A pattern that isn't valid matches nothing, and the
+    /// others still count. The patterns share a budget of 1,000 brace expansions; past it a pattern is used
+    /// unexpanded, and its literal braces match nothing.
     /// </remarks>
-    public bool Matches(string file)
+    public static bool Match(IReadOnlyList<string> patterns, string baseDirectory, string file)
     {
-        if (!Instructions.Paths.IsUnder(file, Base))
+        if (!Instructions.Paths.IsUnder(file, baseDirectory))
         {
             return false;
         }
 
-        var relative = System.IO.Path.GetRelativePath(Base, file).Replace('\\', '/');
+        var relative = System.IO.Path.GetRelativePath(baseDirectory, file).Replace('\\', '/');
         long budget = 1000;
-        foreach (var pattern in Frontmatter.Paths ?? [])
+        foreach (var pattern in patterns)
         {
             budget -= Expansions(pattern);
             if (budget >= 0 && Glob.TryParse(pattern, out var glob, out _) && glob.IsMatch(relative))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Whether any of <paramref name="patterns"/> matches <paramref name="file"/> the way a <c>.gitignore</c>
+    /// line would, relative to <paramref name="baseDirectory"/>. A skill's <c>paths</c> match this way.
+    /// </summary>
+    /// <remarks>
+    /// A pattern without a slash matches a name at any depth, so <c>*.ts</c> matches <c>src/app.ts</c>. One
+    /// with a slash is anchored at the base folder, a trailing slash matches only folders, and a pattern
+    /// that matches a folder matches every file in it.
+    /// </remarks>
+    public static bool MatchLikeGitignore(IReadOnlyList<string> patterns, string baseDirectory, string file)
+    {
+        if (!Instructions.Paths.IsUnder(file, baseDirectory))
+        {
+            return false;
+        }
+
+        var parts = System.IO.Path.GetRelativePath(baseDirectory, file).Replace('\\', '/').Split('/');
+        var folders = Enumerable.Range(1, parts.Length - 1).Select(count => string.Join('/', parts[..count])).ToList();
+        long budget = 1000;
+        foreach (var raw in patterns.Select(pattern => pattern.Trim()).Where(pattern => pattern.Length > 0 && !pattern.StartsWith('#')))
+        {
+            budget -= Expansions(raw);
+            var folderOnly = raw.EndsWith('/');
+            var pattern = raw.TrimEnd('/');
+            var anchored = pattern.Contains('/');
+            pattern = pattern.TrimStart('/');
+            if (budget < 0 || pattern.Length == 0 || !Glob.TryParse(anchored ? pattern : "**/" + pattern, out var glob, out _))
+            {
+                continue;
+            }
+
+            if (folders.Any(glob.IsMatch) || (!folderOnly && glob.IsMatch(string.Join('/', parts))))
             {
                 return true;
             }
