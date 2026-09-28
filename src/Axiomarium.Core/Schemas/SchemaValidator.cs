@@ -29,14 +29,18 @@ public static class SchemaValidator
     /// <summary>Validates <paramref name="instance"/> against <paramref name="schema"/>.</summary>
     /// <param name="instance">The value to check. <see langword="null"/> is JSON null.</param>
     /// <param name="schema">The root schema, which holds any <c>$defs</c>.</param>
+    /// <param name="path">
+    /// Where <paramref name="instance"/> sits in a larger document, such as <c>hook</c> for a manifest's
+    /// hook block. Every error's path and message starts from it. Empty for a whole document.
+    /// </param>
     /// <returns>
     /// Every error, in order: missing required fields, then each property in the schema's order, then
     /// unknown fields in the instance's order. Empty when the instance is valid.
     /// </returns>
-    public static IReadOnlyList<SchemaError> Validate(JsonNode? instance, JsonObject schema)
+    public static IReadOnlyList<SchemaError> Validate(JsonNode? instance, JsonObject schema, string path = "")
     {
         var errors = new List<SchemaError>();
-        Check(instance, schema, schema, "", errors);
+        Check(instance, schema, schema, path, errors);
         return errors;
     }
 
@@ -96,7 +100,7 @@ public static class SchemaValidator
             {
                 if (!obj.ContainsKey(name))
                 {
-                    errors.Add(new SchemaError(path, $"Missing required field: {name}", []));
+                    errors.Add(new SchemaError(path, $"Missing required field: {Join(path, name)}", []));
                 }
             }
         }
@@ -125,7 +129,7 @@ public static class SchemaValidator
             {
                 if (properties is null || !properties.ContainsKey(name))
                 {
-                    errors.Add(new SchemaError(Join(path, name), $"Unknown field: {name}", []));
+                    errors.Add(new SchemaError(Join(path, name), $"Unknown field: {Join(path, name)}", []));
                 }
             }
         }

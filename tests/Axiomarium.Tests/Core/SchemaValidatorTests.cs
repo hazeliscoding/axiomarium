@@ -145,6 +145,18 @@ public class SchemaValidatorTests
             """{"type":"object","properties":{"permissions":{"type":"object","additionalProperties":false,"required":["network"],"properties":{"shell":{"enum":["none"]},"network":{"enum":["none"]}}}}}""");
 
         Assert.Equal(["permissions", "permissions.disk"], errors.Select(e => e.Path));
-        Assert.Equal(["Missing required field: network", "Unknown field: disk"], errors.Select(e => e.Message));
+        Assert.Equal(["Missing required field: permissions.network", "Unknown field: permissions.disk"], errors.Select(e => e.Message));
+    }
+
+    [Fact]
+    public void Base_path_prefixes_every_path_and_message()
+    {
+        var errors = SchemaValidator.Validate(
+            JsonNode.Parse("""{"event":"x","extra":1}"""),
+            JsonNode.Parse("""{"type":"object","additionalProperties":false,"required":["command"],"properties":{"event":{"enum":["after-edit"]}}}""")!.AsObject(),
+            "hook");
+
+        Assert.Equal(["hook", "hook.event", "hook.extra"], errors.Select(e => e.Path));
+        Assert.Equal(["Missing required field: hook.command", "Unknown event: \"x\"", "Unknown field: hook.extra"], errors.Select(e => e.Message));
     }
 }
