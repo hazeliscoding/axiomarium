@@ -179,7 +179,9 @@ jobs:
       - name: Write the checksums
         run: cd dist && sha256sum * > SHA256SUMS && cat SHA256SUMS
       - name: Take the release notes from the changelog
-        run: awk -v heading="## [$VERSION]" 'index($0, heading) == 1 { found = 1; next } /^## \[/ || /^\[.*\]: / { found = 0 } found' CHANGELOG.md > notes.md
+        # The section runs to the next version heading, or to the link definitions at the end.
+        run: |
+          awk -v heading="## [$VERSION]" 'index($0, heading) == 1 { found = 1; next } /^## \[/ || /^\[.*\]: / { found = 0 } found' CHANGELOG.md > notes.md
       - name: Create the release
         run: gh release create "v$VERSION" dist/* --title "v$VERSION" --notes-file notes.md --verify-tag
 
