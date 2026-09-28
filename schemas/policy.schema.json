@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/hazeliscoding/axiomarium/blob/main/schemas/policy.schema.json",
+  "title": "Axiomarium policy block",
+  "description": "The policy block in a policy's asset.yaml: its rules, and what enforces each one.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["rules"],
+  "properties": {
+    "rules": {
+      "description": "The policy's rules.",
+      "type": "array",
+      "items": { "$ref": "#/$defs/rule" }
+    }
+  },
+  "$defs": {
+    "rule": {
+      "description": "One rule, and the assets that enforce it.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "rule", "enforced_by"],
+      "properties": {
+        "id": {
+          "description": "Kebab-case and stable, such as authorization-in-code.",
+          "type": "string",
+          "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+        },
+        "rule": {
+          "description": "The rule, in one sentence.",
+          "type": "string",
+          "minLength": 1
+        },
+        "enforced_by": {
+          "description": "The assets that enforce the rule, such as agents/determinism-auditor. An empty list says that nothing enforces it yet.",
+          "type": "array",
+          "items": {
+            "description": "An asset's folder: agents/, skills/, hooks/, policies/, workflows/ or experiments/, then the asset's name.",
+            "type": "string",
+            "pattern": "^(agents|skills|hooks|policies|workflows|experiments)/[a-z0-9]+(-[a-z0-9]+)*$"
+          }
+        }
+      }
+    }
+  }
+}

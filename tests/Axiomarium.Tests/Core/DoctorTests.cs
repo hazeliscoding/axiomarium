@@ -204,6 +204,54 @@ public class DoctorTests
         Assert.Equal(AssetKind.Skill, Assert.Single(report.Assets).Kind);
     }
 
+    [Theory]
+    [InlineData("skill", "skills")]
+    [InlineData("hook", "hooks")]
+    [InlineData("policy", "policies")]
+    public void A_kind_with_its_block_is_healthy(string kind, string folder)
+    {
+        using var vault = new TempVault().Asset($"{folder}/x", TempVault.Manifest(kind, "x"));
+
+        Assert.Empty(Report(vault).Diagnostics);
+    }
+
+    [Fact]
+    public void A_skill_without_its_block_is_an_error()
+    {
+        using var vault = new TempVault().Asset("skills/x", TempVault.Manifest("skill", "x").Replace(SampleManifests.Blocks["skill"], ""));
+
+        var diagnostic = Assert.Single(Report(vault).Diagnostics);
+
+        Assert.Equal("skills/x/asset.yaml", diagnostic.File);
+        Assert.Equal(new SourceLocation(1, 1), diagnostic.Location);
+        Assert.Equal("Missing required field: skill", diagnostic.Message);
+        Assert.Equal(["The skill block in a skill's asset.yaml: when the skill should activate."], diagnostic.Detail);
+    }
+
+    [Fact]
+    public void Block_errors_point_at_the_field_inside_the_block()
+    {
+        using var vault = new TempVault().Asset("hooks/x", TempVault.Manifest("hook", "x").Replace("response: warn", "response: shout"));
+
+        var diagnostic = Assert.Single(Report(vault).Diagnostics);
+
+        Assert.Equal(new SourceLocation(25, 3), diagnostic.Location);
+        Assert.Equal("Unknown response: \"shout\"", diagnostic.Message);
+        Assert.Equal(["Allowed: block, warn, evidence"], diagnostic.Detail);
+    }
+
+    [Fact]
+    public void Another_kinds_block_is_an_error()
+    {
+        using var vault = new TempVault().Asset("agents/determinism-auditor", SampleManifests.Valid + SampleManifests.Blocks["skill"]);
+
+        var diagnostic = Assert.Single(Report(vault).Diagnostics);
+
+        Assert.Equal(new SourceLocation(22, 1), diagnostic.Location);
+        Assert.Equal("Only skills have a skill block", diagnostic.Message);
+        Assert.Equal(["This asset is in agents/. Remove the block, or move the asset to skills/."], diagnostic.Detail);
+    }
+
     [Fact]
     public void Duplicate_key_is_reported_with_its_line()
     {

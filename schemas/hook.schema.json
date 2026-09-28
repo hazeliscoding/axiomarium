@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/hazeliscoding/axiomarium/blob/main/schemas/hook.schema.json",
+  "title": "Axiomarium hook block",
+  "description": "The hook block in a hook's asset.yaml: when the harness runs the hook, what it runs, and how it responds.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["event", "command", "response"],
+  "properties": {
+    "event": {
+      "description": "When the harness runs the hook: when a session starts, or before or after the agent edits a file.",
+      "enum": ["session-start", "before-edit", "after-edit"]
+    },
+    "command": {
+      "description": "The command the harness runs, such as axm hook scope-sheriff.",
+      "type": "string",
+      "minLength": 1
+    },
+    "response": {
+      "description": "What the hook does when it fires: block the action, warn the agent, or only record evidence. Prefer warn, and block only destructive actions.",
+      "enum": ["block", "warn", "evidence"]
+    }
+  }
+}

@@ -46,21 +46,26 @@ public class AssetSchemaTests
         Assert.Equal(["Missing required field: maturity", "Unknown field: maturty"], errors.Select(e => e.Message));
     }
 
-    [Fact]
-    public void Schema_uses_only_supported_keywords()
+    public static TheoryData<string> SchemaFiles =>
+        new(Directory.GetFiles(Path.Combine(RepoRoot.Path, "schemas"), "*.schema.json").Select(Path.GetFileName).OfType<string>().Order(StringComparer.Ordinal));
+
+    [Theory]
+    [MemberData(nameof(SchemaFiles))]
+    public void Schema_uses_only_supported_keywords(string file)
     {
         var used = new SortedSet<string>(StringComparer.Ordinal);
-        CollectKeywords(SchemaCatalog.Asset, used);
+        CollectKeywords(SchemaCatalog.Load($"schemas/{file}"), used);
 
         Assert.Empty(used.Except(SchemaValidator.SupportedKeywords));
     }
 
-    [Fact]
-    public void Embedded_schema_matches_the_file_in_the_repo()
+    [Theory]
+    [MemberData(nameof(SchemaFiles))]
+    public void Embedded_schema_matches_the_file_in_the_repo(string file)
     {
-        var onDisk = JsonNode.Parse(File.ReadAllText(Path.Combine(RepoRoot.Path, "schemas", "asset.schema.json")));
+        var onDisk = JsonNode.Parse(File.ReadAllText(Path.Combine(RepoRoot.Path, "schemas", file)));
 
-        Assert.True(JsonNode.DeepEquals(onDisk, SchemaCatalog.Asset));
+        Assert.True(JsonNode.DeepEquals(onDisk, SchemaCatalog.Load($"schemas/{file}")));
     }
 
     // Keys of a schema object are keywords, except the names under properties and $defs, whose

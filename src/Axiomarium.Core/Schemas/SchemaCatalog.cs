@@ -1,4 +1,5 @@
 using System.Text.Json.Nodes;
+using Axiomarium.Core.Assets;
 
 namespace Axiomarium.Core.Schemas;
 
@@ -6,11 +7,29 @@ namespace Axiomarium.Core.Schemas;
 public static class SchemaCatalog
 {
     private static readonly Lazy<JsonObject> AssetSchema = new(() => Load("schemas/asset.schema.json"));
+    private static readonly Lazy<JsonObject> SkillSchema = new(() => Load("schemas/skill.schema.json"));
+    private static readonly Lazy<JsonObject> HookSchema = new(() => Load("schemas/hook.schema.json"));
+    private static readonly Lazy<JsonObject> PolicySchema = new(() => Load("schemas/policy.schema.json"));
 
     /// <summary>The schema every <c>asset.yaml</c> must satisfy.</summary>
     public static JsonObject Asset => AssetSchema.Value;
 
-    private static JsonObject Load(string name)
+    /// <summary>The schema for the block named after <paramref name="kind"/> in its <c>asset.yaml</c>.</summary>
+    /// <param name="kind">The asset's kind.</param>
+    /// <returns>
+    /// The block's schema for a skill, hook or policy, which must have its block. <see langword="null"/>
+    /// for the other kinds, which have none.
+    /// </returns>
+    public static JsonObject? Block(AssetKind kind) => kind switch
+    {
+        AssetKind.Skill => SkillSchema.Value,
+        AssetKind.Hook => HookSchema.Value,
+        AssetKind.Policy => PolicySchema.Value,
+        _ => null,
+    };
+
+    /// <summary>Reads an embedded schema by its path in the repo, such as <c>schemas/asset.schema.json</c>.</summary>
+    internal static JsonObject Load(string name)
     {
         using var stream = typeof(SchemaCatalog).Assembly.GetManifestResourceStream(name)
             ?? throw new InvalidOperationException($"The binary is missing its embedded {name}.");

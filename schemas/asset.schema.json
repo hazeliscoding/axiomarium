@@ -85,6 +85,18 @@
         "behavioral": { "description": "Tests of what it does once active.", "type": "boolean" },
         "regression": { "description": "Tests that guard against past failures.", "type": "boolean" }
       }
+    },
+    "skill": {
+      "description": "Skills only, and required for them: when the skill should activate. Checked against schemas/skill.schema.json.",
+      "type": "object"
+    },
+    "hook": {
+      "description": "Hooks only, and required for them: when the hook runs, what it runs and how it responds. Checked against schemas/hook.schema.json.",
+      "type": "object"
+    },
+    "policy": {
+      "description": "Policies only, and required for them: the rules, and what enforces each one. Checked against schemas/policy.schema.json.",
+      "type": "object"
     }
   },
   "$defs": {

@@ -37,9 +37,10 @@ internal sealed class TempVault : IDisposable
         return this;
     }
 
-    /// <summary>A valid manifest for an asset of the given kind and name.</summary>
+    /// <summary>A valid manifest for an asset of the given kind and name, with its kind's block when it has one.</summary>
     public static string Manifest(string kind, string name) =>
-        SampleManifests.Valid.Replace("name: determinism-auditor", $"name: {name}").Replace("kind: agent", $"kind: {kind}");
+        SampleManifests.Valid.Replace("name: determinism-auditor", $"name: {name}").Replace("kind: agent", $"kind: {kind}")
+        + SampleManifests.Blocks.GetValueOrDefault(kind, "");
 
     public void Dispose()
     {

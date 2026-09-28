@@ -1,3 +1,4 @@
+using System.Text.Json;
 using System.Text.Json.Nodes;
 using Axiomarium.Core.Assets;
 using Axiomarium.Core.Manifests;
@@ -132,6 +133,14 @@ public static class Doctor
             diagnostics.Add(new Diagnostic(Severity.Error, manifestFile, Locate(parsed.Locations, error.Path), error.Message, error.Detail));
         }
 
+        // Which block belongs is only clear once the manifest and its folder agree on the kind. When
+        // they don't, the kind mismatch is the error worth reading, not a missing block.
+        if (parsed.Root is JsonObject root && root["kind"] is JsonValue declared
+            && declared.GetValueKind() == JsonValueKind.String && declared.GetValue<string>() == kind.ManifestName())
+        {
+            ExamineBlocks(kind, root, manifestFile, parsed.Locations, diagnostics);
+        }
+
         if (errors.Count > 0)
         {
             return new DiscoveredAsset(kind, name, folder, manifestFile, null, null);
@@ -151,6 +160,43 @@ public static class Doctor
         }
 
         return new DiscoveredAsset(kind, name, folder, manifestFile, Text(manifest, "maturity"), Text(manifest, "version"));
+    }
+
+    private static void ExamineBlocks(
+        AssetKind kind, JsonObject manifest, string manifestFile, IReadOnlyDictionary<string, SourceLocation> locations, List<Diagnostic> diagnostics)
+    {
+        foreach (var blockKind in AssetKinds.All)
+        {
+            if (SchemaCatalog.Block(blockKind) is not { } schema)
+            {
+                continue;
+            }
+
+            var name = blockKind.ManifestName();
+            var present = manifest.TryGetPropertyValue(name, out var block);
+            if (blockKind != kind)
+            {
+                if (present)
+                {
+                    diagnostics.Add(new Diagnostic(
+                        Severity.Error, manifestFile, Locate(locations, name), $"Only {blockKind.Folder()} have a {name} block",
+                        [$"This asset is in {kind.Folder()}/. Remove the block, or move the asset to {blockKind.Folder()}/."]));
+                }
+            }
+            else if (!present)
+            {
+                var detail = schema["description"] is JsonValue description ? [description.GetValue<string>()] : Array.Empty<string>();
+                diagnostics.Add(new Diagnostic(Severity.Error, manifestFile, Locate(locations, ""), $"Missing required field: {name}", detail));
+            }
+            else if (block is JsonObject)
+            {
+                // A block that isn't a mapping is already an error from the asset schema.
+                foreach (var error in SchemaValidator.Validate(block, schema, name))
+                {
+                    diagnostics.Add(new Diagnostic(Severity.Error, manifestFile, Locate(locations, error.Path), error.Message, error.Detail));
+                }
+            }
+        }
     }
 
     private static string Text(JsonObject manifest, string field) => manifest[field]!.GetValue<string>();

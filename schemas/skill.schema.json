@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/hazeliscoding/axiomarium/blob/main/schemas/skill.schema.json",
+  "title": "Axiomarium skill block",
+  "description": "The skill block in a skill's asset.yaml: when the skill should activate.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["use_when"],
+  "properties": {
+    "use_when": {
+      "description": "When the skill should activate, in a sentence or two, such as: Writing or changing an asset or its asset.yaml. Adapters add it to the description the harness shows the model, and trigger tests check it.",
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}
