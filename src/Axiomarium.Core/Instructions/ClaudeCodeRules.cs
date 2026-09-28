@@ -63,7 +63,7 @@ public static class ClaudeCodeRules
 
     /// <summary>A rule whose frontmatter doesn't parse.</summary>
     public static HarnessRule InvalidFrontmatter { get; } = new(
-        "claude-code/invalid-frontmatter", "frontmatter doesn't parse", "A rule whose frontmatter doesn't parse never loads. The docs say it loads for every file, but Claude Code 2.1.283 skips it.", Memory + "#rule-frontmatter-reference");
+        "claude-code/invalid-frontmatter", "frontmatter doesn't parse", "A rule whose frontmatter doesn't parse never loads. The docs say it loads for every file, but Claude Code 2.1.284 skips it.", Memory + "#rule-frontmatter-reference");
 
     /// <summary>AGENTS.md in the launch directory and above.</summary>
     public static HarnessRule AgentsMd { get; } = new(

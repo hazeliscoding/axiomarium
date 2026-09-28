@@ -89,7 +89,7 @@ Each scenario in [`scenarios/`](../scenarios) is a tiny repo with a fake home fo
 - **Codex:** `codex debug prompt-input` with `CODEX_HOME` pointed at the fake home. It needs no login or network, and prints the AGENTS.md block the model would get, in order.
 - **Claude Code:** a short Haiku session, with its config folder pointed at a copy of the fake `.claude` and a borrowed login that is deleted when the run ends. The session transcript records which files loaded and in what order, and an `InstructionsLoaded` hook records why.
 
-The markers show which file each piece of loaded text came from, even when a harness cuts a file short. The recordings are committed as `expected.json`, and CI replays every one against the models that `axm explain` runs, so a model that disagrees with a real harness fails the build. They were made with Claude Code 2.1.283 (the demo with 2.1.284) and Codex 0.156.1. When a harness updates, the recordings are made again and the diff says what changed.
+The markers show which file each piece of loaded text came from, even when a harness cuts a file short. The recordings are committed as `expected.json`, and CI replays every one against the models that `axm explain` runs, so a model that disagrees with a real harness fails the build. They were last made with Claude Code 2.1.284 and Codex 0.156.1. When a harness updates, the recordings are made again and the diff says what changed.
 
 Three limits:
 

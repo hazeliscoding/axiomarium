@@ -138,7 +138,7 @@ public class ExplainCommandTests
         Assert.Equal(".", json["launchDirectory"]!.GetValue<string>());
 
         var claude = json["harnesses"]![0]!;
-        Assert.Equal(("claude-code", "2.1.283"), (claude["harness"]!.GetValue<string>(), claude["confirmedWith"]!.GetValue<string>()));
+        Assert.Equal(("claude-code", "2.1.284"), (claude["harness"]!.GetValue<string>(), claude["confirmedWith"]!.GetValue<string>()));
         Assert.Equal(
             """{"path":".claude/rules/backend.md","scope":"project","timing":"when-read","rule":"claude-code/path-rule","bytes":8,"patterns":["src/api/**"]}""",
             claude["loaded"]![2]!.ToJsonString());

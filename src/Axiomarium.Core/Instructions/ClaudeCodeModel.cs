@@ -12,7 +12,7 @@ namespace Axiomarium.Core.Instructions;
 public static class ClaudeCodeModel
 {
     /// <summary>The Claude Code version the model was confirmed against.</summary>
-    public const string ConfirmedWith = "2.1.283";
+    public const string ConfirmedWith = "2.1.284";
 
     /// <summary>Resolves what Claude Code loads when launched in <paramref name="launchDirectory"/> and the agent reads <paramref name="targetFile"/>.</summary>
     /// <param name="launchDirectory">Where Claude Code starts.</param>
