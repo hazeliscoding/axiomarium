@@ -44,8 +44,8 @@ public static class ScopeSheriff
             " ",
             [
                 $"{shown} is outside this task's scope ({patterns}).",
-                "Say why this edit is needed.",
-                $"If the scope grew, add it to {TaskScope.File}.",
+                "In your reply to the user, say why this edit was needed.",
+                $"If the task grew, add the path to {TaskScope.File}.",
                 .. scope.Problems,
             ]);
         return new HookResult(ClaudeCodeHook.AdditionalContext(message), null);

@@ -60,7 +60,7 @@ public class ScopeSheriffTests
         var warning = Warning(ScopeSheriff.Run(Payload(fixture, repo.Root, Path.Combine(repo.Root, file))));
 
         Assert.Equal(
-            $"{file} is outside this task's scope (src/api/**). Say why this edit is needed. If the scope grew, add it to .axm/scope.",
+            $"{file} is outside this task's scope (src/api/**). In your reply to the user, say why this edit was needed. If the task grew, add the path to .axm/scope.",
             warning);
     }
 
@@ -119,7 +119,7 @@ public class ScopeSheriffTests
         var warning = Warning(ScopeSheriff.Run(Edit(repo, "src/billing/invoice.txt")));
 
         Assert.Equal(
-            "src/billing/invoice.txt is outside this task's scope (src/web/**). Say why this edit is needed. If the scope grew, add it to .axm/scope. "
+            "src/billing/invoice.txt is outside this task's scope (src/web/**). In your reply to the user, say why this edit was needed. If the task grew, add the path to .axm/scope. "
             + "Line 1 of .axm/scope matches nothing: '{' at column 5 is never closed.",
             warning);
     }
