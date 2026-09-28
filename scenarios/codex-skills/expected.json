@@ -88,5 +88,87 @@
       "read": []
     },
     "hooks": []
+  },
+  "codex": {
+    "version": "0.156.1",
+    "loaded": [],
+    "skills": [
+      {
+        "name": "imagegen",
+        "bundled": true,
+        "entry": "whole"
+      },
+      {
+        "name": "openai-docs",
+        "bundled": true,
+        "entry": "whole"
+      },
+      {
+        "name": "plugin-creator",
+        "bundled": true,
+        "entry": "whole"
+      },
+      {
+        "name": "skill-creator",
+        "bundled": true,
+        "entry": "whole"
+      },
+      {
+        "name": "skill-installer",
+        "bundled": true,
+        "entry": "whole"
+      },
+      {
+        "name": "aws",
+        "file": "repo/.agents/skills/aws/SKILL.md",
+        "entry": "whole"
+      },
+      {
+        "name": "deploy",
+        "file": "repo/.agents/skills/deploy/SKILL.md",
+        "entry": "whole"
+      },
+      {
+        "name": "lint",
+        "file": "repo/.agents/skills/tools/lint/SKILL.md",
+        "entry": "whole"
+      },
+      {
+        "name": "local",
+        "file": "repo/.codex/skills/local/SKILL.md",
+        "entry": "whole"
+      },
+      {
+        "name": "long",
+        "file": "repo/.agents/skills/long/SKILL.md",
+        "entry": "cut"
+      },
+      {
+        "name": "named-x",
+        "file": "repo/.agents/skills/folder-x/SKILL.md",
+        "entry": "whole"
+      },
+      {
+        "name": "near",
+        "file": "repo/sub/.agents/skills/near/SKILL.md",
+        "entry": "whole"
+      },
+      {
+        "name": "nested",
+        "file": "repo/.agents/skills/group/nested/SKILL.md",
+        "entry": "whole"
+      },
+      {
+        "name": "deploy",
+        "file": "home/.agents/skills/deploy/SKILL.md",
+        "entry": "whole"
+      },
+      {
+        "name": "old",
+        "file": "home/.codex/skills/old/SKILL.md",
+        "entry": "whole"
+      }
+    ],
+    "hooks": []
   }
 }
