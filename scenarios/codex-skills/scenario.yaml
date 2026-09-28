@@ -1,0 +1,3 @@
+description: "How Codex lists skills: an untrusted project's .codex/skills, the old CODEX_HOME folder, frontmatter names, a name two skills share, policies in agents/openai.yaml, a skill without a description, a long description, a colon to repair, a plugin manifest, nesting, a hidden folder and [[skills.config]]."
+launch: sub
+target: sub/app.ts
