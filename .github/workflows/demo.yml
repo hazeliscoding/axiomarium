@@ -1,12 +1,12 @@
 name: Demo
 
-# Renders docs/demo/doctor.gif, the terminal demo in the README, from docs/demo/doctor.tape. It uses
-# the axm release on NuGet, so the demo shows what users install. The rendered GIF is an artifact;
-# commit it by hand after looking at it.
+# Renders the terminal demos in the README, docs/demo/doctor.gif and docs/demo/explain.gif, from their
+# tapes. It uses the axm release on NuGet, so the demos show what users install. The rendered GIFs are an
+# artifact; commit them by hand after looking at them.
 on:
   pull_request:
     paths:
-      - docs/demo/doctor.tape
+      - docs/demo/*.tape
       - .github/workflows/demo.yml
   workflow_dispatch:
 
@@ -31,8 +31,11 @@ jobs:
         with:
           path: docs/demo/doctor.tape
           install-fonts: true
+      - uses: charmbracelet/vhs-action@v2
+        with:
+          path: docs/demo/explain.tape
       - uses: actions/upload-artifact@v7
         with:
           name: demo
-          path: docs/demo/doctor.gif
+          path: docs/demo/*.gif
           if-no-files-found: error
