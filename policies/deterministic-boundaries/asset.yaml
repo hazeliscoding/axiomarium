@@ -1,0 +1,54 @@
+# yaml-language-server: $schema=../../schemas/asset.schema.json
+name: deterministic-boundaries
+kind: policy
+version: 0.1.0
+description: >-
+  Which decisions belong to deterministic code instead of the model, for any
+  agent that writes or reviews code that acts on LLM output.
+maturity: experimental
+supports:
+  claude-code: experimental
+  codex: experimental
+  generic: full
+permissions:
+  filesystem: none
+  shell: none
+  network: none
+side_effects: none
+inputs:
+  - source-code
+outputs:
+  - boundary-decisions
+evals:
+  trigger: false
+  behavioral: false
+  regression: false
+policy:
+  rules:
+    - id: authorization-in-code
+      rule: Code decides who someone is and what they may do; model output never grants access.
+      enforced_by: [agents/determinism-auditor]
+    - id: money-in-code
+      rule: Code computes and approves prices, refunds, discounts and charges.
+      enforced_by: [agents/determinism-auditor]
+    - id: irreversible-actions-need-a-gate
+      rule: Deleting, sending, deploying or migrating runs only after a deterministic check or a human approval.
+      enforced_by: [agents/determinism-auditor]
+    - id: state-transitions-in-code
+      rule: Code moves a record from one state to another; the model may only propose the move.
+      enforced_by: [agents/determinism-auditor]
+    - id: invariants-in-the-data-layer
+      rule: Constraints or code enforce uniqueness, limits and balances, never an instruction to the model.
+      enforced_by: [agents/determinism-auditor]
+    - id: idempotent-side-effects
+      rule: Every side effect a model can trigger carries an idempotency key, so a retry can't repeat it.
+      enforced_by: [agents/determinism-auditor]
+    - id: validated-model-output
+      rule: Code parses model output against a schema and validates it before acting on it.
+      enforced_by: [agents/determinism-auditor]
+    - id: allowlisted-reach
+      rule: The tools, files, hosts and secrets a model can reach are an allowlist in code or configuration.
+      enforced_by: [agents/determinism-auditor]
+    - id: traceable-decisions
+      rule: Every decision a model proposes is logged with its input and the code's verdict, so a wrong one can be traced.
+      enforced_by: []
