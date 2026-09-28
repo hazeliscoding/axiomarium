@@ -14,6 +14,9 @@ TestResults/
 # Local tool output
 .playwright-mcp/
 
+# axm's local state: the task scope and caches
+.axm/
+
 # OS files
 .DS_Store
 Thumbs.db
