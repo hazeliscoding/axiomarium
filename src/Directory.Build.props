@@ -11,5 +11,7 @@
     <!-- Released binaries ship without symbols: the native .pdb is several times the size of the binary. -->
     <DebugType>none</DebugType>
     <DebugSymbols>false</DebugSymbols>
+    <!-- NativeAOT still writes a .dSYM on macOS; this keeps it out of the published output and the packages. -->
+    <CopyOutputSymbolsToPublishDirectory>false</CopyOutputSymbolsToPublishDirectory>
   </PropertyGroup>
 </Project>
