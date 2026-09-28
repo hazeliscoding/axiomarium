@@ -19,7 +19,7 @@ Axiomarium is my lab for building, testing and debugging AI coding environments 
 - **Markdown where possible.** Assets are Markdown, YAML and JSON Schema, readable without `axm`. No custom DSL.
 - **Progressive disclosure.** Global rules, then contextual rules, then task-relevant skills, then a specialized agent.
 - **Evidence over confidence.** Claims like "tests pass" carry the command, the result and the tree they ran on.
-- **A deterministic core.** Discovery, validation, `explain`, `doctor` and `conflicts` never call a model or the network. Only `eval`, `triggers`, `fossil` and `conflicts --judge` call models, only when the user runs them, and never through one provider's API alone.
+- **A deterministic core.** Discovery, validation, `explain` and `doctor` never call a model or the network. Only `eval`, `triggers`, `fossil` and `conflicts --judge` call models, only when the user runs them, and never through one provider's API alone.
 - **Writes only on request.** Diagnostic commands are read-only. `init`, `sync` and `incident new` show what they will write and wait for approval. `fossil` and `distill` recommend changes and never delete or rewrite instructions.
 - **Hooks prefer explanation to blocking.** A hook first asks the agent for a reason and records evidence. It blocks only when an action is destructive.
 
@@ -57,18 +57,25 @@ Axiomarium is my lab for building, testing and debugging AI coding environments 
 - **Claude Code hooks, confirmed on 2.1.283 (2026-09-27).** The hooks docs don't say which output of a tool hook reaches the model, so headless sessions settled it. A `PostToolUse` hook's `hookSpecificOutput.additionalContext` reaches the model without blocking anything, and so does a `PreToolUse` one. `decision: "block"` with a `reason` on `PostToolUse` also reaches it. `permissionDecision: "allow"` with a `permissionDecisionReason` on `PreToolUse` reaches only the user. The hook reads `tool_name`, `cwd` and `tool_input.file_path` (`tool_input.notebook_path` for NotebookEdit), which are absolute paths. The editing tools are Write, Edit and NotebookEdit; MultiEdit no longer exists. So the scope sheriff runs after the edit (`after-edit`, which only fires for an edit that happened) and warns through `additionalContext`.
 - **Releases** run from `.github/workflows/release.yml` when a `v*` tag is pushed. The tag must match `<Version>`, and `CHANGELOG.md` must have that version's section, which becomes the release notes. Each OS builds its own NativeAOT binary (archived with `SHA256SUMS`) and its own `Axiomarium.<rid>` tool package, and Linux also packs the `Axiomarium` pointer package, following the .NET 10 docs on RID-specific tools. NuGet gets them through Trusted Publishing, so no API key is stored, with the pointer package pushed last. Fresh runners then install both the binary and the tool and run them. A pull request that touches the release setup runs everything except publishing, so the pipeline is proven before a tag needs it. Released builds ship without symbols. Two limits: on Windows the tool is installed behind an `axm.cmd` launcher that bash only finds by that name, and the Linux binary is built on Ubuntu 24.04, so it needs that glibc or newer.
 
-### Instruction compiler (v0.2)
+### Instruction intelligence (v0.2)
 
 - **Claude Code and Codex first.** Two harnesses are enough to show that the same file gets different instructions. Copilot comes with the adapters in v0.8.
-- **Harness models follow the docs, then the real harness.** Each model records the docs it was built from and the harness version it was confirmed against. The first models follow the Claude Code memory docs and the Codex AGENTS.md docs as read on 2026-09-27.
-- **Dropped files are output, not silence.** A resolution has three parts: loaded (in context order, with reason, timing and bytes), dropped (with the reason) and findings.
+- **Harness models follow the docs, then the real harness.** Each model records the docs it was built from and the harness version it was confirmed against. The first models follow the Claude Code memory and hooks docs as read on 2026-09-28 (Claude Code 2.1.283), and the Codex AGENTS.md docs and source as read the same day (Codex 0.156.1, whose loading code matches 0.158.0).
+- **Dropped files are output, not silence.** A resolution has three parts: loaded (in context order, with reason, timing and bytes), dropped (with the reason) and findings. Every loaded or dropped entry carries the id of the rule that produced it, such as `claude-code/ancestor-claude-md`, and each rule id maps to its doc section and the harness version it was confirmed against.
 - **"Effective for a file"** means what the harness loads at launch from the launch directory, plus what it loads on demand when the agent reads that file. The launch directory defaults to the repo root and is set with `--cwd`.
-- **Skills are available, not loaded.** The model decides when a skill loads, so `explain` lists matching skills as available and never claims they loaded.
-- **Contradictions need judgment.** Duplicates, dead references and shadowed files are found deterministically. Contradictions between rules come from `axm conflicts --judge`, which asks a model and labels its output as model judgment.
-- **The JSON output is the contract.** Snapshot tests use it, and the Spectre tree is rendered from the same resolution.
-- **Tests never read the real machine.** The home, `CODEX_HOME` and managed-policy directories are injected, and fixtures supply them.
-- **One folder per finding,** as in pgcheckup: `findings/<id>/finding.md` plus `fixtures/fires/` and `fixtures/clean/`, each a tiny repo. Findings also run as part of `axm doctor`.
-- **People who don't read code get the warning without asking.** A Claude Code SessionStart hook runs `axm doctor`, so anyone who steers their agent only through instruction files learns when one silently doesn't load.
+- **v0.2 covers instruction files only.** Skills and hooks move to v0.3, which builds skill discovery for each harness anyway. The vault's own assets reach a harness only through `sync` in v0.8, so `explain` shows what the harness sees, not what the vault holds.
+- **Skills are available, not loaded.** The model decides when a skill loads, so from v0.3 `explain` lists matching skills as available and never claims they loaded.
+- **No `axm conflicts` command.** Duplicate blocks, dead references and shadowed files are findings, shown by `explain` and `doctor`. Contradictions between rules need a model, so `conflicts --judge` moves to v0.4 with the model providers, and v0.2 stays fully deterministic.
+- **The JSON output is the contract.** `explain --json` carries a `schemaVersion`, snapshot tests use it, and the text output is rendered from the same resolution. `explain` exits 0 whenever it ran, because every instruction finding is a warning or info, and 2 when it couldn't run.
+- **Tests never read the real machine.** The home, `CODEX_HOME` and managed-policy directories, and the harnesses' user settings (Claude Code's `claudeMdExcludes` and Project instructions mode, Codex's `config.toml`), are one injected input, and fixtures supply it.
+- **Ground truth is recorded locally and replayed in CI.** Each scenario in `scenarios/<name>/` is a tiny repo, a fake home, a launch directory and a target file, and every file in it carries a unique marker. A recorder in `tools/`, never shipped, runs Codex's `debug prompt-input`, which is offline, and a short Claude Code session with an `InstructionsLoaded` hook, reading AGENTS.md loads from the session transcript because that hook doesn't fire for them. It writes `expected.json` with both harness versions. CI replays every recording without credentials or network, and re-recording after a harness update shows where a model needs work.
+- **What the research settled (2026-09-28).**
+  - Claude Code reads AGENTS.md only when no CLAUDE file exists in the working directory or above, unless the Project instructions mode says otherwise. That mode is read only from user and managed settings.
+  - Codex applies one 32 KiB budget across all project files. The file that crosses it is cut mid-file, later files are dropped, and the global file doesn't count. The docs contradict each other on this, so the code decides.
+  - An empty `AGENTS.override.md` hides the `AGENTS.md` next to it, because Codex picks a file by existence before it checks that it isn't empty. Codex also skips every project file in an untrusted project.
+- **One folder per finding,** as in pgcheckup: `findings/<id>/finding.md` plus `fixtures/fires/` and `fixtures/clean/`, each a tiny repo with a fake home. A test checks every finding folder: both fixtures exist, `finding.md` has its four sections, `fires` produces the finding and `clean` doesn't.
+- **`axm doctor` works in any repo.** It always checks the repo's instruction files for both harnesses, launched from the repo root, and runs the vault checks when a vault exists. Warnings don't fail it. `validate` stays vault-only, for CI.
+- **People who don't read code get the warning without asking.** A Claude Code SessionStart hook, `axm hook session-doctor`, runs the doctor's checks and starts the session with a short notice to the user and the model when something is wrong, and prints nothing otherwise. It aims for 200 ms, measured locally, and CI holds the native binary under 1 s.
 
 ### Brand
 
@@ -147,39 +154,46 @@ The first NuGet push was rejected until the Trusted Publishing policy's reposito
 
 ## M2: v0.2, instruction intelligence
 
+What each harness actually reads for a file, and what it silently drops.
+
+- [ ] Ground-truth spike: record one scenario from each real harness, including user-level files in a fake home, without touching the real `~/.claude`. If Claude Code can't read a fake home cleanly, its user-level scenarios fall back to hand-checked expectations, marked as such.
+- [ ] Scenarios and the recorder: the `scenarios/<name>/` format, the recorder in `tools/`, and a test that replays every recording.
+- [ ] The core: the resolution (loaded, dropped and findings, each entry with its rule id) and the injected machine.
+- [ ] Codex model:
+  - [ ] the global file in `$CODEX_HOME`: `AGENTS.override.md`, then `AGENTS.md`, the first that isn't empty;
+  - [ ] the chain from the project root (`project_root_markers`, `.git` by default) down to the launch directory, one file per directory (`AGENTS.override.md`, `AGENTS.md`, then `project_doc_fallback_filenames`), including the empty override;
+  - [ ] the 32 KiB `project_doc_max_bytes` budget: the crossing file cut, later files dropped, the global file exempt;
+  - [ ] untrusted projects, and files below the launch directory reported as "not loaded by the harness".
 - [ ] Claude Code model:
   - [ ] the launch-time chain: managed policy, `~/.claude/CLAUDE.md` and `~/.claude/rules/`, then each directory from the filesystem root down to the launch directory (`CLAUDE.md`, `.claude/CLAUDE.md`, then `CLAUDE.local.md`), then `.claude/rules/**/*.md` without `paths`;
   - [ ] `@path` imports: relative, absolute and `~` paths, at most 4 hops, skipped inside code spans and fenced blocks, cycles detected, and external imports marked as needing approval;
-  - [ ] on-demand files for the target: subdirectory CLAUDE files, and rules whose `paths` match, including brace expansion, invalid patterns and invalid frontmatter;
-  - [ ] AGENTS.md under each Project instructions mode, `claudeMdExcludes`, and HTML comments stripped before bytes are counted.
-- [ ] Codex model:
-  - [ ] the global file in `$CODEX_HOME`, then the chain from the git root down to the launch directory, one file per directory (`AGENTS.override.md`, then `AGENTS.md`, then the fallback filenames);
-  - [ ] `project_doc_max_bytes`: files past the limit are dropped. Confirm against the real Codex whether the file that crosses the limit is cut or dropped whole;
-  - [ ] files below the launch directory are reported as "not loaded by the harness".
-- [ ] `axm explain <path>`: loaded and dropped files with reasons, the vault's matching skills (available) and hooks (active), `--harness`, `--diff` and `--json`.
-- [ ] `axm conflicts`: duplicate blocks, dead references and shadowed files, plus `--judge` for contradictions.
-- [ ] Findings, each with `finding.md` and fires and clean fixtures, also run by `axm doctor`:
+  - [ ] on-demand files for the target: subdirectory CLAUDE files, and rules whose `paths` match, with the glob matcher extended to brackets, invalid patterns and the brace-expansion budget, and invalid frontmatter loading the rule for every file;
+  - [ ] AGENTS.md under each Project instructions mode, `claudeMdExcludes`, the 4 MiB file limit, and block-level HTML comments stripped before bytes are counted.
+- [ ] `axm explain <path>`: loaded and dropped files with their rules, `--harness`, `--cwd`, `--diff` and `--json`.
+- [ ] Findings, each with `finding.md` and fires and clean fixtures, shown by `explain` and `doctor`:
 
-| Finding | Fires when |
-|---|---|
-| `dead-import` | An `@path` import points to a file that doesn't exist |
-| `import-too-deep` | An import chain goes past 4 hops, so the rest never loads |
-| `agents-md-hidden` | Claude Code skips an AGENTS.md because a CLAUDE file exists and doesn't import it |
-| `rule-frontmatter-invalid` | A rule's YAML doesn't parse, so the rule loads for every file |
-| `rule-matches-nothing` | A path-scoped rule matches no file in the repo, or one of its patterns is invalid |
-| `codex-byte-cap` | The Codex chain reaches `project_doc_max_bytes`, so later files are dropped |
-| `duplicate-block` | The same paragraph loads from two different files |
-| `dead-link` | A Markdown link in a loaded file points to a file that doesn't exist |
+| Finding | Severity | Fires when |
+|---|---|---|
+| `dead-import` | warning | An `@path` import points to a file that doesn't exist |
+| `import-too-deep` | warning | An import chain goes past 4 hops, so the rest never loads |
+| `agents-md-hidden` | warning | Claude Code skips an AGENTS.md because a CLAUDE file exists and doesn't import it |
+| `rule-frontmatter-invalid` | warning | A rule's YAML doesn't parse, so the rule loads for every file |
+| `rule-matches-nothing` | warning | A path-scoped rule matches no file in the repo, or one of its patterns is invalid |
+| `codex-byte-cap` | warning | The Codex chain reaches `project_doc_max_bytes`, so one file is cut and later files are dropped |
+| `codex-empty-override` | warning | An empty `AGENTS.override.md` hides the `AGENTS.md` next to it |
+| `duplicate-block` | info | The same paragraph loads from two different files |
+| `dead-link` | warning | A Markdown link in a loaded file points to a file that doesn't exist |
 
-- [ ] Ground truth: run the real Claude Code (with an `InstructionsLoaded` hook) and the real Codex on each scenario, and record the harness versions next to it.
-- [ ] `hooks/session-doctor/`: a Claude Code SessionStart hook that runs `axm doctor`, starts the session with a short notice when something is wrong, and prints nothing otherwise. A benchmark keeps it under 200 ms.
-- [ ] Write-up, "What your agent actually reads", and a VHS tape that renders the README demo GIF.
+- [ ] `axm doctor` in any repo: the instruction findings always, and the vault checks when a vault exists.
+- [ ] `hooks/session-doctor/` and `axm hook session-doctor`: confirm on the real harness which SessionStart output the user and the model see, then build the hook, silent when all is well. Under 200 ms locally, and a CI check that holds the native binary under 1 s.
+- [ ] Write-up, "What your agent actually reads", and a second VHS tape for an `axm explain` demo GIF.
 - [ ] Release v0.2.0.
 
-**Done when:** every scenario matches what the real Claude Code and Codex loaded, `--diff` on the demo scenario shows an instruction only one harness loads, all eight findings pass their fixtures, and a fresh Claude Code session on the demo scenario opens with the doctor's notice.
+**Done when:** every scenario matches what the real Claude Code and Codex recorded, `--diff` on the demo scenario shows an instruction only one harness loads, all nine findings pass their fixtures, a fresh Claude Code session on the demo scenario opens with the doctor's notice, and v0.2.0 installs from GitHub Releases and NuGet on fresh runners.
 
 ## M3: v0.3, skills and triggering
 
+- [ ] Skill and hook discovery for each harness: Claude Code (`.claude/skills`, `~/.claude/skills`, plugins, and hooks in settings) and Codex (`.agents/skills`, `~/.agents/skills` and `hooks.json`). `axm explain` lists the matching skills as available, never loaded, and the hooks that would run. (Moved from v0.2.)
 - [ ] `axm triggers`: skills whose descriptions overlap, and the terms they share.
 - [ ] `axm triggers generate <skill>`: positive, negative, ambiguous, paraphrased and adversarial prompts.
 - [ ] `axm triggers test`: precision and recall for each skill over the generated prompts, and each collision with its prompt, the skill selected and the skill expected.
@@ -192,6 +206,7 @@ The first NuGet push was rejected until the Trusted Publishing policy's reposito
 - [ ] `axm eval run` and `axm eval compare`: a baseline against a candidate, recording result, cost, tokens, latency and behavior.
 - [ ] Behavioral and regression evals for the starter assets, with history in `.axm/cache.db`.
 - [ ] Providers sit behind one interface, so no eval depends on a single vendor.
+- [ ] `axm conflicts --judge`: contradictions between the instructions a file gets, found by a model and labeled as model judgment. (Moved from v0.2.)
 
 **Done when:** comparing an asset before and after a change reports behavior, tokens and latency for both versions, on two different model providers.
 
