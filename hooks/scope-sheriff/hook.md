@@ -33,7 +33,7 @@ src/billing/invoice.cs is outside this task's scope (src/api/orders/, tests/api/
 
 ## Wiring it into Claude Code
 
-Until `axm sync` generates harness files, add this to `.claude/settings.json` (shared with the repo) or `.claude/settings.local.json` (just you). `axm` must be on your `PATH`.
+Until `axm sync` generates harness files, add this to `.claude/settings.json` (shared with the repo) or `.claude/settings.local.json` (just you). `axm` must be on your `PATH`. On Windows with the dotnet tool, write `axm.cmd hook scope-sheriff`: the tool is installed behind an `axm.cmd` launcher, and bash, which Claude Code may use to run hooks, doesn't find it as plain `axm`. The release binary is a real `axm.exe` and needs no change.
 
 ```json
 {
