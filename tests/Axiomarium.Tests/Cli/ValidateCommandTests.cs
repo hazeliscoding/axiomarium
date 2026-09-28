@@ -47,7 +47,7 @@ public class ValidateCommandTests
     }
 
     [Fact]
-    public void Validate_prints_what_doctor_prints_below_its_inventory()
+    public void Validate_prints_the_problems_and_the_outcome_doctor_prints()
     {
         using var healthy = HealthyVault();
         using var broken = BrokenVault();
@@ -55,9 +55,11 @@ public class ValidateCommandTests
         foreach (var vault in new[] { healthy, broken })
         {
             var (_, validate, _) = CliRun.Run(["validate", "--root", vault.Root]);
-            var (_, doctor, _) = CliRun.Run(["doctor", "--root", vault.Root]);
+            var (_, doctor, _) = CliRun.Run(["doctor", "--root", vault.Root], machine: TestMachine.For(vault.Root));
 
-            Assert.EndsWith(validate[(validate.IndexOf("\n\n", StringComparison.Ordinal) + 2)..], doctor);
+            var problems = validate[(validate.IndexOf("\n\n", StringComparison.Ordinal) + 2)..validate.LastIndexOf("1 asset", StringComparison.Ordinal)];
+            Assert.Contains(problems, doctor);
+            Assert.EndsWith(validate[validate.LastIndexOf(" · ", StringComparison.Ordinal)..], doctor);
         }
     }
 

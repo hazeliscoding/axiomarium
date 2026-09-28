@@ -1,36 +1,98 @@
 using Axiomarium.Cli.Output;
 using Axiomarium.Core.Assets;
 using Axiomarium.Core.Health;
+using Axiomarium.Core.Instructions;
 
 namespace Axiomarium.Cli;
 
-/// <summary>The reports <c>axm doctor</c> and <c>axm validate</c> print, from the same <see cref="DoctorReport"/>.</summary>
+/// <summary>The reports <c>axm doctor</c> and <c>axm validate</c> print. Both render the vault from the same <see cref="DoctorReport"/>.</summary>
 public static class ReportText
 {
-    /// <summary>Writes the doctor's report: the heading, one block per kind with a row per asset, each diagnostic, and the summary.</summary>
+    /// <summary>
+    /// Writes the doctor's report: the heading, one block per kind with a row per asset, a block with a row
+    /// per instruction file and the harnesses that load it, each diagnostic, each finding, and the summary.
+    /// </summary>
     /// <param name="output">Where to write.</param>
-    /// <param name="report">What the doctor found.</param>
+    /// <param name="report">What the doctor found. Without a vault, the asset blocks are left out.</param>
     /// <param name="style">Whether to add color and a kaomoji. Without either, the text is identical.</param>
-    public static void WriteDoctor(TextWriter output, DoctorReport report, Style style)
+    public static void WriteDoctor(TextWriter output, HealthReport report, Style style)
     {
         var ink = new Ink(output, style);
-        WriteHeading(ink, "AXM DOCTOR", report);
+        ink.Write("AXM DOCTOR", Palette.Accent).Write(" // ", Palette.Dim);
+        WriteInventory(ink, report);
+        ink.Line();
+        ink.Line();
 
-        var nameWidth = report.Assets.Count == 0 ? 0 : report.Assets.Max(asset => asset.Name.Length) + 3;
         var index = 0;
-        foreach (var group in report.Assets.GroupBy(asset => asset.Kind))
+        if (report.Vault is { } vault)
         {
-            ink.Write("  ").Write(group.Key.Folder().ToUpperInvariant(), Palette.Dim).Line();
-            foreach (var asset in group)
+            var nameWidth = vault.Assets.Count == 0 ? 0 : vault.Assets.Max(asset => asset.Name.Length) + 3;
+            foreach (var group in vault.Assets.GroupBy(asset => asset.Kind))
+            {
+                ink.Write("  ").Write(group.Key.Folder().ToUpperInvariant(), Palette.Dim).Line();
+                foreach (var asset in group)
+                {
+                    index++;
+                    WriteRow(ink, asset, index, nameWidth, vault);
+                }
+
+                ink.Line();
+            }
+        }
+
+        var files = report.Instructions.Files;
+        if (files.Count > 0)
+        {
+            var pathWidth = files.Max(file => file.Path.Length) + 3;
+            ink.Write("  ").Write("INSTRUCTIONS", Palette.Dim).Line();
+            foreach (var file in files)
             {
                 index++;
-                WriteRow(ink, asset, index, nameWidth, report);
+                ink.Write("  ").Write($"{index:00}", Palette.Dim).Write("  ").Write(file.Path.PadRight(pathWidth), Palette.Path);
+                if (file.LoadedBy.Count == 0)
+                {
+                    ink.Write("not loaded", Palette.Dim);
+                }
+                else
+                {
+                    ink.Write(string.Join(" ", file.LoadedBy.Select(harness => harness.Name())));
+                }
+
+                ink.Line();
             }
 
             ink.Line();
         }
 
-        WriteProblems(ink, report);
+        foreach (var diagnostic in (report.Vault?.Diagnostics ?? []).Concat(report.Config))
+        {
+            WriteDiagnostic(ink, diagnostic);
+            ink.Line();
+        }
+
+        foreach (var finding in report.Instructions.Findings)
+        {
+            FindingText.Write(ink, finding);
+        }
+
+        WriteInventory(ink, report);
+        if (report.Instructions.Ignored > 0)
+        {
+            ink.Write(" · ", Palette.Dim).Write($"{report.Instructions.Ignored} ignored", Palette.Dim);
+        }
+
+        WriteOutcome(ink, report.ErrorCount, report.WarningCount, report.InfoCount);
+    }
+
+    // What the doctor looked at: the assets, when there is a vault, and the instruction files.
+    private static void WriteInventory(Ink ink, HealthReport report)
+    {
+        if (report.Vault is { } vault)
+        {
+            ink.Write(Count(vault.Assets.Count, "asset")).Write(" · ", Palette.Dim);
+        }
+
+        ink.Write(Count(report.Instructions.Files.Count, "instruction file"));
     }
 
     /// <summary>
@@ -62,13 +124,22 @@ public static class ReportText
             ink.Line();
         }
 
-        var (errors, warnings) = (report.ErrorCount, report.WarningCount);
-        ink.Write(Count(report.Assets.Count, "asset"))
-            .Write(" · ", Palette.Dim)
-            .Write(Count(errors, "error"), errors == 0 ? Palette.Ok : Palette.Error);
+        ink.Write(Count(report.Assets.Count, "asset"));
+        WriteOutcome(ink, report.ErrorCount, report.WarningCount, infos: 0);
+    }
+
+    // The end of the summary line: errors always, warnings and info when there are any, and the kaomoji.
+    private static void WriteOutcome(Ink ink, int errors, int warnings, int infos)
+    {
+        ink.Write(" · ", Palette.Dim).Write(Count(errors, "error"), errors == 0 ? Palette.Ok : Palette.Error);
         if (warnings > 0)
         {
             ink.Write(" · ", Palette.Dim).Write(Count(warnings, "warning"), Palette.Warning);
+        }
+
+        if (infos > 0)
+        {
+            ink.Write(" · ", Palette.Dim).Write($"{infos} info", Palette.Dim);
         }
 
         var faceColor = errors > 0 ? Palette.Error : warnings > 0 ? Palette.Warning : Palette.Ok;

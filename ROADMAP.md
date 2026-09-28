@@ -95,6 +95,8 @@ Axiomarium is my lab for building, testing and debugging AI coding environments 
   - `dead-link` checks relative Markdown links only, never URLs, anchors or absolute paths.
   - `explain --json` gains a `findings` array (`id`, `severity`, `file`, `line` when there is one, `message` and `fix`) in shape 1, since v0.2 isn't released yet. `--diff` shows no findings. Severity gains `info`.
 - **`axm doctor` works in any repo.** It always checks the repo's instruction files for both harnesses, launched from the repo root, and runs the vault checks when a vault exists. Warnings don't fail it. `validate` stays vault-only, for CI.
+- **How the doctor finds the repo (2026-09-28).** The repo root is the nearest folder with a `.git` at or above `--root` (the current directory by default), or `--root` itself outside a repo. The vault is `--root` or, failing that, the repo root. An INSTRUCTIONS block lists every instruction file the harnesses load or drop, with the harnesses that load it, so a file no harness loads shows as "not loaded".
+- **`axiomarium.yaml` configures a repo (2026-09-28).** It sits at the repo root and validates against `schemas/axiomarium.schema.json`, which the binary embeds. Its first field is `doctor.ignore`: globs for instruction files that are broken on purpose, such as test fixtures. The doctor doesn't list or check them, and its summary says how many it ignored, so nothing disappears silently. A problem in the file is an error, and a file with problems ignores nothing, so a typo can't hide a finding. This repo ignores `scenarios/` and `findings/*/fixtures/`.
 - **People who don't read code get the warning without asking.** A Claude Code SessionStart hook, `axm hook session-doctor`, runs the doctor's checks and starts the session with a short notice to the user and the model when something is wrong, and prints nothing otherwise. It aims for 200 ms, measured locally, and CI holds the native binary under 1 s.
 
 ### Brand
@@ -204,7 +206,7 @@ What each harness actually reads for a file, and what it silently drops.
 | `duplicate-block` | info | The same paragraph loads from two different files |
 | `dead-link` | warning | A Markdown link in a loaded file points to a file that doesn't exist |
 
-- [ ] `axm doctor` in any repo: the instruction findings always, and the vault checks when a vault exists. The repo-wide pass reports the deliberate problems in this repo's scenarios and finding fixtures, so doctor needs a way to leave them out.
+- [x] `axm doctor` in any repo: the instruction findings always, and the vault checks when a vault exists, with `axiomarium.yaml` to leave out files that are broken on purpose.
 - [ ] `hooks/session-doctor/` and `axm hook session-doctor`: confirm on the real harness which SessionStart output the user and the model see, then build the hook, silent when all is well. Under 200 ms locally, and a CI check that holds the native binary under 1 s.
 - [ ] Write-up, "What your agent actually reads", and a second VHS tape for an `axm explain` demo GIF.
 - [ ] Release v0.2.0.

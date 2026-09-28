@@ -4,7 +4,9 @@ using System.Text;
 namespace Axiomarium.Tests.Cli;
 
 // M0's acceptance tests run against the published NativeAOT binary, not the in-process CLI.
-// CI points AXM_BINARY at the binary it just published.
+// CI points AXM_BINARY at the binary it just published. The binary reads the real machine, so these
+// tests use commands that read no harness files: validate renders the same vault checks as doctor, and
+// explain runs as Codex only, because Claude Code's walk from the filesystem root would leave the test folder.
 public class NativeBinaryTests
 {
     private const string NoBinary = "Set AXM_BINARY to a published axm binary to run this test.";
@@ -64,23 +66,23 @@ public class NativeBinaryTests
     }
 
     [Fact(Skip = NoBinary, SkipUnless = nameof(HasBinary))]
-    public async Task Doctor_passes_on_this_repo()
+    public async Task Validate_passes_on_this_repo()
     {
-        var (exitCode, output) = await RunAsync("doctor", "--root", RepoRoot.Path);
+        var (exitCode, output) = await RunAsync("validate", "--root", RepoRoot.Path);
 
         Assert.Equal(0, exitCode);
-        Assert.Contains("determinism-auditor", output);
-        Assert.Contains(" · 0 errors", output);
+        Assert.StartsWith("AXM VALIDATE // ", output);
+        Assert.EndsWith(" · 0 errors\n", output.ReplaceLineEndings("\n"));
     }
 
     [Fact(Skip = NoBinary, SkipUnless = nameof(HasBinary))]
-    public async Task Doctor_names_the_field_in_a_broken_manifest()
+    public async Task Validate_names_the_field_in_a_broken_manifest()
     {
         using var vault = new TempVault().Asset(
             "agents/determinism-auditor",
             SampleManifests.Valid.Replace("maturity: experimental", "maturity: production-ready"));
 
-        var (exitCode, output) = await RunAsync("doctor", "--root", vault.Root);
+        var (exitCode, output) = await RunAsync("validate", "--root", vault.Root);
 
         Assert.Equal(1, exitCode);
         Assert.Contains("agents/determinism-auditor/asset.yaml:5", output);

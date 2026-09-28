@@ -32,7 +32,7 @@ The tool is only worth trusting if these hold. Never break them, not even in deb
 - **Every explain entry cites its rule.** Each loaded or dropped file carries the loading rule that produced it. If you can't name the rule, don't emit the entry.
 - **Harness models follow the docs, then the real harness.** When you change a model, cite the doc section and update the docs date and harness version recorded in the model. If the docs and the real harness disagree, the real harness wins, and the disagreement goes into `ROADMAP.md` as a decision.
 - **Don't guess what the model will read.** Skills are "available", never "loaded". When a harness leaves loading to the model, such as a Codex AGENTS.md below the launch directory, report it as "not loaded by the harness".
-- **Tests never read the real machine.** Home, `CODEX_HOME`, managed-policy and settings locations are injected. Fixtures and docs use placeholder paths such as `/home/dev` and `C:\Users\dev`, never real ones.
+- **Tests never read the real machine.** Home, `CODEX_HOME`, managed-policy and settings locations are injected. Fixtures and docs use placeholder paths such as `/home/dev` and `C:\Users\dev`, never real ones. `CliRun` refuses `doctor` and `explain` without an injected machine, and the native binary tests only run commands that read no harness files.
 - **Scenarios are ground truth.** Each one in `scenarios/<name>/` is a tiny repo, a fake home, `scenario.yaml` and the recording in `expected.json`. Every Markdown file in it starts with its `MARKER <path>` line (after any frontmatter), so a recording can name the file even when a harness cuts it short. Only the recorder writes `expected.json`, never a person.
 
 ## Vault assets
@@ -54,6 +54,7 @@ The tool is only worth trusting if these hold. Never break them, not even in deb
 - A finding reads what the harness models load and drop, so it never disagrees with `explain`. Its message and fix are written in `InstructionFindings`, and its `finding.md` shows the same output.
 - `finding.md` has **What happens**, **Why it matters**, **Fix** and **Source** sections. The source links to the harness doc section the finding relies on.
 - Finding ids are kebab-case and stable. Renaming one is a breaking change that needs a decision in `ROADMAP.md`.
+- `axiomarium.yaml` at the repo root configures `axm` for the repo and validates against `schemas/axiomarium.schema.json`. A new folder of instruction files that are broken on purpose, such as fixtures, goes under `doctor.ignore`, or `axm doctor` reports it.
 - Severity: `error` when an asset or manifest is invalid. `warning` when an instruction doesn't reach the agent where it was meant to, or reaches it where it wasn't. `info` for waste, such as a duplicated block. Don't inflate severity.
 - Paths are shown relative to the repo root with forward slashes, except home paths, which start with `~`. CI runs on Linux, Windows and macOS, because path handling is where this breaks.
 

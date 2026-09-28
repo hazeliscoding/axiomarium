@@ -73,7 +73,7 @@ public static class AxmCli
         }
 
         var session = new Session(output, error, outputStyle, errorStyle, currentDirectory, environment, machine);
-        root.Subcommands.Add(VaultCommand("doctor", "Check the vault's health: list every asset, then every problem.", ReportText.WriteDoctor, session));
+        root.Subcommands.Add(DoctorCommand(session));
         root.Subcommands.Add(VaultCommand("validate", "Check every asset and print only the problems, for CI and hooks.", ReportText.WriteValidate, session));
         root.Subcommands.Add(ListCommand(session));
         root.Subcommands.Add(ExplainCommand(session));
@@ -126,6 +126,33 @@ public static class AxmCli
         var hook = new Command("hook", "Hooks for Claude Code to run. Each reads the hook's JSON on stdin.");
         hook.Subcommands.Add(scopeSheriff);
         return hook;
+    }
+
+    private static Command DoctorCommand(Session session)
+    {
+        var folder = new Option<string>("--root")
+        {
+            Description = "Where to start. The repo root above it is checked, and the vault there or at --root. Defaults to the current directory.",
+            DefaultValueFactory = _ => session.CurrentDirectory,
+        };
+        var command = new Command("doctor", "Check the repo's health: its instruction files in any repo, and every asset when it holds a vault.");
+        command.Options.Add(folder);
+        command.SetAction(result =>
+        {
+            var start = Path.GetFullPath(result.GetValue(folder)!, session.CurrentDirectory);
+            var machine = session.Machine ?? Machine.FromEnvironment(session.Environment, start);
+            var examined = Core.Health.Doctor.Examine(start, machine);
+            if (examined.Report is not { } report)
+            {
+                return CouldNotRunWith(session, examined.Problem!.Message, hint: null);
+            }
+
+            ReportText.WriteDoctor(session.Output, report, session.OutputStyle);
+
+            // Warnings and info don't fail the doctor; only errors do.
+            return report.ErrorCount > 0 ? ErrorsFound : Passed;
+        });
+        return command;
     }
 
     // A command that checks the vault at --root and renders the doctor's report its own way.

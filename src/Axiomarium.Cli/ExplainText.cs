@@ -49,7 +49,7 @@ public static class ExplainText
 
         foreach (var finding in findings)
         {
-            WriteFinding(ink, finding);
+            FindingText.Write(ink, finding);
         }
 
         var count = explanation.Harnesses.Count;
@@ -118,22 +118,6 @@ public static class ExplainText
         Harness.Codex => "Codex",
         _ => throw new ArgumentOutOfRangeException(nameof(harness), harness, null),
     };
-
-    // The severity, then the id, and below them the message and the fix, lined up after the severity.
-    private static void WriteFinding(Ink ink, InstructionFinding finding)
-    {
-        var (label, color) = finding.Severity switch
-        {
-            Severity.Error => ("ERROR", Palette.Error),
-            Severity.Warning => ("WARNING", Palette.Warning),
-            _ => ("INFO", Palette.Dim),
-        };
-        var indent = new string(' ', label.Length + 2);
-        ink.Write(label, color).Write("  ").Write(finding.Id, Palette.Bold).Line();
-        ink.Write(indent).Write(finding.Message).Line();
-        ink.Write(indent).Write("Fix: ", Palette.Dim).Write(finding.Fix).Line();
-        ink.Line();
-    }
 
     private const string Dropped = "DROPPED";
     private const string NotLoaded = "NOT LOADED";

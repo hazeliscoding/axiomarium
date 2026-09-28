@@ -61,23 +61,29 @@ The vault provides the knowledge and behavior. `axm` provides the infrastructure
 
 ![A terminal runs axm list, which shows the five starter assets. A one-line edit then raises the determinism auditor's maturity to tested, and axm doctor reports that the claim lacks its evidence.](docs/demo/doctor.gif)
 
-`axm doctor` catches a broken asset before any agent loads it:
+`axm doctor` catches a broken asset before any agent loads it, and lists which harness loads each instruction file:
 
 ```text
 $ axm doctor
 
-AXM DOCTOR // 2 assets
+AXM DOCTOR // 2 assets · 2 instruction files
 
   AGENTS
   01  determinism-auditor   experimental  0.1.0   OK
   02  scope-reviewer        ERROR
 
+  INSTRUCTIONS
+  03  CLAUDE.md   claude-code
+  04  AGENTS.md   claude-code codex
+
 ERROR  agents/scope-reviewer/asset.yaml:5
        Unknown maturity: "production-ready"
        Allowed: experimental, incubating, tested, stable, battle-tested
 
-2 assets · 1 error  (╥﹏╥)
+2 assets · 2 instruction files · 1 error  (╥﹏╥)
 ```
+
+In a repo without a vault, `axm doctor` checks only the instruction files. Their findings are warnings, so they never fail it. List paths that are broken on purpose, such as test fixtures, under `doctor.ignore` in `axiomarium.yaml`, and the doctor leaves them out and says how many.
 
 `axm explain` shows what each harness loads for a file, and what it silently drops:
 
