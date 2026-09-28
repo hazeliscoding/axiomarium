@@ -2,11 +2,13 @@ using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using System.Text.RegularExpressions;
+using Axiomarium.Core.Instructions;
 
 namespace Axiomarium.GroundTruth;
 
 /// <summary>Runs the real harnesses on a scenario and writes what they loaded to its expected.json.</summary>
-internal static class Recorder
+internal static partial class Recorder
 {
     public const string ClaudeCode = "claude-code";
     public const string Codex = "codex";
@@ -25,8 +27,8 @@ internal static class Recorder
             Run("git", ["init", "-q"], Path.Combine(run, "repo"), []);
 
             var path = Path.Combine(scenario.Directory, Scenario.RecordingFile);
-            var recording = File.Exists(path) ? JsonNode.Parse(File.ReadAllText(path))!.AsObject() : [];
-            recording["recorded"] = DateTime.Now.ToString("yyyy-MM-dd");
+            var previous = File.Exists(path) ? JsonNode.Parse(File.ReadAllText(path))!.AsObject() : null;
+            var recording = previous?.DeepClone().AsObject() ?? [];
             if (harnesses.Contains(ClaudeCode))
             {
                 recording[ClaudeCode] = RecordClaudeCode(scenario, run);
@@ -37,6 +39,10 @@ internal static class Recorder
                 recording[Codex] = RecordCodex(scenario, run);
             }
 
+            // The date changes only with the recording, so recording again and finding no change leaves the file alone.
+            recording["recorded"] = previous is not null && JsonNode.DeepEquals(Undated(previous), Undated(recording))
+                ? previous["recorded"]!.DeepClone()
+                : DateTime.Now.ToString("yyyy-MM-dd");
             File.WriteAllText(path, Ordered(recording).ToJsonString(Indented).Replace("\r\n", "\n") + "\n");
         }
         finally
@@ -49,16 +55,96 @@ internal static class Recorder
     {
         var codexHome = Path.Combine(run, "home", ".codex");
         Directory.CreateDirectory(codexHome);
-        var output = Run("codex", ["debug", "prompt-input", "Read the target file."], Launch(scenario, run), new() { ["CODEX_HOME"] = codexHome });
+        var environment = new Dictionary<string, string> { ["CODEX_HOME"] = codexHome, ["HOME"] = Path.Combine(run, "home") };
+        var output = Run("codex", ["debug", "prompt-input", "Read the target file."], Launch(scenario, run), environment);
+        var (hooks, warnings) = CodexHookList.Parse(HooksList(Launch(scenario, run), environment), run);
 
         var files = scenario.MarkdownFiles()
             .Where(pair => pair.Key.StartsWith("repo/", StringComparison.Ordinal) || pair.Key.StartsWith("home/.codex/", StringComparison.Ordinal))
             .ToDictionary();
-        return new JsonObject
+        var recording = new JsonObject
         {
             ["version"] = Version("codex", last: true),
             ["loaded"] = Entries(CodexBlock.Parse(output, files)),
+            ["skills"] = Skills(CodexSkillBlock.Parse(output, run, scenario.SkillFiles()), "bundled"),
+            ["hooks"] = new JsonArray([.. hooks.Select(hook => new JsonObject
+            {
+                ["file"] = hook.File,
+                ["label"] = hook.Label,
+                ["event"] = hook.Event,
+                ["matcher"] = hook.Matcher,
+                ["trust"] = hook.Trust,
+                ["hash"] = hook.Hash,
+            })]),
         };
+        if (warnings.Count > 0)
+        {
+            recording["hookWarnings"] = new JsonArray([.. warnings.Select(warning => JsonValue.Create(warning))]);
+        }
+
+        return recording;
+    }
+
+    // Asks `codex app-server` which hooks it has configured for the launch directory, over JSON-RPC on stdio.
+    private static string HooksList(string launch, Dictionary<string, string> environment)
+    {
+        var start = new ProcessStartInfo("codex")
+        {
+            WorkingDirectory = launch,
+            RedirectStandardInput = true,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            StandardOutputEncoding = Encoding.UTF8,
+        };
+        start.ArgumentList.Add("app-server");
+        foreach (var (name, value) in environment)
+        {
+            start.Environment[name] = value;
+        }
+
+        using var process = Process.Start(start) ?? throw new GroundTruthException("Couldn't start codex app-server.");
+        try
+        {
+            JsonObject[] requests =
+            [
+                new()
+                {
+                    ["method"] = "initialize",
+                    ["id"] = 1,
+                    ["params"] = new JsonObject
+                    {
+                        ["clientInfo"] = new JsonObject { ["name"] = "axm-recorder", ["title"] = "axm recorder", ["version"] = "0" },
+                        ["capabilities"] = new JsonObject { ["experimentalApi"] = true },
+                    },
+                },
+                new() { ["method"] = "initialized" },
+                new() { ["method"] = "hooks/list", ["id"] = 2, ["params"] = new JsonObject { ["cwds"] = new JsonArray(launch) } },
+            ];
+            foreach (var request in requests)
+            {
+                process.StandardInput.WriteLine(request.ToJsonString());
+            }
+
+            process.StandardInput.Flush();
+            var deadline = DateTime.UtcNow.AddMinutes(1);
+            while (DateTime.UtcNow < deadline)
+            {
+                var line = process.StandardOutput.ReadLineAsync().WaitAsync(deadline - DateTime.UtcNow).GetAwaiter().GetResult()
+                    ?? throw new GroundTruthException("codex app-server stopped before it answered hooks/list.");
+                if (JsonNode.Parse(line) is JsonObject message && message["id"]?.GetValue<int>() == 2)
+                {
+                    return message["error"] is null
+                        ? line
+                        : throw new GroundTruthException($"codex app-server couldn't list hooks: {message["error"]!.ToJsonString()}");
+                }
+            }
+
+            throw new GroundTruthException("codex app-server didn't answer hooks/list within a minute.");
+        }
+        finally
+        {
+            process.Kill(entireProcessTree: true);
+        }
     }
 
     private static JsonObject RecordClaudeCode(Scenario scenario, string run)
@@ -73,6 +159,22 @@ internal static class Recorder
             throw new GroundTruthException("No Claude Code login in ~/.claude/.credentials.json. Log in to Claude Code first.");
         }
 
+        // Managed skills would reach the listing without a marker, where they'd pass for built-ins.
+        var platform = OperatingSystem.IsWindows() ? System.Runtime.InteropServices.OSPlatform.Windows
+            : OperatingSystem.IsMacOS() ? System.Runtime.InteropServices.OSPlatform.OSX
+            : System.Runtime.InteropServices.OSPlatform.Linux;
+        var managedSkills = Path.Combine(Machine.ClaudeManagedFolder(platform), ".claude", "skills");
+        if (Directory.Exists(managedSkills))
+        {
+            throw new GroundTruthException($"This machine has managed Claude Code skills in {managedSkills}, which would reach every recording. Record on a machine without them.");
+        }
+
+        // Skills enabled on the claude.ai account sync into the fake home seconds after launch.
+        var userSettings = Path.Combine(config, "settings.json");
+        var settingsJson = File.Exists(userSettings) ? JsonNode.Parse(File.ReadAllText(userSettings))!.AsObject() : [];
+        settingsJson["syncClaudeAiSkills"] = false;
+        File.WriteAllText(userSettings, settingsJson.ToJsonString());
+
         var borrowed = Path.Combine(config, ".credentials.json");
         File.Copy(login, borrowed);
         try
@@ -80,25 +182,47 @@ internal static class Recorder
             var log = Path.Combine(run, "instructions-loaded");
             Directory.CreateDirectory(log);
             var settings = Path.Combine(run, "recorder-settings.json");
-            var hook = new JsonObject { ["type"] = "command", ["command"] = HookCommand(log) };
+            var hookCommand = HookCommand(log);
+            var hook = new JsonObject { ["type"] = "command", ["command"] = hookCommand };
             File.WriteAllText(settings, new JsonObject { ["hooks"] = new JsonObject { ["InstructionsLoaded"] = new JsonArray { new JsonObject { ["hooks"] = new JsonArray { hook } } } } }.ToJsonString());
 
             var launch = Launch(scenario, run);
             var target = Path.GetRelativePath(launch, Path.Combine(run, "repo", scenario.Target)).Replace(Path.DirectorySeparatorChar, '/');
+            var prompt = scenario.Action == Scenario.Edit
+                ? $"Read {target} with the Read tool, then use the Edit tool to add a line that says edited at its end, then reply with the single word done."
+                : $"Read {target} with the Read tool, then reply with the single word done.";
+            var debug = Path.Combine(run, "claude-debug.log");
             var output = Run(
                 "claude",
-                ["-p", $"Read {target} with the Read tool, then reply with the single word done.", "--model", "haiku", "--settings", settings, "--permission-mode", "acceptEdits", "--output-format", "json"],
+                ["-p", prompt, "--model", "haiku", "--settings", settings, "--permission-mode", "acceptEdits", "--output-format", "json", "--debug-file", debug],
                 launch,
                 new() { ["CLAUDE_CONFIG_DIR"] = config });
             var session = JsonNode.Parse(output)!["session_id"]!.GetValue<string>();
             var transcript = Directory.EnumerateFiles(Path.Combine(config, "projects"), $"{session}.jsonl", SearchOption.AllDirectories).Single();
             var hookLog = Directory.EnumerateFiles(log).Select(File.ReadAllText);
-            var (atLaunch, onRead) = ClaudeTranscript.Parse(File.ReadLines(transcript), hookLog, run);
+            var lines = File.ReadAllLines(transcript);
+            var (atLaunch, onRead) = ClaudeTranscript.Parse(lines, hookLog, run);
+            var (skillsAtLaunch, skillsOnRead) = ClaudeSkillListing.Parse(lines, scenario.ClaudeSkillNames());
+            var skills = new JsonObject();
+            if (File.Exists(debug) && OverBudget().Match(File.ReadAllText(debug)) is { Success: true } over)
+            {
+                skills["overBudget"] = new JsonObject { ["chars"] = int.Parse(over.Groups[1].Value), ["budget"] = int.Parse(over.Groups[2].Value) };
+            }
+
+            skills["launch"] = Skills(skillsAtLaunch, "builtIn");
+            skills["read"] = Skills(skillsOnRead, "builtIn");
             return new JsonObject
             {
                 ["version"] = Version("claude", last: false),
                 ["launch"] = Entries(atLaunch),
                 ["read"] = Entries(onRead),
+                ["skills"] = skills,
+                ["hooks"] = new JsonArray([.. ClaudeHookRuns.Parse(lines, hookCommand).Select(run => new JsonObject
+                {
+                    ["file"] = run.File,
+                    ["label"] = run.Label,
+                    ["hook"] = run.Hook,
+                })]),
             };
         }
         finally
@@ -171,6 +295,44 @@ internal static class Recorder
 
         return entries;
     }
+
+    // A skill built into the harness has no file, so its entry says so under the harness's own word for it.
+    private static JsonArray Skills(IEnumerable<ListedSkill> skills, string builtIn)
+    {
+        var entries = new JsonArray();
+        foreach (var skill in skills)
+        {
+            var entry = new JsonObject { ["name"] = skill.Name };
+            if (skill.File is { } file)
+            {
+                entry["file"] = file;
+            }
+            else
+            {
+                entry[builtIn] = true;
+            }
+
+            entry["entry"] = skill.Entry;
+            if (skill.Chars is { } chars)
+            {
+                entry["chars"] = chars;
+            }
+
+            entries.Add(entry);
+        }
+
+        return entries;
+    }
+
+    private static JsonObject Undated(JsonObject recording)
+    {
+        var copy = recording.DeepClone().AsObject();
+        copy.Remove("recorded");
+        return copy;
+    }
+
+    [GeneratedRegex(@"Skill listing over budget: \d+ skills, (\d+) chars > (\d+) budget")]
+    private static partial Regex OverBudget();
 
     // A stable key order keeps re-recordings' diffs to what changed.
     private static JsonObject Ordered(JsonObject recording)

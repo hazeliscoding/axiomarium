@@ -1,7 +1,8 @@
 name: Record Codex
 
 # Codex on Windows finds ~/.agents/skills in the real profile folder whatever HOME says, so Codex is
-# recorded here, on Linux, offline and without a login.
+# recorded here, on Linux, offline and without a login. When a recording differs from the committed one,
+# the job fails: download the codex-recordings artifact into scenarios/, look at the diff and commit it.
 on:
   pull_request:
     paths:
@@ -16,115 +17,27 @@ permissions:
 jobs:
   record:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+      # The version the Codex model is confirmed against, which a test holds to CodexModel.ConfirmedWith.
       - name: Install Codex
-        run: npm install -g @openai/codex@0.156.1 && codex --version
-      # The M3 spike: what Codex lists as skills and hooks for a small scenario, dumped as is.
-      - name: Spike
+        run: npm install -g @openai/codex@0.156.1
+      - name: Record Codex
+        run: dotnet run --project tools/Axiomarium.GroundTruth -- --harness codex
+      - name: Check the recordings are committed
         run: |
-          python3 - <<'EOF'
-          import json, os, pathlib, subprocess
-
-          run = pathlib.Path("/tmp/axm-ground-truth/spike")
-          home = run / "home"
-          codex_home = home / ".codex"
-          repo = run / "repo"
-          out = pathlib.Path("spike-out")
-          out.mkdir()
-
-          def w(path, text):
-              path.parent.mkdir(parents=True, exist_ok=True)
-              path.write_text(text)
-
-          def skill(folder, fields, marker):
-              front = "---\n" + "\n".join(fields) + "\n---\n" if fields else ""
-              w(folder / "SKILL.md", front + f"{marker}-BODY first body line\n")
-
-          A = repo / ".agents" / "skills"
-          skill(A / "repo-skill", ["name: repo-skill", "description: C1 repo skill"], "C1")
-          skill(repo / "sub" / ".agents" / "skills" / "sub-skill", ["name: sub-skill", "description: C2 skill in the launch directory"], "C2")
-          skill(repo / ".codex" / "skills" / "codex-dir-skill", ["name: codex-dir-skill", "description: C3 project .codex skill"], "C3")
-          skill(home / ".agents" / "skills" / "user-skill", ["name: user-skill", "description: C4 user skill"], "C4")
-          skill(codex_home / "skills" / "deprecated-skill", ["name: deprecated-skill", "description: C5 CODEX_HOME skill"], "C5")
-          skill(A / "dup", ["name: dup", "description: C6 REPO dup"], "C6R")
-          skill(home / ".agents" / "skills" / "dup", ["name: dup", "description: C6 USER dup"], "C6U")
-          skill(A / "long-desc", ["name: long-desc", "description: C7 " + "long words here " * 100], "C7")
-          skill(A / "implicit-off", ["name: implicit-off", "description: C8 implicit off"], "C8")
-          w(A / "implicit-off" / "agents" / "openai.yaml", "policy:\n  allow_implicit_invocation: false\n")
-          skill(A / "products-other", ["name: products-other", "description: C9 other product"], "C9")
-          w(A / "products-other" / "agents" / "openai.yaml", "policy:\n  products: [chatgpt]\n")
-          skill(A / "no-desc", ["name: no-desc"], "C10")
-          skill(A / "folder-x", ["name: name-x", "description: C11 name differs from folder"], "C11")
-          skill(A / "no-name", ["description: C12 no name field"], "C12")
-
-          hook = lambda tag: {"type": "command", "command": f"echo {tag}"}
-          w(codex_home / "hooks.json", json.dumps({"hooks": {
-              "SessionStart": [{"matcher": "startup", "hooks": [hook("X-USER-SESSION")]}],
-              "PreToolUse": [{"matcher": "apply_patch", "hooks": [hook("X-PRE-PATCH")]}, {"matcher": "Edit|Write", "hooks": [hook("X-PRE-EDIT-ALIAS")]}],
-              "PostToolUse": [{"matcher": "^apply.*", "hooks": [hook("X-POST-REGEX")]}, {"hooks": [{"type": "prompt", "prompt": "X-PROMPT-HANDLER"}]}]}}))
-          w(repo / ".codex" / "hooks.json", json.dumps({"hooks": {"SessionStart": [{"hooks": [hook("X-PROJECT-SESSION")]}]}}))
-          w(repo / "sub" / "target.txt", "TARGET\n")
-
-          # A second repo whose root is a Claude Code plugin, to see whether its skills get a namespace.
-          plugin_repo = run / "plugin-repo"
-          w(plugin_repo / ".claude-plugin" / "plugin.json", json.dumps({"name": "plugrepo"}))
-          skill(plugin_repo / ".agents" / "skills" / "inside", ["name: inside", "description: C13 skill in a plugin repo"], "C13")
-
-          for folder in (repo, plugin_repo):
-              subprocess.run(["git", "init", "-q"], cwd=folder, check=True)
-
-          env = {**os.environ, "HOME": str(home), "CODEX_HOME": str(codex_home)}
-
-          def prompt_input(name, cwd, *config):
-              args = ["codex", "debug", "prompt-input", "Read target.txt."]
-              for c in config:
-                  args += ["-c", c]
-              result = subprocess.run(args, cwd=cwd, env=env, capture_output=True, text=True)
-              (out / f"prompt-input-{name}.json").write_text(result.stdout)
-              print(f"===== prompt-input {name}: exit {result.returncode}\n{result.stderr[-2000:]}")
-              for item in json.loads(result.stdout or "[]"):
-                  for part in item.get("content") or []:
-                      text = part.get("text", "")
-                      if "skills_instructions" in text:
-                          print(text)
-
-          def app_server(name, cwd):
-              requests = [
-                  {"method": "initialize", "id": 1, "params": {"clientInfo": {"name": "axm", "title": "axm", "version": "0"}, "capabilities": {"experimentalApi": True}}},
-                  {"method": "initialized"},
-                  {"method": "hooks/list", "id": 2, "params": {"cwds": [str(cwd)]}},
-                  {"method": "skills/list", "id": 3, "params": {"cwds": [str(cwd)]}},
-              ]
-              process = subprocess.Popen(["codex", "app-server"], cwd=cwd, env=env, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-              for request in requests:
-                  process.stdin.write(json.dumps(request) + "\n")
-                  process.stdin.flush()
-              answered = {}
-              while len(answered) < 3:
-                  line = process.stdout.readline()
-                  if not line:
-                      break
-                  message = json.loads(line)
-                  if message.get("id") in (1, 2, 3):
-                      answered[message["id"]] = message
-              process.kill()
-              (out / f"app-server-{name}.json").write_text(json.dumps(answered, indent=2))
-              print(f"===== app-server {name}\n" + json.dumps({k: v for k, v in answered.items() if k != 1}, indent=2)[:12000])
-              if len(answered) < 3:
-                  print(process.stderr.read()[-3000:])
-
-          prompt_input("untrusted", repo / "sub")
-          prompt_input("untrusted-no-bundled", repo / "sub", "skills.bundled.enabled=false")
-          prompt_input("plugin-repo", plugin_repo, "skills.bundled.enabled=false")
-          app_server("untrusted", repo / "sub")
-          w(codex_home / "config.toml", f'[projects."{repo}"]\ntrust_level = "trusted"\n')
-          prompt_input("trusted", repo / "sub", "skills.bundled.enabled=false")
-          app_server("trusted", repo / "sub")
-          EOF
+          if [ -n "$(git status --porcelain -- scenarios)" ]; then
+            git status --short -- scenarios
+            git diff -- scenarios
+            echo "::error::Codex recorded something the committed expected.json files don't have. Download the codex-recordings artifact into scenarios/, check the diff and commit it."
+            exit 1
+          fi
       - uses: actions/upload-artifact@v7
         if: always()
         with:
-          name: codex-spike
-          path: spike-out/
+          name: codex-recordings
+          path: scenarios/*/expected.json
