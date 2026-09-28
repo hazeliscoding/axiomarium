@@ -1,0 +1,4 @@
+description: "Skills and hooks for both harnesses: Claude Code's project, personal, nested and path skills with its settings hooks, and Codex's repo and user skills with its hooks.json."
+launch: .
+target: src/app.ts
+action: edit
