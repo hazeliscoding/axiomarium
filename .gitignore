@@ -25,6 +25,7 @@ Thumbs.db
 !AGENTS.md
 !CLAUDE.md
 
-# Scenarios reproduce what harnesses load, so they keep the files a global gitignore usually drops
+# Scenarios and finding fixtures reproduce what harnesses load, so they keep the files a global gitignore usually drops
 !scenarios/**/.claude/
 !scenarios/**/CLAUDE.local.md
+!findings/**/.claude/

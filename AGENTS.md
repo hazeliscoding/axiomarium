@@ -50,7 +50,8 @@ The tool is only worth trusting if these hold. Never break them, not even in deb
 
 - `Axiomarium.Core` holds discovery, schemas, the registry, the harness models and the findings. `Axiomarium.Cli` only parses arguments and renders. Both output formats render the same result.
 - Each harness is one model class. Differences between harnesses live in the models, never in the renderer.
-- One folder per finding: `findings/<id>/finding.md`, `fixtures/fires/` and `fixtures/clean/`. Each fixture is a tiny repo. Both fixtures are required. `fires/` is the positive control, so a finding without one isn't done.
+- One folder per finding: `findings/<id>/finding.md`, `fixtures/fires/` and `fixtures/clean/`. Each fixture is a tiny repo in `repo/`, with a fake home in `home/` when it needs one. Both fixtures are required. `fires/` is the positive control, so a finding without one isn't done. `fires/` produces only its own finding, and `clean/` produces none.
+- A finding reads what the harness models load and drop, so it never disagrees with `explain`. Its message and fix are written in `InstructionFindings`, and its `finding.md` shows the same output.
 - `finding.md` has **What happens**, **Why it matters**, **Fix** and **Source** sections. The source links to the harness doc section the finding relies on.
 - Finding ids are kebab-case and stable. Renaming one is a breaking change that needs a decision in `ROADMAP.md`.
 - Severity: `error` when an asset or manifest is invalid. `warning` when an instruction doesn't reach the agent where it was meant to, or reaches it where it wasn't. `info` for waste, such as a duplicated block. Don't inflate severity.
