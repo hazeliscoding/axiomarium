@@ -264,6 +264,22 @@ public class ClaudeCodeModelTests
         Assert.Equal([("repo/.claude/rules/unclosed.md", "claude-code/path-rule-no-match", null)], Dropped(vault, resolution));
     }
 
+    // Recorded in path-rules: a pattern without a slash matches at any depth, one with a slash inside is
+    // anchored, and a trailing /** matches a folder at any depth, as a trailing slash does.
+    [Fact]
+    public void A_rules_paths_match_the_way_a_gitignore_line_does()
+    {
+        using var vault = new TempVault()
+            .Write("repo/.claude/rules/any-depth.md", "---\npaths: orders.cs\n---\nany depth\n")
+            .Write("repo/.claude/rules/folder.md", "---\npaths: \"api/**\"\n---\nfolder\n")
+            .Write("repo/.claude/rules/anchored.md", "---\npaths: api/orders.cs\n---\nanchored\n");
+
+        var resolution = Resolve(vault);
+
+        Assert.Equal(["repo/.claude/rules/any-depth.md", "repo/.claude/rules/folder.md"], resolution.Loaded.Select(item => TestMachine.Relative(vault.Root, item.Path)));
+        Assert.Equal([("repo/.claude/rules/anchored.md", "claude-code/path-rule-no-match", null)], Dropped(vault, resolution));
+    }
+
     // Recorded in bad-frontmatter: Claude Code's YAML reader accepts tab indentation.
     [Fact]
     public void Tab_indented_frontmatter_still_parses()
