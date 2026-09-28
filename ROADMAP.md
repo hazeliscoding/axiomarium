@@ -78,6 +78,15 @@ Axiomarium is my lab for building, testing and debugging AI coding environments 
   - Codex applies one 32 KiB budget across all project files. The file that crosses it is cut mid-file, later files are dropped, and the global file doesn't count. The docs contradict each other on this, so the code decides.
   - An empty `AGENTS.override.md` hides the `AGENTS.md` next to it, because Codex picks a file by existence before it checks that it isn't empty. Codex also skips every project file in an untrusted project.
   - In Claude Code, a project rule without `paths` loads before `CLAUDE.local.md`, which the docs don't state. For a project under the home folder, the walk from the root reaches the home folder's `.claude/CLAUDE.md`, which is also the user memory; whether Claude Code loads it once or twice there can't be recorded with a fake home, so that case is hand-checked.
+- **What the Claude Code recordings settled (2026-09-28, 2.1.283).** Twelve scenarios in `scenarios/` pin these, and where the docs disagree, the model follows the harness:
+  - **The docs are wrong:** a rule whose frontmatter doesn't parse never loads. The docs say it loads for every file. So `rule-frontmatter-invalid` fires on a rule that never loads.
+  - **Order at launch:** managed, user memory, user rules, then for each directory from the root down: `CLAUDE.md`, `.claude/CLAUDE.md`, its rules without `paths`, `CLAUDE.local.md`, then its AGENTS files. Rule folders above the launch directory load too.
+  - **Order on read:** nested AGENTS.md first (the built-in plugin's PostToolUse context), then user path rules, then each directory below the launch directory (its CLAUDE files, its rules, `CLAUDE.local.md`), then the path rules of the launch directory and above.
+  - **Path rules** match from the folder that holds their `.claude/`, or from the launch directory for user rules. Claude Code's YAML reader accepts tab indentation.
+  - **Imports** end at the next space, so trailing punctuation is part of the path and the import silently loads nothing. A project file's import outside the launch directory never loads headless, including a root `CLAUDE.md`'s imports when Claude Code starts in a subdirectory.
+  - **AGENTS.md by default:** one CLAUDE file in the launch directory or above turns every AGENTS.md off, nested ones too.
+  - **Block HTML comments** go with the blank lines after them, so an import inside one never loads, and `claudeMdExcludes` reaches imports.
+  - **Bytes:** launch files are trimmed; files loaded on read are not; frontmatter is removed.
 - **One folder per finding,** as in pgcheckup: `findings/<id>/finding.md` plus `fixtures/fires/` and `fixtures/clean/`, each a tiny repo with a fake home. A test checks every finding folder: both fixtures exist, `finding.md` has its four sections, `fires` produces the finding and `clean` doesn't.
 - **`axm doctor` works in any repo.** It always checks the repo's instruction files for both harnesses, launched from the repo root, and runs the vault checks when a vault exists. Warnings don't fail it. `validate` stays vault-only, for CI.
 - **People who don't read code get the warning without asking.** A Claude Code SessionStart hook, `axm hook session-doctor`, runs the doctor's checks and starts the session with a short notice to the user and the model when something is wrong, and prints nothing otherwise. It aims for 200 ms, measured locally, and CI holds the native binary under 1 s.
@@ -169,11 +178,11 @@ What each harness actually reads for a file, and what it silently drops.
   - [x] the chain from the project root (`project_root_markers`, `.git` by default) down to the launch directory, one file per directory (`AGENTS.override.md`, `AGENTS.md`, then `project_doc_fallback_filenames`), including the empty override;
   - [x] the 32 KiB `project_doc_max_bytes` budget: the crossing file cut, later files dropped, the global file exempt;
   - [x] untrusted projects, and files below the launch directory reported as "not loaded by the harness".
-- [ ] Claude Code model:
-  - [ ] the launch-time chain: managed policy, `~/.claude/CLAUDE.md` and `~/.claude/rules/`, then each directory from the filesystem root down to the launch directory (`CLAUDE.md`, `.claude/CLAUDE.md`, then `CLAUDE.local.md`), then `.claude/rules/**/*.md` without `paths`;
-  - [ ] `@path` imports: relative, absolute and `~` paths, at most 4 hops, skipped inside code spans and fenced blocks, cycles detected, and external imports marked as needing approval;
-  - [ ] on-demand files for the target: subdirectory CLAUDE files, and rules whose `paths` match, with the glob matcher extended to brackets, invalid patterns and the brace-expansion budget, and invalid frontmatter loading the rule for every file;
-  - [ ] AGENTS.md under each Project instructions mode, `claudeMdExcludes`, the 4 MiB file limit, and block-level HTML comments stripped before bytes are counted.
+- [x] Claude Code model:
+  - [x] the launch-time chain: managed policy, `~/.claude/CLAUDE.md` and `~/.claude/rules/`, then each directory from the filesystem root down to the launch directory (`CLAUDE.md`, `.claude/CLAUDE.md`, then `CLAUDE.local.md`), then `.claude/rules/**/*.md` without `paths`;
+  - [x] `@path` imports: relative, absolute and `~` paths, at most 4 hops, skipped inside code spans and fenced blocks, cycles detected, and external imports marked as needing approval;
+  - [x] on-demand files for the target: subdirectory CLAUDE files, and rules whose `paths` match, with the glob matcher extended to brackets, invalid patterns and the brace-expansion budget, and invalid frontmatter loading the rule for every file;
+  - [x] AGENTS.md under each Project instructions mode, `claudeMdExcludes`, the 4 MiB file limit, and block-level HTML comments stripped before bytes are counted.
 - [ ] `axm explain <path>`: loaded and dropped files with their rules, `--harness`, `--cwd`, `--diff` and `--json`.
 - [ ] Findings, each with `finding.md` and fires and clean fixtures, shown by `explain` and `doctor`:
 
@@ -182,7 +191,7 @@ What each harness actually reads for a file, and what it silently drops.
 | `dead-import` | warning | An `@path` import points to a file that doesn't exist |
 | `import-too-deep` | warning | An import chain goes past 4 hops, so the rest never loads |
 | `agents-md-hidden` | warning | Claude Code skips an AGENTS.md because a CLAUDE file exists and doesn't import it |
-| `rule-frontmatter-invalid` | warning | A rule's YAML doesn't parse, so the rule loads for every file |
+| `rule-frontmatter-invalid` | warning | A rule's YAML doesn't parse, so the rule never loads (the docs say it loads for every file) |
 | `rule-matches-nothing` | warning | A path-scoped rule matches no file in the repo, or one of its patterns is invalid |
 | `codex-byte-cap` | warning | The Codex chain reaches `project_doc_max_bytes`, so one file is cut and later files are dropped |
 | `codex-empty-override` | warning | An empty `AGENTS.override.md` hides the `AGENTS.md` next to it |
