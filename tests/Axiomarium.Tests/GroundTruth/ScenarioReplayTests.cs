@@ -107,7 +107,28 @@ public class ScenarioReplayTests
                     overBudget is null ? skill.Chars : 0)));
         }
 
-        Assert.Equal(overBudget?["chars"]?.GetValue<int>(), resolution.Listing!.OverBudget ? resolution.Listing.Chars : null);
+        Assert.Equal(overBudget?["chars"]?.GetValue<int>(), resolution.Listing!.OverBudget ? resolution.Listing.Size : null);
+    }
+
+    // Codex's bundled skills come with the harness, not the scenario, so the recording's are left out.
+    [Theory]
+    [MemberData(nameof(Scenarios))]
+    public void The_codex_skills_match_the_recording(string name)
+    {
+        using var run = Copy(name);
+        var scenario = Axiomarium.GroundTruth.Scenario.Load(Path.Combine(ScenariosFolder, name));
+        var recording = JsonNode.Parse(File.ReadAllText(Path.Combine(ScenariosFolder, name, "expected.json")))!["codex"]!["skills"]!.AsArray();
+
+        var resolution = CodexModel.Resolve(
+            Path.Combine(run.Root, "repo", scenario.Launch),
+            Path.Combine(run.Root, "repo", scenario.Target),
+            TestMachine.For(run.Root));
+
+        Assert.Equal(
+            recording
+                .Where(entry => entry!["bundled"] is null)
+                .Select(entry => (entry!["name"]!.GetValue<string>(), entry["file"]!.GetValue<string>(), entry["entry"]!.GetValue<string>())),
+            resolution.Skills.Select(skill => (skill.Name, TestMachine.Relative(run.Root, skill.Path!), skill.Cut ? "cut" : "whole")));
     }
 
     // A copy with the .git marker the recorder's `git init` gives each run, which a scenario can't hold.

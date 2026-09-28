@@ -110,7 +110,8 @@ public static class CodexModel
         }
 
         DropBelowLaunch(launch, Path.GetFullPath(targetFile), names, dropped);
-        return new Resolution(loaded, dropped);
+        var (skills, notListed, listing) = CodexSkills.Resolve(launch, machine, config);
+        return new Resolution(loaded, dropped) { Skills = skills, NotListed = notListed, Listing = listing };
     }
 
     // The global file is trimmed, and the first one that isn't empty wins.
@@ -137,7 +138,7 @@ public static class CodexModel
     }
 
     // The nearest directory at or above the launch directory that holds a root marker, such as .git.
-    private static string? ProjectRoot(string launch, IReadOnlyList<string> markers, string fileSystemRoot)
+    internal static string? ProjectRoot(string launch, IReadOnlyList<string> markers, string fileSystemRoot)
     {
         foreach (var directory in Paths.Upward(launch, fileSystemRoot))
         {
@@ -150,7 +151,7 @@ public static class CodexModel
         return null;
     }
 
-    private static List<string> Chain(string root, string launch)
+    internal static List<string> Chain(string root, string launch)
     {
         var chain = new List<string>();
         for (var directory = new DirectoryInfo(launch); directory is not null; directory = directory.Parent)

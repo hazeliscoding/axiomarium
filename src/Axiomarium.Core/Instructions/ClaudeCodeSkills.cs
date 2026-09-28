@@ -291,7 +291,7 @@ internal static class ClaudeCodeSkills
         {
             var chars = _atLaunch.Sum(skill => skill.Chars) + Math.Max(0, _atLaunch.Count - 1);
             var budget = (int)Math.Round(AssumedWindow * 4 * settings.ListingBudgetFraction);
-            return ([.. _atLaunch, .. _nested, .. _byPaths], _notListed, new SkillListing(chars, budget, Assumption, ClaudeCodeSkillRules.ListingBudget));
+            return ([.. _atLaunch, .. _nested, .. _byPaths], _notListed, new SkillListing(chars, budget, "characters", Assumption, ClaudeCodeSkillRules.ListingBudget));
         }
 
         // An entry is "- name: text", or "- name" alone. Text past the cap ends in an ellipsis at the cap.

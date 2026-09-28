@@ -2,7 +2,7 @@ using Axiomarium.Core.Instructions;
 
 namespace Axiomarium.Tests;
 
-/// <summary>A machine that lives entirely in a test folder: home/, home/.codex, home/.claude and managed/.</summary>
+/// <summary>A machine that lives entirely in a test folder: home/, home/.codex, home/.claude, managed/ and codex-admin/.</summary>
 internal static class TestMachine
 {
     public static Machine For(string root) => new(
@@ -10,7 +10,8 @@ internal static class TestMachine
         CodexHome: Path.Combine(root, "home", ".codex"),
         ClaudeConfig: Path.Combine(root, "home", ".claude"),
         ClaudeManaged: Path.Combine(root, "managed"),
-        FileSystemRoot: root);
+        FileSystemRoot: root,
+        CodexAdmin: Path.Combine(root, "codex-admin"));
 
     // Only the folder goes through GetRelativePath, which on Windows would strip a trailing dot from the name.
     public static string Relative(string root, string path)

@@ -186,7 +186,7 @@ public class ClaudeCodeSkillsTests
         var resolution = Resolve(vault);
 
         var atLaunch = resolution.Skills.Where(skill => skill.Timing == LoadTiming.AtLaunch).ToList();
-        Assert.Equal(atLaunch.Sum(skill => skill.Chars) + atLaunch.Count - 1, resolution.Listing!.Chars);
+        Assert.Equal(atLaunch.Sum(skill => skill.Chars) + atLaunch.Count - 1, resolution.Listing!.Size);
         Assert.Equal(8000, resolution.Listing.Budget);
         Assert.True(resolution.Listing.OverBudget);
     }

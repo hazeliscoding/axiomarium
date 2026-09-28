@@ -22,12 +22,13 @@ public sealed record AvailableSkill(
 public sealed record UnlistedSkill(string Name, string? Path, HarnessRule Rule);
 
 /// <summary>The size of a harness's skill listing at launch, against the budget past which it cuts descriptions.</summary>
-/// <param name="Chars">The characters the listing takes, built-in skills included.</param>
-/// <param name="Budget">The characters the harness allows before it cuts or drops descriptions.</param>
+/// <param name="Size">What the listing takes, built-in skills included, in <paramref name="Unit"/>.</param>
+/// <param name="Budget">What the harness allows before it cuts or drops descriptions, in <paramref name="Unit"/>.</param>
+/// <param name="Unit">What the harness counts: <c>characters</c>, or <c>tokens</c> estimated at 4 bytes each.</param>
 /// <param name="Assumption">What the budget assumes that <c>axm</c> can't read, such as the model's context window.</param>
 /// <param name="Rule">The rule that sets the budget.</param>
-public sealed record SkillListing(int Chars, int Budget, string Assumption, HarnessRule Rule)
+public sealed record SkillListing(int Size, int Budget, string Unit, string Assumption, HarnessRule Rule)
 {
     /// <summary>Whether the listing is over its budget, so the harness cuts or drops some descriptions.</summary>
-    public bool OverBudget => Chars > Budget;
+    public bool OverBudget => Size > Budget;
 }
