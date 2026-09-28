@@ -122,15 +122,18 @@ public class CodexSkillsTests
             NotListed(resolution));
     }
 
-    // Recorded in the spike: a plugin manifest at or above a skill names it plugin:skill.
+    // Recorded in the spike and in codex-skills: a plugin manifest at or above a skills root names its skills
+    // plugin:skill, and one inside the root doesn't count.
     [Fact]
-    public void A_skill_under_a_plugin_manifest_is_named_after_the_plugin()
+    public void A_skill_under_a_plugin_manifest_above_its_root_is_named_after_the_plugin()
     {
         using var vault = Repo()
             .Write("repo/.claude-plugin/plugin.json", """{ "name": "plugrepo" }""")
-            .Write("repo/.agents/skills/inside/SKILL.md", Skill("Inside a plugin repo."));
+            .Write("repo/.agents/skills/inside/SKILL.md", Skill("Inside a plugin repo."))
+            .Write("home/.agents/skills/tools/.codex-plugin/plugin.json", """{ "name": "toolkit" }""")
+            .Write("home/.agents/skills/tools/lint/SKILL.md", Skill("Under a manifest inside the root."));
 
-        Assert.Equal(["plugrepo:inside"], Resolve(vault).Skills.Select(skill => skill.Name));
+        Assert.Equal(["plugrepo:inside", "lint"], Resolve(vault).Skills.Select(skill => skill.Name));
     }
 
     [Fact]

@@ -76,7 +76,7 @@ internal static class CodexSkills
                     continue;
                 }
 
-                if (Namespace(directory, machine.FileSystemRoot, namespaces) is { } plugin)
+                if (Namespace(folder, machine.FileSystemRoot, namespaces) is { } plugin)
                 {
                     name = $"{plugin}:{name}";
                 }
@@ -268,7 +268,8 @@ internal static class CodexSkills
         return (implicitOff, products.Count > 0 && !products.Contains("codex"));
     }
 
-    // The nearest plugin manifest at or above the skill's folder names its namespace.
+    // The nearest plugin manifest at or above the skills root names its skills. The recordings show that one
+    // inside the root doesn't count: every manifest sits in a hidden folder, which the scan skips.
     private static string? Namespace(string directory, string fileSystemRoot, Dictionary<string, string?> cache)
     {
         foreach (var folder in Paths.Upward(directory, fileSystemRoot))
