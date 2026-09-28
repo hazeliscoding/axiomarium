@@ -30,22 +30,21 @@ for (var i = 0; i < args.Length; i++)
 }
 
 var folder = FindScenarios();
-var scenarios = (names.Count > 0 ? names.Select(name => Path.Combine(folder, name)) : Directory.GetDirectories(folder).Order(StringComparer.Ordinal))
-    .Select(Scenario.Load)
-    .ToList();
+var directories = names.Count > 0 ? names.Select(name => Path.Combine(folder, name)) : Directory.GetDirectories(folder).Order(StringComparer.Ordinal);
 
 var failed = 0;
-foreach (var scenario in scenarios)
+foreach (var directory in directories)
 {
     try
     {
+        var scenario = Scenario.Load(directory);
         Recorder.Record(scenario, harnesses);
         Console.WriteLine($"RECORDED  {scenario.Name}");
     }
     catch (GroundTruthException problem)
     {
         failed++;
-        Console.Error.WriteLine($"FAILED    {scenario.Name}: {problem.Message}");
+        Console.Error.WriteLine($"FAILED    {Path.GetFileName(directory)}: {problem.Message}");
     }
 }
 
