@@ -5,6 +5,8 @@
   </picture>
 </h1>
 
+<sub><i>ak·see·uh·<b>MAIR</b>·ee·um</i>: like aquarium, but for axioms</sub>
+
 **Build, test, and debug your AI coding environment like software.**
 
 Axiomarium is my lab for engineering reliable AI coding environments. It holds the agents, skills, hooks, policies, workflows and evals I use, and `axm`, a local CLI that inspects, validates, tests and debugs them. It treats agent configuration as real software infrastructure: kept in git, inspectable, testable, portable, and able to learn from its failures. It's built for my own setup first, and it's public in case it's useful to you too.
