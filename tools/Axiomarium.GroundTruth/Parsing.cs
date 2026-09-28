@@ -197,7 +197,12 @@ internal static class ClaudeTranscript
             throw new GroundTruthException($"Claude Code loaded {file}, but it doesn't carry its marker line \"{Markers.For(file)}\".");
         }
 
-        var reason = reasons.GetValueOrDefault(full) ?? (Path.GetFileName(full) == "AGENTS.md" ? "agents-md" : null);
+        // AGENTS.md never fires InstructionsLoaded. Every other file does, so a missing reason means the hook
+        // lost an event, and the recording can't be trusted.
+        var reason = reasons.GetValueOrDefault(full)
+            ?? (Path.GetFileName(full) == "AGENTS.md"
+                ? "agents-md"
+                : throw new GroundTruthException($"The InstructionsLoaded hook didn't report {file}. Record the scenario again."));
         return new LoadedFile(file, Encoding.UTF8.GetByteCount(content), scope, reason);
     }
 }

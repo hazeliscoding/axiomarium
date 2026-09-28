@@ -99,6 +99,17 @@ public class ClaudeTranscriptTests
         Assert.DoesNotContain("private text", problem.Message);
     }
 
+    // AGENTS.md never fires the hook, but a CLAUDE file or rule always should.
+    [Fact]
+    public void A_claude_file_the_hook_missed_is_an_error()
+    {
+        var hookLog = HookLog.Where(line => !line.Contains("extra.md", StringComparison.Ordinal)).ToArray();
+
+        var problem = Assert.Throws<GroundTruthException>(() => ClaudeTranscript.Parse(Transcript(), hookLog, Run));
+
+        Assert.Contains("repo/docs/extra.md", problem.Message);
+    }
+
     [Fact]
     public void A_file_without_its_marker_is_an_error()
     {
