@@ -1,0 +1,250 @@
+name: Release
+
+# A v* tag publishes: binaries on GitHub Releases and the Axiomarium tool on NuGet.
+# Anything else is a dry run that builds, packs and installs everything and publishes nothing: a pull
+# request that touches the release setup, or a run started by hand.
+on:
+  push:
+    tags: ['v*']
+  pull_request:
+    paths:
+      - .github/workflows/release.yml
+      - Directory.Build.props
+      - src/Directory.Build.props
+      - src/Axiomarium.Cli/Axiomarium.Cli.csproj
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      publish: ${{ steps.version.outputs.publish }}
+    steps:
+      - uses: actions/checkout@v7
+      - name: Check the tag, the version and the changelog
+        id: version
+        run: |
+          version=$(sed -n 's:.*<Version>\(.*\)</Version>.*:\1:p' Directory.Build.props)
+          publish=false
+          if [ "$GITHUB_REF_TYPE" = tag ]; then
+            if [ "$GITHUB_REF_NAME" != "v$version" ]; then
+              echo "::error::Tag $GITHUB_REF_NAME doesn't match <Version>$version</Version> in Directory.Build.props."
+              exit 1
+            fi
+            publish=true
+          fi
+          if ! grep -q "^## \[$version\]" CHANGELOG.md; then
+            if [ "$publish" = true ]; then
+              echo "::error::CHANGELOG.md has no '## [$version]' section."
+              exit 1
+            fi
+            echo "::warning::CHANGELOG.md has no '## [$version]' section yet, so a release of $version would fail."
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "publish=$publish" >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: check
+    name: build ${{ matrix.rid }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      matrix:
+        include:
+          - { os: ubuntu-latest, rid: linux-x64, exe: axm }
+          - { os: windows-latest, rid: win-x64, exe: axm.exe }
+          - { os: macos-latest, rid: osx-arm64, exe: axm }
+    env:
+      VERSION: ${{ needs.check.outputs.version }}
+      RID: ${{ matrix.rid }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+      - name: Install the native toolchain
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y clang zlib1g-dev
+      - name: Test
+        run: dotnet test --project tests/Axiomarium.Tests
+      # NativeAOT only builds for the OS it runs on, so each platform builds its own binary and package.
+      - name: Publish the binary
+        run: dotnet publish src/Axiomarium.Cli -c Release -r ${{ matrix.rid }} -o publish
+      - name: Test the binary
+        run: dotnet test --project tests/Axiomarium.Tests -- --filter-class Axiomarium.Tests.Cli.NativeBinaryTests
+        env:
+          AXM_BINARY: ${{ github.workspace }}/publish/${{ matrix.exe }}
+      - name: Archive the binary
+        shell: bash
+        run: |
+          name="axm-$VERSION-$RID"
+          mkdir -p "stage/$name" dist
+          cp "publish/${{ matrix.exe }}" LICENSE README.md "stage/$name/"
+          if [ "$RUNNER_OS" = Windows ]; then
+            pwsh -NoProfile -Command "Compress-Archive -Path 'stage/$name' -DestinationPath 'dist/$name.zip'"
+          else
+            tar -czf "dist/$name.tar.gz" -C stage "$name"
+          fi
+      - name: Pack the tool for this platform
+        run: dotnet pack src/Axiomarium.Cli -c Release -r ${{ matrix.rid }} -o nupkg
+      - name: Pack the pointer package
+        if: matrix.rid == 'linux-x64'
+        run: dotnet pack src/Axiomarium.Cli -c Release -o nupkg
+      - uses: actions/upload-artifact@v7
+        with:
+          name: archive-${{ matrix.rid }}
+          path: dist/*
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v7
+        with:
+          name: nupkg-${{ matrix.rid }}
+          path: nupkg/*.nupkg
+          if-no-files-found: error
+
+  # Installs the tool from the packages just built, the way users will, before anything is published.
+  install-packages:
+    needs: [check, build]
+    name: install on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    env:
+      VERSION: ${{ needs.check.outputs.version }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: nupkg-*
+          path: nupkg
+          merge-multiple: true
+      - name: Install the tool
+        shell: bash
+        run: dotnet tool install -g Axiomarium --version "$VERSION" --add-source nupkg
+      - name: Run it from bash
+        shell: bash
+        run: |
+          axm --version
+          axm validate
+      - name: Run it from PowerShell
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          axm --version
+          axm validate
+
+  github-release:
+    needs: [check, build, install-packages]
+    if: needs.check.outputs.publish == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      VERSION: ${{ needs.check.outputs.version }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: archive-*
+          path: dist
+          merge-multiple: true
+      - name: Write the checksums
+        run: cd dist && sha256sum * > SHA256SUMS && cat SHA256SUMS
+      - name: Take the release notes from the changelog
+        run: awk -v heading="## [$VERSION]" 'index($0, heading) == 1 { found = 1; next } /^## \[/ { found = 0 } found' CHANGELOG.md > notes.md
+      - name: Create the release
+        run: gh release create "v$VERSION" dist/* --title "v$VERSION" --notes-file notes.md --verify-tag
+
+  nuget:
+    needs: [check, github-release]
+    if: needs.check.outputs.publish == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      VERSION: ${{ needs.check.outputs.version }}
+    steps:
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: nupkg-*
+          path: nupkg
+          merge-multiple: true
+      # Trusted Publishing: the job's OIDC token buys a NuGet key that lasts an hour, so no key is stored.
+      - uses: NuGet/login@v1
+        id: login
+        with:
+          user: hazeliscoding
+      # The pointer package goes last, because it only installs once the platform packages exist.
+      - name: Push the packages
+        env:
+          NUGET_KEY: ${{ steps.login.outputs.NUGET_API_KEY }}
+        run: |
+          push() { dotnet nuget push "$1" --api-key "$NUGET_KEY" --source https://api.nuget.org/v3/index.json --skip-duplicate; }
+          for rid in linux-x64 win-x64 osx-arm64; do push "nupkg/Axiomarium.$rid.$VERSION.nupkg"; done
+          push "nupkg/Axiomarium.$VERSION.nupkg"
+
+  # Installs what was published, on fresh runners, from GitHub Releases and from NuGet.
+  verify-release:
+    needs: [check, github-release, nuget]
+    if: needs.check.outputs.publish == 'true'
+    name: verify on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - { os: ubuntu-latest, rid: linux-x64, archive: tar.gz }
+          - { os: windows-latest, rid: win-x64, archive: zip }
+          - { os: macos-latest, rid: osx-arm64, archive: tar.gz }
+    env:
+      VERSION: ${{ needs.check.outputs.version }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v7
+      - name: Download the release and check its checksum
+        shell: bash
+        run: |
+          name="axm-$VERSION-${{ matrix.rid }}"
+          gh release download "v$VERSION" --pattern "$name.${{ matrix.archive }}" --pattern SHA256SUMS --dir release
+          cd release
+          if command -v sha256sum > /dev/null; then sha256sum --check --ignore-missing SHA256SUMS; else shasum -a 256 --check --ignore-missing SHA256SUMS; fi
+          if [ "${{ matrix.archive }}" = zip ]; then unzip -q "$name.zip"; else tar -xzf "$name.tar.gz"; fi
+          echo "$PWD/$name" >> "$GITHUB_PATH"
+      - name: Run the released binary
+        shell: bash
+        run: |
+          axm --version
+          axm validate
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+      # nuget.org takes a few minutes to index a new version, so keep trying for up to ten minutes.
+      - name: Install the tool from NuGet
+        shell: bash
+        run: |
+          for attempt in $(seq 1 20); do
+            dotnet tool install -g Axiomarium --version "$VERSION" && exit 0
+            echo "Not installable yet, attempt $attempt of 20."
+            sleep 30
+          done
+          exit 1
+      - name: Run the NuGet tool
+        shell: bash
+        run: |
+          "$HOME/.dotnet/tools/axm" --version
+          "$HOME/.dotnet/tools/axm" validate
