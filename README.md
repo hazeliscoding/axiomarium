@@ -87,6 +87,8 @@ In a repo without a vault, `axm doctor` checks only the instruction files. Their
 
 `axm explain` shows what each harness loads for a file, and what it silently drops:
 
+![A terminal runs axm explain on a demo shop. Claude Code loads CLAUDE.md and a path rule but skips both AGENTS.md files and a missing import, Codex loads AGENTS.md, and with --diff the two agents share no instructions.](docs/demo/explain.gif)
+
 ```text
 $ axm explain src/api/orders.cs
 
