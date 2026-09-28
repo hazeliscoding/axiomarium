@@ -1,0 +1,32 @@
+# yaml-language-server: $schema=../schemas/maturity.schema.json
+#
+# What each maturity level promises, and the evidence an asset needs before it claims the level.
+# axm checks the evidence, so a level's promise only says what the evidence shows.
+#
+# usage:       usage entries that link to the asset: level-two headings in docs/dogfooding.md
+#              that start with a date, such as "## 2026-10-02 · carmine-workbench".
+# repos:       different repos those entries name.
+# evals:       eval types every asset needs: evals.<type> is true and evals/<type>/ has files.
+# skill_evals: eval types a skill needs on top of those.
+levels:
+  - name: experimental
+    promise: An idea worth trying. It may change or go away.
+  - name: incubating
+    promise: Used on real work, and still changing.
+    usage: 1
+  - name: tested
+    promise: Evals pin down its behavior and guard against past failures.
+    usage: 1
+    evals: [behavioral, regression]
+    skill_evals: [trigger]
+  - name: stable
+    promise: Used on real work again and again. Its behavior changes carefully.
+    usage: 3
+    evals: [behavioral, regression]
+    skill_evals: [trigger]
+  - name: battle-tested
+    promise: Proven on several real projects, not just one.
+    usage: 5
+    repos: 3
+    evals: [behavioral, regression]
+    skill_evals: [trigger]

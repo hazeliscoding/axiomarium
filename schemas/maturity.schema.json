@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/hazeliscoding/axiomarium/blob/main/schemas/maturity.schema.json",
+  "title": "Axiomarium maturity levels",
+  "description": "registry/maturity.yaml: what each maturity level promises, and the evidence an asset needs before it claims the level.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["levels"],
+  "properties": {
+    "levels": {
+      "description": "Every level, from the least trusted to the most, in the order of the asset schema's maturity values.",
+      "type": "array",
+      "items": { "$ref": "#/$defs/level" }
+    }
+  },
+  "$defs": {
+    "level": {
+      "description": "One level and the evidence it needs. Evidence left out isn't needed.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "promise"],
+      "properties": {
+        "name": {
+          "description": "The level, as a manifest's maturity names it.",
+          "enum": ["experimental", "incubating", "tested", "stable", "battle-tested"]
+        },
+        "promise": {
+          "description": "What the level promises to someone using the asset. Only promise what the evidence shows.",
+          "type": "string",
+          "minLength": 1
+        },
+        "usage": {
+          "description": "How many usage entries in docs/dogfooding.md must link to the asset.",
+          "type": "integer"
+        },
+        "repos": {
+          "description": "How many different repos those usage entries must name.",
+          "type": "integer"
+        },
+        "evals": {
+          "description": "The eval types every asset needs.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/eval" }
+        },
+        "skill_evals": {
+          "description": "The eval types a skill needs on top of evals.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/eval" }
+        }
+      }
+    },
+    "eval": {
+      "description": "An eval type, as a manifest's evals names it.",
+      "enum": ["trigger", "behavioral", "regression"]
+    }
+  }
+}
