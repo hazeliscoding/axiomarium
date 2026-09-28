@@ -6,10 +6,11 @@ namespace Axiomarium.Core.Instructions;
 /// <param name="ClaudeConfig">Claude Code's folder: <c>$CLAUDE_CONFIG_DIR</c>, or <c>~/.claude</c>.</param>
 /// <param name="ClaudeManaged">The folder that holds Claude Code's managed-policy <c>CLAUDE.md</c>, which differs by OS.</param>
 /// <param name="FileSystemRoot">Where upward walks stop: the real filesystem root, or a test's own folder.</param>
-public sealed record Machine(string Home, string CodexHome, string ClaudeConfig, string ClaudeManaged, string FileSystemRoot)
+/// <param name="CodexAdmin">Codex's system folder, which holds admin skills and hooks: <c>/etc/codex</c>, or <c>%ProgramData%\OpenAI\Codex</c> on Windows.</param>
+public sealed record Machine(string Home, string CodexHome, string ClaudeConfig, string ClaudeManaged, string FileSystemRoot, string CodexAdmin)
 {
     /// <summary>The real machine, from the process's environment variables.</summary>
-    /// <param name="environment">The environment: <c>HOME</c> or <c>USERPROFILE</c>, <c>CODEX_HOME</c> and <c>CLAUDE_CONFIG_DIR</c>.</param>
+    /// <param name="environment">The environment: <c>HOME</c> or <c>USERPROFILE</c>, <c>CODEX_HOME</c>, <c>CLAUDE_CONFIG_DIR</c> and, on Windows, <c>ProgramData</c>.</param>
     /// <param name="launchDirectory">Where the harness would start, whose drive or root the upward walks end at.</param>
     /// <returns>The machine, with each harness's default folder where its variable isn't set.</returns>
     public static Machine FromEnvironment(IReadOnlyDictionary<string, string?> environment, string launchDirectory)
@@ -20,12 +21,16 @@ public sealed record Machine(string Home, string CodexHome, string ClaudeConfig,
         var platform = OperatingSystem.IsWindows() ? System.Runtime.InteropServices.OSPlatform.Windows
             : OperatingSystem.IsMacOS() ? System.Runtime.InteropServices.OSPlatform.OSX
             : System.Runtime.InteropServices.OSPlatform.Linux;
+        var codexAdmin = OperatingSystem.IsWindows()
+            ? System.IO.Path.Combine(Variable("ProgramData") ?? Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "OpenAI", "Codex")
+            : "/etc/codex";
         return new Machine(
             home,
             Variable("CODEX_HOME") ?? System.IO.Path.Combine(home, ".codex"),
             Variable("CLAUDE_CONFIG_DIR") ?? System.IO.Path.Combine(home, ".claude"),
             ClaudeManagedFolder(platform),
-            System.IO.Path.GetPathRoot(System.IO.Path.GetFullPath(launchDirectory)) ?? "/");
+            System.IO.Path.GetPathRoot(System.IO.Path.GetFullPath(launchDirectory)) ?? "/",
+            codexAdmin);
     }
 
     /// <summary>Where Claude Code's managed-policy <c>CLAUDE.md</c> and <c>managed-settings.json</c> live on <paramref name="platform"/>.</summary>
