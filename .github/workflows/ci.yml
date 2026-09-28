@@ -56,25 +56,35 @@ jobs:
       - name: Time the session doctor hook
         shell: pwsh
         run: |
-          $binary = "./${{ matrix.binary }}"
+          $binary = (Resolve-Path "./${{ matrix.binary }}").Path
+
+          # Only the process is timed: building the payload and PowerShell's first pipe cost seconds on a cold runner.
           function Invoke-SessionDoctor([string] $cwd) {
             $payload = @{ session_id = "ci"; transcript_path = ""; cwd = $cwd; hook_event_name = "SessionStart"; source = "startup" } | ConvertTo-Json -Compress
-            $reply = $payload | & $binary hook session-doctor
-            if ($LASTEXITCODE -ne 0) { throw "session-doctor exited with $LASTEXITCODE" }
-            return "$reply"
+            $start = [Diagnostics.ProcessStartInfo]::new($binary)
+            "hook", "session-doctor" | ForEach-Object { $start.ArgumentList.Add($_) }
+            $start.RedirectStandardInput = $true
+            $start.RedirectStandardOutput = $true
+            $watch = [Diagnostics.Stopwatch]::StartNew()
+            $process = [Diagnostics.Process]::Start($start)
+            $process.StandardInput.Write($payload)
+            $process.StandardInput.Close()
+            $reply = $process.StandardOutput.ReadToEnd()
+            $process.WaitForExit()
+            $watch.Stop()
+            if ($process.ExitCode -ne 0) { throw "session-doctor exited with $($process.ExitCode)" }
+            return @{ Reply = $reply.Trim(); Milliseconds = $watch.ElapsedMilliseconds }
           }
 
-          $watch = [Diagnostics.Stopwatch]::StartNew()
           $quiet = Invoke-SessionDoctor $PWD.Path
-          $watch.Stop()
-          if ($quiet) { throw "session-doctor spoke up on this repo: $quiet" }
-          if ($watch.ElapsedMilliseconds -ge 1000) { throw "session-doctor took $($watch.ElapsedMilliseconds) ms, over 1 s" }
-          "session-doctor took $($watch.ElapsedMilliseconds) ms on this repo"
+          if ($quiet.Reply) { throw "session-doctor spoke up on this repo: $($quiet.Reply)" }
+          if ($quiet.Milliseconds -ge 1000) { throw "session-doctor took $($quiet.Milliseconds) ms, over 1 s" }
+          "session-doctor took $($quiet.Milliseconds) ms on this repo"
 
           $broken = Join-Path ([IO.Path]::GetTempPath()) "axm-broken-$([guid]::NewGuid().ToString('N').Substring(0, 8))"
           New-Item -ItemType Directory -Path (Join-Path $broken ".git") | Out-Null
           Set-Content -Path (Join-Path $broken "CLAUDE.md") -Value "project"
           Set-Content -Path (Join-Path $broken "AGENTS.md") -Value "agents"
-          $notice = Invoke-SessionDoctor $broken
+          $notice = (Invoke-SessionDoctor $broken).Reply
           if ($notice -notmatch "agents-md-hidden") { throw "session-doctor stayed silent on a broken repo: $notice" }
           "session-doctor spoke up on a broken repo"
