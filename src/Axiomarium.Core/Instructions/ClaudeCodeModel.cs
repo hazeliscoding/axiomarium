@@ -162,7 +162,7 @@ public static class ClaudeCodeModel
         {
             if (rule.Matches(target))
             {
-                Rule(rule.Path, scope, LoadTiming.OnRead, ClaudeCodeRules.PathRule);
+                Add(rule.Path, scope, LoadTiming.OnRead, ClaudeCodeRules.PathRule, text => Frontmatter.Split(text).Body, via: null, hops: 0, followImports: false, rule.Frontmatter.Paths);
             }
             else
             {
@@ -194,7 +194,15 @@ public static class ClaudeCodeModel
         }
 
         private void Add(
-            string path, InstructionScope scope, LoadTiming timing, HarnessRule rule, Func<string, string> visible, ImportSite? via, int hops, bool followImports)
+            string path,
+            InstructionScope scope,
+            LoadTiming timing,
+            HarnessRule rule,
+            Func<string, string> visible,
+            ImportSite? via,
+            int hops,
+            bool followImports,
+            IReadOnlyList<string>? patterns = null)
         {
             if (!File.Exists(path) || _seen.Contains(Path.GetFullPath(path)))
             {
@@ -218,7 +226,7 @@ public static class ClaudeCodeModel
             // The recordings show launch files trimmed, and files loaded on read passed as they are.
             var text = HtmlComments.Strip(visible(File.ReadAllText(path)));
             var bytes = Encoding.UTF8.GetByteCount(timing == LoadTiming.AtLaunch ? text.Trim() : text);
-            _loaded.Add(new LoadedInstruction(path, scope, timing, rule, bytes, Via: via));
+            _loaded.Add(new LoadedInstruction(path, scope, timing, rule, bytes, Via: via, Patterns: patterns));
             if (followImports)
             {
                 FollowImports(path, text, scope, timing, hops);

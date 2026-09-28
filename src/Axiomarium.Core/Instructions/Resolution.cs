@@ -6,7 +6,34 @@ namespace Axiomarium.Core.Instructions;
 /// <param name="ClaudeConfig">Claude Code's folder: <c>$CLAUDE_CONFIG_DIR</c>, or <c>~/.claude</c>.</param>
 /// <param name="ClaudeManaged">The folder that holds Claude Code's managed-policy <c>CLAUDE.md</c>, which differs by OS.</param>
 /// <param name="FileSystemRoot">Where upward walks stop: the real filesystem root, or a test's own folder.</param>
-public sealed record Machine(string Home, string CodexHome, string ClaudeConfig, string ClaudeManaged, string FileSystemRoot);
+public sealed record Machine(string Home, string CodexHome, string ClaudeConfig, string ClaudeManaged, string FileSystemRoot)
+{
+    /// <summary>The real machine, from the process's environment variables.</summary>
+    /// <param name="environment">The environment: <c>HOME</c> or <c>USERPROFILE</c>, <c>CODEX_HOME</c> and <c>CLAUDE_CONFIG_DIR</c>.</param>
+    /// <param name="launchDirectory">Where the harness would start, whose drive or root the upward walks end at.</param>
+    /// <returns>The machine, with each harness's default folder where its variable isn't set.</returns>
+    public static Machine FromEnvironment(IReadOnlyDictionary<string, string?> environment, string launchDirectory)
+    {
+        string? Variable(string name) => environment.TryGetValue(name, out var value) && !string.IsNullOrEmpty(value) ? value : null;
+        var home = (OperatingSystem.IsWindows() ? Variable("USERPROFILE") ?? Variable("HOME") : Variable("HOME") ?? Variable("USERPROFILE"))
+            ?? Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        var platform = OperatingSystem.IsWindows() ? System.Runtime.InteropServices.OSPlatform.Windows
+            : OperatingSystem.IsMacOS() ? System.Runtime.InteropServices.OSPlatform.OSX
+            : System.Runtime.InteropServices.OSPlatform.Linux;
+        return new Machine(
+            home,
+            Variable("CODEX_HOME") ?? System.IO.Path.Combine(home, ".codex"),
+            Variable("CLAUDE_CONFIG_DIR") ?? System.IO.Path.Combine(home, ".claude"),
+            ClaudeManagedFolder(platform),
+            System.IO.Path.GetPathRoot(System.IO.Path.GetFullPath(launchDirectory)) ?? "/");
+    }
+
+    /// <summary>Where Claude Code's managed-policy <c>CLAUDE.md</c> and <c>managed-settings.json</c> live on <paramref name="platform"/>.</summary>
+    public static string ClaudeManagedFolder(System.Runtime.InteropServices.OSPlatform platform) =>
+        platform == System.Runtime.InteropServices.OSPlatform.Windows ? @"C:\Program Files\ClaudeCode"
+        : platform == System.Runtime.InteropServices.OSPlatform.OSX ? "/Library/Application Support/ClaudeCode"
+        : "/etc/claude-code";
+}
 
 /// <summary>Whose instructions a file holds, as the harness labels them.</summary>
 public enum InstructionScope
@@ -36,9 +63,14 @@ public enum LoadTiming
 
 /// <summary>A loading rule of a harness: why a file loads, or why it doesn't.</summary>
 /// <param name="Id">Stable and kebab-case after the harness, such as <c>codex/byte-budget</c>.</param>
+/// <param name="Label">The rule in a few words, for a column of output, such as <c>past project_doc_max_bytes</c>.</param>
 /// <param name="Summary">The rule, in a sentence.</param>
 /// <param name="Source">The doc or source code the rule comes from.</param>
-public sealed record HarnessRule(string Id, string Summary, string Source);
+/// <param name="LeftToModel">
+/// Whether the harness leaves the file to the model, which may or may not read it: "not loaded by the
+/// harness" rather than dropped.
+/// </param>
+public sealed record HarnessRule(string Id, string Label, string Summary, string Source, bool LeftToModel = false);
 
 /// <summary>Where a file is imported from.</summary>
 /// <param name="File">The absolute path of the file that holds the import.</param>
@@ -53,7 +85,9 @@ public sealed record ImportSite(string File, int Line);
 /// <param name="Bytes">How many bytes of it the model sees, which is fewer than the file's when <paramref name="Cut"/>.</param>
 /// <param name="Cut">Whether the harness cut it short, such as at a byte budget.</param>
 /// <param name="Via">Where it was imported from, when an import loaded it.</param>
-public sealed record LoadedInstruction(string Path, InstructionScope Scope, LoadTiming Timing, HarnessRule Rule, int Bytes, bool Cut = false, ImportSite? Via = null);
+/// <param name="Patterns">The patterns that matched the file, when it's a path-scoped rule.</param>
+public sealed record LoadedInstruction(
+    string Path, InstructionScope Scope, LoadTiming Timing, HarnessRule Rule, int Bytes, bool Cut = false, ImportSite? Via = null, IReadOnlyList<string>? Patterns = null);
 
 /// <summary>An instruction file that doesn't reach the model, including an import whose file doesn't exist.</summary>
 /// <param name="Path">The file's absolute path.</param>

@@ -143,6 +143,7 @@ public class CodexModelTests
         Assert.All(CodexRules.All, rule =>
         {
             Assert.StartsWith("codex/", rule.Id);
+            Assert.False(string.IsNullOrWhiteSpace(rule.Label));
             Assert.False(string.IsNullOrWhiteSpace(rule.Summary));
             Assert.StartsWith("https://", rule.Source);
         });

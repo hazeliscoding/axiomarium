@@ -8,35 +8,35 @@ public static class CodexRules
 
     /// <summary>The global file in CODEX_HOME.</summary>
     public static HarnessRule Global { get; } = new(
-        "codex/global", "The global AGENTS.md in CODEX_HOME loads first, and doesn't count toward the byte budget.", Guide);
+        "codex/global", "global", "The global AGENTS.md in CODEX_HOME loads first, and doesn't count toward the byte budget.", Guide);
 
     /// <summary>A global override replaces the global AGENTS.md.</summary>
     public static HarnessRule GlobalOverride { get; } = new(
-        "codex/global-override", "An AGENTS.override.md in CODEX_HOME that isn't empty replaces the global AGENTS.md.", Guide);
+        "codex/global-override", "replaced by AGENTS.override.md", "An AGENTS.override.md in CODEX_HOME that isn't empty replaces the global AGENTS.md.", Guide);
 
     /// <summary>One file from each directory of the project chain.</summary>
     public static HarnessRule ProjectChain { get; } = new(
-        "codex/project-chain", "One file loads from each directory, from the project root down to the launch directory.", Guide);
+        "codex/project-chain", "project", "One file loads from each directory, from the project root down to the launch directory.", Guide);
 
     /// <summary>Only a directory's first file loads.</summary>
     public static HarnessRule OnePerDirectory { get; } = new(
-        "codex/one-per-directory", "Only the first of AGENTS.override.md, AGENTS.md and the fallback filenames loads from a directory.", Code);
+        "codex/one-per-directory", "another file in its folder loads instead", "Only the first of AGENTS.override.md, AGENTS.md and the fallback filenames loads from a directory.", Code);
 
     /// <summary>An empty override hides the AGENTS.md next to it.</summary>
     public static HarnessRule EmptyOverride { get; } = new(
-        "codex/empty-override", "An empty AGENTS.override.md is picked before AGENTS.md, then contributes nothing, so the AGENTS.md next to it never loads.", Code);
+        "codex/empty-override", "hidden by an empty AGENTS.override.md", "An empty AGENTS.override.md is picked before AGENTS.md, then contributes nothing, so the AGENTS.md next to it never loads.", Code);
 
     /// <summary>The project files' shared byte budget.</summary>
     public static HarnessRule ByteBudget { get; } = new(
-        "codex/byte-budget", "Project files share project_doc_max_bytes (32 KiB by default): the file that crosses it is cut, and later files are dropped.", Code);
+        "codex/byte-budget", "past project_doc_max_bytes", "Project files share project_doc_max_bytes (32 KiB by default): the file that crosses it is cut, and later files are dropped.", Code);
 
     /// <summary>Files below the launch directory.</summary>
     public static HarnessRule BelowLaunch { get; } = new(
-        "codex/below-launch", "Codex never loads files below the launch directory. It leaves them to the model, which may or may not look.", Guide);
+        "codex/below-launch", "below the launch directory", "Codex never loads files below the launch directory. It leaves them to the model, which may or may not look.", Guide, LeftToModel: true);
 
     /// <summary>Untrusted projects.</summary>
     public static HarnessRule Untrusted { get; } = new(
-        "codex/untrusted", "In a project whose trust_level is untrusted, Codex skips every project file.", Code);
+        "codex/untrusted", "the project is untrusted", "In a project whose trust_level is untrusted, Codex skips every project file.", Code);
 
     /// <summary>Every Codex rule.</summary>
     public static IReadOnlyList<HarnessRule> All { get; } =

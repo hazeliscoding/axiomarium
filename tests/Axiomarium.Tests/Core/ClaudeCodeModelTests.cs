@@ -426,6 +426,7 @@ public class ClaudeCodeModelTests
         Assert.All(ClaudeCodeRules.All, rule =>
         {
             Assert.StartsWith("claude-code/", rule.Id);
+            Assert.False(string.IsNullOrWhiteSpace(rule.Label));
             Assert.False(string.IsNullOrWhiteSpace(rule.Summary));
             Assert.StartsWith("https://", rule.Source);
         });
