@@ -93,11 +93,13 @@ Axiomarium is my lab for building, testing and debugging AI coding environments 
   - `rule-matches-nothing` checks project rules against every file on disk except under `.git`. User rules aren't checked, because they may match in another repo.
   - `duplicate-block` compares paragraphs of 40 characters or more, with whitespace collapsed, and reports each pair of files once.
   - `dead-link` checks relative Markdown links only, never URLs, anchors or absolute paths.
+  - `agents-md-hidden` reports only AGENTS.md files inside the repo. One above it, such as in the home folder, serves other folders too, so hiding it is a choice rather than this repo's problem.
   - `explain --json` gains a `findings` array (`id`, `severity`, `file`, `line` when there is one, `message` and `fix`) in shape 1, since v0.2 isn't released yet. `--diff` shows no findings. Severity gains `info`.
 - **`axm doctor` works in any repo.** It always checks the repo's instruction files for both harnesses, launched from the repo root, and runs the vault checks when a vault exists. Warnings don't fail it. `validate` stays vault-only, for CI.
 - **How the doctor finds the repo (2026-09-28).** The repo root is the nearest folder with a `.git` at or above `--root` (the current directory by default), or `--root` itself outside a repo. The vault is `--root` or, failing that, the repo root. An INSTRUCTIONS block lists every instruction file the harnesses load or drop, with the harnesses that load it, so a file no harness loads shows as "not loaded".
 - **`axiomarium.yaml` configures a repo (2026-09-28).** It sits at the repo root and validates against `schemas/axiomarium.schema.json`, which the binary embeds. Its first field is `doctor.ignore`: globs for instruction files that are broken on purpose, such as test fixtures. The doctor doesn't list or check them, and its summary says how many it ignored, so nothing disappears silently. A problem in the file is an error, and a file with problems ignores nothing, so a typo can't hide a finding. This repo ignores `scenarios/` and `findings/*/fixtures/`.
 - **People who don't read code get the warning without asking.** A Claude Code SessionStart hook, `axm hook session-doctor`, runs the doctor's checks and starts the session with a short notice to the user and the model when something is wrong, and prints nothing otherwise. It aims for 200 ms, measured locally, and CI holds the native binary under 1 s.
+- **Claude Code SessionStart hooks, confirmed on 2.1.284 (2026-09-28).** Headless sessions with one kind of output each confirmed the SessionStart section of the hooks docs: plain stdout and `hookSpecificOutput.additionalContext` reach the model, and `systemMessage` doesn't. The transcript records it as a separate `hook_system_message`, which the docs say the user sees. The input names how the session started as `source`. So `session-doctor` gives the user a one-line summary as `systemMessage` and the model every error and warning with its fix as `additionalContext`, and says nothing when there are only info findings or none. Run directly it takes 25 to 70 ms; inside Claude Code on Windows about 450 ms, most of it starting Git Bash. CI times the native binary, cold, on this repo, and runs it on a broken repo as the positive control.
 
 ### Brand
 
@@ -207,7 +209,7 @@ What each harness actually reads for a file, and what it silently drops.
 | `dead-link` | warning | A Markdown link in a loaded file points to a file that doesn't exist |
 
 - [x] `axm doctor` in any repo: the instruction findings always, and the vault checks when a vault exists, with `axiomarium.yaml` to leave out files that are broken on purpose.
-- [ ] `hooks/session-doctor/` and `axm hook session-doctor`: confirm on the real harness which SessionStart output the user and the model see, then build the hook, silent when all is well. Under 200 ms locally, and a CI check that holds the native binary under 1 s.
+- [x] `hooks/session-doctor/` and `axm hook session-doctor`: confirm on the real harness which SessionStart output the user and the model see, then build the hook, silent when all is well. Under 200 ms locally, and a CI check that holds the native binary under 1 s.
 - [ ] Write-up, "What your agent actually reads", and a second VHS tape for an `axm explain` demo GIF.
 - [ ] Release v0.2.0.
 

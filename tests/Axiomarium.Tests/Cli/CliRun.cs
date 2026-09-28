@@ -20,10 +20,10 @@ internal static partial class CliRun
         Axiomarium.Core.Instructions.Machine? machine = null,
         string? currentDirectory = null)
     {
-        // Tests never read the real machine, and these two read the harnesses' files from it.
-        if (machine is null && args is ["doctor" or "explain", ..])
+        // Tests never read the real machine, and these commands read the harnesses' files from it.
+        if (machine is null && args is ["doctor" or "explain", ..] or ["hook", "session-doctor", ..])
         {
-            throw new InvalidOperationException("doctor and explain read the harnesses' files: pass a machine that lives in the test's own folder.");
+            throw new InvalidOperationException($"{string.Join(' ', args)} reads the harnesses' files: pass a machine that lives in the test's own folder.");
         }
 
         var output = new StringWriter { NewLine = "\n" };

@@ -72,4 +72,51 @@ public class HookCommandTests
         Assert.Equal(AxmCli.HookCouldNotRun, exitCode);
         Assert.StartsWith("axm: ", error);
     }
+
+    private static string SessionStartPayload(string cwd)
+    {
+        var path = Path.Combine(RepoRoot.Path, "tests", "Axiomarium.Tests", "Fixtures", "ClaudeCode", "session-start.json");
+        var payload = JsonNode.Parse(File.ReadAllText(path))!.AsObject();
+        payload["cwd"] = cwd;
+        return payload.ToJsonString();
+    }
+
+    [Fact]
+    public void Session_doctor_prints_a_notice_for_a_repo_with_problems()
+    {
+        using var repo = new TempVault().Write("CLAUDE.md", "project\n").Write("AGENTS.md", "agents\n");
+
+        var (exitCode, output, error) = CliRun.Run(
+            ["hook", "session-doctor"], terminal: true, stdin: SessionStartPayload(repo.Root), machine: TestMachine.For(repo.Root));
+
+        Assert.Equal(AxmCli.Passed, exitCode);
+        Assert.Empty(error);
+        Assert.DoesNotContain("\u001b[", output);
+        var notice = JsonNode.Parse(output)!;
+        Assert.StartsWith("axm doctor found 1 warning in this repo: agents-md-hidden in AGENTS.md.", notice["systemMessage"]!.GetValue<string>());
+        Assert.Contains("- WARNING agents-md-hidden: ", notice["hookSpecificOutput"]!["additionalContext"]!.GetValue<string>());
+    }
+
+    [Fact]
+    public void Session_doctor_is_silent_for_a_healthy_repo()
+    {
+        using var repo = new TempVault().Write("CLAUDE.md", "@AGENTS.md\n").Write("AGENTS.md", "agents\n");
+
+        var (exitCode, output, error) = CliRun.Run(["hook", "session-doctor"], stdin: SessionStartPayload(repo.Root), machine: TestMachine.For(repo.Root));
+
+        Assert.Equal((AxmCli.Passed, "", ""), (exitCode, output, error));
+    }
+
+    [Fact]
+    public void Session_doctor_exits_1_not_2_when_the_folder_is_gone()
+    {
+        using var repo = new TempVault();
+
+        var (exitCode, output, error) = CliRun.Run(
+            ["hook", "session-doctor"], stdin: SessionStartPayload(Path.Combine(repo.Root, "nowhere")), machine: TestMachine.For(repo.Root));
+
+        Assert.Equal(AxmCli.HookCouldNotRun, exitCode);
+        Assert.Empty(output);
+        Assert.StartsWith("axm: The folder ", error);
+    }
 }

@@ -1,0 +1,29 @@
+# yaml-language-server: $schema=../../schemas/asset.schema.json
+name: session-doctor
+kind: hook
+version: 0.1.0
+description: >-
+  Runs axm doctor when a Claude Code session starts and, when an instruction
+  doesn't reach the agent as meant, tells the user in one line and the model
+  in full. Silent when all is well.
+maturity: experimental
+supports:
+  claude-code: experimental
+permissions:
+  filesystem: read
+  shell: none
+  network: none
+side_effects: none
+inputs:
+  - hook-input
+  - instruction-files
+outputs:
+  - session-notice
+evals:
+  trigger: false
+  behavioral: false
+  regression: false
+hook:
+  event: session-start
+  command: axm hook session-doctor
+  response: warn

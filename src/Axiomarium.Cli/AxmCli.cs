@@ -106,26 +106,32 @@ public static class AxmCli
     private static Command HookCommand(TextReader input, Session session)
     {
         var scopeSheriff = new Command("scope-sheriff", "Warn the agent when an edit leaves the task's scope in .axm/scope.");
-        scopeSheriff.SetAction(_ =>
-        {
-            var result = ScopeSheriff.Run(input.ReadToEnd());
-            if (result.Problem is { } problem)
-            {
-                WriteCouldNotRun(session.Error, session.ErrorStyle, [problem], hint: null);
-                return HookCouldNotRun;
-            }
+        scopeSheriff.SetAction(_ => Reply(ScopeSheriff.Run(input.ReadToEnd()), session));
 
-            if (result.Output is { } reply)
-            {
-                session.Output.WriteLine(reply);
-            }
-
-            return Passed;
-        });
+        var sessionDoctor = new Command("session-doctor", "When a session starts, tell the user and the model what axm doctor finds wrong. Silent when all is well.");
+        sessionDoctor.SetAction(_ => Reply(SessionDoctor.Run(input.ReadToEnd(), cwd => session.Machine ?? Machine.FromEnvironment(session.Environment, cwd)), session));
 
         var hook = new Command("hook", "Hooks for Claude Code to run. Each reads the hook's JSON on stdin.");
         hook.Subcommands.Add(scopeSheriff);
+        hook.Subcommands.Add(sessionDoctor);
         return hook;
+    }
+
+    // A hook prints only what the harness reads, and a problem goes to stderr with exit 1, never 2.
+    private static int Reply(HookResult result, Session session)
+    {
+        if (result.Problem is { } problem)
+        {
+            WriteCouldNotRun(session.Error, session.ErrorStyle, [problem], hint: null);
+            return HookCouldNotRun;
+        }
+
+        if (result.Output is { } reply)
+        {
+            session.Output.WriteLine(reply);
+        }
+
+        return Passed;
     }
 
     private static Command DoctorCommand(Session session)
