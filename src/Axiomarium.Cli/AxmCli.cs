@@ -2,6 +2,7 @@ using System.CommandLine;
 using System.CommandLine.Invocation;
 using System.Reflection;
 using Axiomarium.Cli.Output;
+using Axiomarium.Core.Assets;
 using Axiomarium.Core.Health;
 
 namespace Axiomarium.Cli;
@@ -56,6 +57,7 @@ public static class AxmCli
         var session = new Session(output, error, outputStyle, errorStyle, currentDirectory);
         root.Subcommands.Add(VaultCommand("doctor", "Check the vault's health: list every asset, then every problem.", ReportText.WriteDoctor, session));
         root.Subcommands.Add(VaultCommand("validate", "Check every asset and print only the problems, for CI and hooks.", ReportText.WriteValidate, session));
+        root.Subcommands.Add(ListCommand(session));
 
         var parsed = root.Parse(args);
 
@@ -93,6 +95,34 @@ public static class AxmCli
 
             render(session.Output, report, session.OutputStyle);
             return report.ErrorCount > 0 ? ErrorsFound : Passed;
+        });
+        return command;
+    }
+
+    private static Command ListCommand(Session session)
+    {
+        var vaultRoot = RootOption(session);
+        var kind = new Option<string?>("--kind") { Description = "Only this kind of asset." };
+        kind.AcceptOnlyFromAmong([.. AssetKinds.All.Select(value => value.ManifestName())]);
+        var harness = new Option<string?>("--harness") { Description = "Only assets that support this harness, and how well." };
+        harness.AcceptOnlyFromAmong([.. Harnesses.All]);
+
+        var command = new Command("list", "List the vault's assets by kind, with maturity, version and harness support.");
+        command.Options.Add(vaultRoot);
+        command.Options.Add(kind);
+        command.Options.Add(harness);
+        command.SetAction(result =>
+        {
+            if (Check("list", result.GetValue(vaultRoot)!, session) is not { } report)
+            {
+                return CouldNotRun;
+            }
+
+            var kindFilter = result.GetValue(kind) is { } name ? AssetKinds.All.Single(value => value.ManifestName() == name) : (AssetKind?)null;
+            ListText.Write(session.Output, report, kindFilter, result.GetValue(harness), session.OutputStyle);
+
+            // Listing judges nothing, so invalid assets don't fail it. axm validate does that.
+            return Passed;
         });
         return command;
     }

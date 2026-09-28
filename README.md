@@ -11,7 +11,7 @@
 
 Axiomarium is my lab for engineering reliable AI coding environments. It holds the agents, skills, hooks, policies, workflows and evals I use, and `axm`, a local CLI that inspects, validates, tests and debugs them. It treats agent configuration as real software infrastructure: kept in git, inspectable, testable, portable, and able to learn from its failures. It's built for my own setup first, and it's public in case it's useful to you too.
 
-> **Status:** early development. `axm doctor` works from source (`dotnet run --project src/Axiomarium.Cli -- doctor`), and there is no release to install yet. See [ROADMAP.md](ROADMAP.md).
+> **Status:** early development. `axm list`, `axm validate` and `axm doctor` work from source (`dotnet run --project src/Axiomarium.Cli -- doctor`), and there is no release to install yet. See [ROADMAP.md](ROADMAP.md).
 
 ## The problem
 
@@ -41,6 +41,8 @@ Axiomarium treats that as an engineering problem.
 **`axm`** is the engineering around the vault:
 
 ```text
+axm list        the vault's assets, and which harnesses each supports
+axm validate    every check on the vault, for CI and hooks
 axm doctor      health of the agent environment
 axm explain     which instructions apply to a file, and which get dropped
 axm triggers    which skill fires for which prompt, and where skills collide

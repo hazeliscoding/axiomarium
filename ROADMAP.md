@@ -105,7 +105,7 @@ Agent configuration can be inspected and validated like software.
   - [x] reference checks: `enforced_by` targets and eval folders.
 - [x] `registry/maturity.yaml` and its schema, and a check that each maturity claim has its evidence.
 - [ ] Commands:
-  - [ ] `axm list`: assets grouped by kind, with version, maturity and harness support, filtered by `--kind` and `--harness`.
+  - [x] `axm list`: assets grouped by kind, with version, maturity and harness support, filtered by `--kind` and `--harness`.
   - [x] `axm validate`: every check, printing only the problems, with exit codes for CI.
   - [x] `axm doctor`: rebuilt on the same result as `validate`, plus the inventory.
 - [ ] Scope sheriff:
