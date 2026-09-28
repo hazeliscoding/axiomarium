@@ -51,3 +51,30 @@ jobs:
           AXM_BINARY: ${{ github.workspace }}/${{ matrix.binary }}
       - name: Run axm doctor on this repo
         run: ./${{ matrix.binary }} doctor
+      # The session doctor runs as every Claude Code session starts, so the native binary has to answer
+      # within 1 s, cold, on this repo. A broken repo is the positive control: it has to speak up there.
+      - name: Time the session doctor hook
+        shell: pwsh
+        run: |
+          $binary = "./${{ matrix.binary }}"
+          function Invoke-SessionDoctor([string] $cwd) {
+            $payload = @{ session_id = "ci"; transcript_path = ""; cwd = $cwd; hook_event_name = "SessionStart"; source = "startup" } | ConvertTo-Json -Compress
+            $reply = $payload | & $binary hook session-doctor
+            if ($LASTEXITCODE -ne 0) { throw "session-doctor exited with $LASTEXITCODE" }
+            return "$reply"
+          }
+
+          $watch = [Diagnostics.Stopwatch]::StartNew()
+          $quiet = Invoke-SessionDoctor $PWD.Path
+          $watch.Stop()
+          if ($quiet) { throw "session-doctor spoke up on this repo: $quiet" }
+          if ($watch.ElapsedMilliseconds -ge 1000) { throw "session-doctor took $($watch.ElapsedMilliseconds) ms, over 1 s" }
+          "session-doctor took $($watch.ElapsedMilliseconds) ms on this repo"
+
+          $broken = Join-Path ([IO.Path]::GetTempPath()) "axm-broken-$([guid]::NewGuid().ToString('N').Substring(0, 8))"
+          New-Item -ItemType Directory -Path (Join-Path $broken ".git") | Out-Null
+          Set-Content -Path (Join-Path $broken "CLAUDE.md") -Value "project"
+          Set-Content -Path (Join-Path $broken "AGENTS.md") -Value "agents"
+          $notice = Invoke-SessionDoctor $broken
+          if ($notice -notmatch "agents-md-hidden") { throw "session-doctor stayed silent on a broken repo: $notice" }
+          "session-doctor spoke up on a broken repo"
