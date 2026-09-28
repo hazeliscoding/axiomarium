@@ -12,6 +12,7 @@ public class VersionTests
 
         var exitCode = AxmCli.Run(
             ["--version"],
+            TextReader.Null,
             output,
             error,
             new Dictionary<string, string?>(),

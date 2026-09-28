@@ -13,10 +13,13 @@ public class NativeBinaryTests
 
     private static string Binary => Environment.GetEnvironmentVariable("AXM_BINARY") ?? "";
 
-    private static async Task<(int ExitCode, string Output)> RunAsync(params string[] args)
+    private static Task<(int ExitCode, string Output)> RunAsync(params string[] args) => RunWithInputAsync(null, args);
+
+    private static async Task<(int ExitCode, string Output)> RunWithInputAsync(string? stdin, params string[] args)
     {
         var start = new ProcessStartInfo(Binary)
         {
+            RedirectStandardInput = stdin is not null,
             RedirectStandardOutput = true,
             RedirectStandardError = true,
             StandardOutputEncoding = Encoding.UTF8,
@@ -28,6 +31,13 @@ public class NativeBinaryTests
         }
 
         using var process = Process.Start(start)!;
+        if (stdin is not null)
+        {
+            // Raw UTF-8 bytes, as Claude Code writes them, whatever this process's console code page is.
+            await process.StandardInput.BaseStream.WriteAsync(Encoding.UTF8.GetBytes(stdin), TestContext.Current.CancellationToken);
+            process.StandardInput.Close();
+        }
+
         var output = process.StandardOutput.ReadToEndAsync(TestContext.Current.CancellationToken);
         var error = process.StandardError.ReadToEndAsync(TestContext.Current.CancellationToken);
         await process.WaitForExitAsync(TestContext.Current.CancellationToken);
@@ -65,5 +75,21 @@ public class NativeBinaryTests
         Assert.Equal(1, exitCode);
         Assert.Contains("agents/determinism-auditor/asset.yaml:5", output);
         Assert.Contains("Unknown maturity: \"production-ready\"", output);
+    }
+
+    [Fact(Skip = NoBinary, SkipUnless = nameof(HasBinary))]
+    public async Task Scope_sheriff_reads_utf8_json_on_stdin()
+    {
+        using var repo = new TempVault().Write(".axm/scope", "src/api/**\n");
+        var fixture = Path.Combine(RepoRoot.Path, "tests", "Axiomarium.Tests", "Fixtures", "ClaudeCode", "post-tool-use-edit.json");
+        var payload = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(fixture))!.AsObject();
+        payload["cwd"] = repo.Root;
+        payload["tool_input"]!["file_path"] = Path.Combine(repo.Root, "src", "billing", "résumé.txt");
+
+        var (exitCode, output) = await RunWithInputAsync(payload.ToJsonString(), "hook", "scope-sheriff");
+
+        Assert.Equal(0, exitCode);
+        var context = System.Text.Json.Nodes.JsonNode.Parse(output)!["hookSpecificOutput"]!["additionalContext"]!.GetValue<string>();
+        Assert.StartsWith("src/billing/résumé.txt is outside this task's scope", context);
     }
 }

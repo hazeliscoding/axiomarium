@@ -112,7 +112,7 @@ Agent configuration can be inspected and validated like software.
 - [ ] Scope sheriff:
   - [x] Ground truth: log what a real Claude Code hook receives for Write, Edit, MultiEdit and NotebookEdit, confirm which hook output reaches the model, and record the Claude Code version and the docs date.
   - [x] A glob matcher in the core (`*`, `**`, `?` and `{a,b}`), for v0.2 to extend.
-  - [ ] `axm hook scope-sheriff`.
+  - [x] `axm hook scope-sheriff`.
 - [ ] Five starter assets, all experimental:
   - [ ] `determinism-auditor` (agent): finds decisions an LLM shouldn't own, such as authorization, billing, irreversible actions, state transitions, invariants, retries and idempotency, and suggests the deterministic boundary.
   - [ ] `agent-asset-authoring` (skill): how to write an asset and its manifest.

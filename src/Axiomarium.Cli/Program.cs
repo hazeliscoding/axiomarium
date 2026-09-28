@@ -14,8 +14,12 @@ foreach (DictionaryEntry variable in Environment.GetEnvironmentVariables())
 
 var terminal = !Console.IsOutputRedirected || !Console.IsErrorRedirected;
 
+// Hook input is UTF-8 JSON, whatever the console's input code page.
+using var input = new StreamReader(Console.OpenStandardInput(), new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
+
 return AxmCli.Run(
     args,
+    input,
     Console.Out,
     Console.Error,
     environment,

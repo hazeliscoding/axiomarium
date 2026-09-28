@@ -6,17 +6,19 @@ namespace Axiomarium.Tests.Cli;
 /// <summary>Runs <see cref="AxmCli"/> in process and captures what it writes.</summary>
 internal static partial class CliRun
 {
-    /// <summary>Runs axm as if stdout and stderr were files (plain output), or a terminal.</summary>
+    /// <summary>Runs axm as if stdout and stderr were files (plain output), or a terminal, with <paramref name="stdin"/> as its input.</summary>
     public static (int ExitCode, string Output, string Error) Run(
         string[] args,
         bool terminal = false,
         Dictionary<string, string?>? environment = null,
-        bool virtualTerminal = true)
+        bool virtualTerminal = true,
+        string stdin = "")
     {
         var output = new StringWriter { NewLine = "\n" };
         var error = new StringWriter { NewLine = "\n" };
         var exitCode = AxmCli.Run(
             args,
+            new StringReader(stdin),
             output,
             error,
             environment ?? [],

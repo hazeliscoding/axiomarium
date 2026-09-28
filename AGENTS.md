@@ -72,6 +72,7 @@ The tool is only worth trusting if these hold. Never break them, not even in deb
 - Output is colorful and a little playful: brand-palette colors and one kaomoji per summary or status line, chosen by the outcome, from the fixed set in the CLI's `Kaomoji` class. Don't invent new ones inline, and never pick one at random: the same outcome always gets the same kaomoji.
 - Informative first. A kaomoji or a color never carries meaning on its own: severity is always a word, and counts are always written out.
 - Plain output (no color, no kaomoji) when stdout isn't a terminal, or `AXM_PLAIN` is set. `NO_COLOR` turns color off. Terminal output must equal the plain output plus color and kaomoji. Hooks and agents always read plain output.
+- `axm hook` commands print only what the harness reads, such as Claude Code's hook JSON, and never exit with 2, because Claude Code reads 2 as "block". A hook that can't run exits with 1 and says why on stderr. The protocol for each harness lives in the core, confirmed against the real harness.
 - Every finding says what is wrong, why it matters and what to do: "CLAUDE.md:12 imports docs/testing.md, which does not exist."
 - Write the project name as Axiomarium and the command as `axm`.
 

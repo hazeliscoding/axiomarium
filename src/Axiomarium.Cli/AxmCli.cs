@@ -4,6 +4,7 @@ using System.Reflection;
 using Axiomarium.Cli.Output;
 using Axiomarium.Core.Assets;
 using Axiomarium.Core.Health;
+using Axiomarium.Core.Hooks;
 
 namespace Axiomarium.Cli;
 
@@ -19,11 +20,18 @@ public static class AxmCli
     /// <summary>Exit code 2: the command couldn't run, whatever the reason.</summary>
     public const int CouldNotRun = 2;
 
+    /// <summary>
+    /// Exit code 1 for an <c>axm hook</c> command that couldn't run. Claude Code reads exit code 2 from a
+    /// hook as "block the action", so a broken hook reports itself without blocking anything.
+    /// </summary>
+    public const int HookCouldNotRun = 1;
+
     private static string Version =>
         typeof(AxmCli).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion ?? "unknown";
 
     /// <summary>Runs <c>axm</c>.</summary>
     /// <param name="args">The command-line arguments.</param>
+    /// <param name="input">Standard input, which hook commands read. Read only by commands that need it.</param>
     /// <param name="output">Where reports and help go.</param>
     /// <param name="error">Where problems that stop a command go.</param>
     /// <param name="environment">The process's environment variables, for <c>NO_COLOR</c>, <c>AXM_PLAIN</c> and <c>TERM</c>.</param>
@@ -33,10 +41,12 @@ public static class AxmCli
     /// <param name="currentDirectory">The directory commands default to.</param>
     /// <returns>
     /// 0, 1 or 2. See <see cref="Passed"/>, <see cref="ErrorsFound"/> and <see cref="CouldNotRun"/>.
-    /// Bad arguments and unexpected failures return 2, never 1.
+    /// Bad arguments and unexpected failures return 2, never 1, except for <c>axm hook</c> commands,
+    /// which return <see cref="HookCouldNotRun"/> and never 2.
     /// </returns>
     public static int Run(
         string[] args,
+        TextReader input,
         TextWriter output,
         TextWriter error,
         IReadOnlyDictionary<string, string?> environment,
@@ -58,14 +68,16 @@ public static class AxmCli
         root.Subcommands.Add(VaultCommand("doctor", "Check the vault's health: list every asset, then every problem.", ReportText.WriteDoctor, session));
         root.Subcommands.Add(VaultCommand("validate", "Check every asset and print only the problems, for CI and hooks.", ReportText.WriteValidate, session));
         root.Subcommands.Add(ListCommand(session));
+        root.Subcommands.Add(HookCommand(input, session));
 
         var parsed = root.Parse(args);
+        var couldNotRun = args is ["hook", ..] ? HookCouldNotRun : CouldNotRun;
 
         // Exit code 1 means errors were found, so bad arguments get 2 like anything else that couldn't run.
         if (parsed.Errors.Count > 0)
         {
             WriteCouldNotRun(error, errorStyle, [.. parsed.Errors.Select(parseError => parseError.Message)], "Run axm --help for usage.");
-            return CouldNotRun;
+            return couldNotRun;
         }
 
         // System.CommandLine's own handler would print a stack trace and exit 1, which means errors found.
@@ -76,8 +88,35 @@ public static class AxmCli
         catch (Exception problem)
         {
             WriteCouldNotRun(error, errorStyle, [$"the command stopped: {problem.Message}"], hint: null);
-            return CouldNotRun;
+            return couldNotRun;
         }
+    }
+
+    // Hook commands read the harness's JSON on stdin and print its reply. Their output is always plain,
+    // because the harness reads it.
+    private static Command HookCommand(TextReader input, Session session)
+    {
+        var scopeSheriff = new Command("scope-sheriff", "Warn the agent when an edit leaves the task's scope in .axm/scope.");
+        scopeSheriff.SetAction(_ =>
+        {
+            var result = ScopeSheriff.Run(input.ReadToEnd());
+            if (result.Problem is { } problem)
+            {
+                WriteCouldNotRun(session.Error, session.ErrorStyle, [problem], hint: null);
+                return HookCouldNotRun;
+            }
+
+            if (result.Output is { } reply)
+            {
+                session.Output.WriteLine(reply);
+            }
+
+            return Passed;
+        });
+
+        var hook = new Command("hook", "Hooks for Claude Code to run. Each reads the hook's JSON on stdin.");
+        hook.Subcommands.Add(scopeSheriff);
+        return hook;
     }
 
     // A command that checks the vault at --root and renders the doctor's report its own way.
