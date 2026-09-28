@@ -1,0 +1,3 @@
+description: "How Claude Code lists skills: a personal skill over a project one, a skill over a command, hidden and overridden skills, broken frontmatter, when_to_use, a replaced built-in, a nested name clash and a paths pattern without a slash."
+launch: .
+target: src/api/orders.ts
