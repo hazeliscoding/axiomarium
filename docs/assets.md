@@ -49,7 +49,7 @@ ERROR  agents/determinism-auditor/asset.yaml:8
        The evidence supports experimental. Lower the maturity, or add the evidence.
 ```
 
-Some claims can't be checked yet, and it's worth being plain about which. `permissions` and `side_effects` are declared, not enforced. `supports` is the author's word until `axm explain` and `axm sync` can show an asset loading in each harness. And until v0.4, an eval counts once its files exist, whether or not it passes.
+Some claims can't be checked yet, and it's worth being plain about which. `permissions` and `side_effects` are declared, not enforced. `supports` is the author's word until `axm explain` and `axm sync` can show an asset loading in each harness. And until v0.5, an eval counts once its files exist, whether or not it passes.
 
 ## What each maturity level promises
 

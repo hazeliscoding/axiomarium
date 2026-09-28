@@ -11,7 +11,7 @@
 
 Axiomarium is my lab for engineering reliable AI coding environments. It holds the agents, skills, hooks, policies, workflows and evals I use, and `axm`, a local CLI that inspects, validates, tests and debugs them. It treats agent configuration as real software infrastructure: kept in git, inspectable, testable, portable, and able to learn from its failures. It's built for my own setup first, and it's public in case it's useful to you too.
 
-> **Status:** early development. v0.2 shows what Claude Code and Codex actually load for a file with `axm explain`, and `axm doctor` checks the instruction files of any repo. v0.1's vault checks stay: `axm list`, `axm validate` and `axm doctor` in a vault. Skills and triggering follow in v0.3. See [ROADMAP.md](ROADMAP.md).
+> **Status:** early development. v0.2 shows what Claude Code and Codex actually load for a file with `axm explain`, and `axm doctor` checks the instruction files of any repo. v0.1's vault checks stay: `axm list`, `axm validate` and `axm doctor` in a vault. Skills and hooks follow in v0.3, and trigger testing in v0.4. See [ROADMAP.md](ROADMAP.md).
 
 ## The problem
 

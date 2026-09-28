@@ -49,24 +49,24 @@ Axiomarium is my lab for building, testing and debugging AI coding environments 
 - **Each asset has one content file named after its kind:** `agent.md`, `skill.md`, `hook.md`, `policy.md`, `workflow.md` or `experiment.md`. Adapters generate harness files such as `SKILL.md` from it.
 - **Skills, hooks and policies carry a block named after their kind** in `asset.yaml`, validated by `schemas/skill.schema.json`, `hook.schema.json` and `policy.schema.json`. A skill says when it should activate (`use_when`), a hook says whether it blocks, warns or only gathers evidence (`response`), and each policy rule names what enforces it (`enforced_by`). Agents need nothing beyond `permissions` yet, so there is no agent schema.
 - **References are checked:** the content file exists and isn't empty, each `enforced_by` names an asset that exists, and each `evals.<type>: true` has at least one file in the asset's `evals/<type>/`.
-- **Maturity evidence is data** in `registry/maturity.yaml`: each level's promise and what it requires. The binary embeds it, like the schemas, so every vault is judged by the same promises. Usage evidence is a dated entry in `docs/dogfooding.md`: a heading such as `## 2026-10-02 · carmine-workbench` whose section links to the asset's folder. Incubating needs 1 entry. Tested adds behavioral and regression evals, plus trigger evals for skills. Stable needs 3 entries, and battle-tested 5 entries across 3 repos. A maturity claim without its evidence is an error, because the manifest says something untrue. Until v0.4, eval evidence means the eval files exist, not that they pass.
+- **Maturity evidence is data** in `registry/maturity.yaml`: each level's promise and what it requires. The binary embeds it, like the schemas, so every vault is judged by the same promises. Usage evidence is a dated entry in `docs/dogfooding.md`: a heading such as `## 2026-10-02 · carmine-workbench` whose section links to the asset's folder. Incubating needs 1 entry. Tested adds behavioral and regression evals, plus trigger evals for skills. Stable needs 3 entries, and battle-tested 5 entries across 3 repos. A maturity claim without its evidence is an error, because the manifest says something untrue. Until v0.5, eval evidence means the eval files exist, not that they pass.
 - **`validate` and `doctor` render the same result.** `validate` prints only the problems, for CI and hooks. `doctor` adds the inventory, and from v0.2 the instruction findings. `list` shows the inventory and judges nothing.
 - **No `--json` in v0.1.** Agents and hooks read the plain output. JSON becomes a contract with `explain` in v0.2.
-- **`inspect` and `init` move to v0.9.** `inspect` would duplicate `detect`, and `init` has nothing to write until it can detect a stack and install assets. Until then a vault is recognized by its kind folders.
+- **`inspect` and `init` move to v0.10.** `inspect` would duplicate `detect`, and `init` has nothing to write until it can detect a stack and install assets. Until then a vault is recognized by its kind folders.
 - **Hooks run through `axm`.** The harness calls `axm hook <name>`, which reads the hook's JSON on stdin. It needs no extra runtime on any OS, starts fast, and keeps the hook's logic in the tested core, where the protocol for each harness lives. A hook command never exits with 2, because Claude Code reads 2 as "block": bad input exits with 1 and a message.
-- **The scope sheriff reads the task's scope from `.axm/scope`:** one glob per line, relative to the repo root, written by the agent or the user at the start of a task. Without the file the hook is silent. An edit outside the scope sends the agent a message asking why, and is never blocked. Recording evidence waits for the v0.5 evidence store.
+- **The scope sheriff reads the task's scope from `.axm/scope`:** one glob per line, relative to the repo root, written by the agent or the user at the start of a task. Without the file the hook is silent. An edit outside the scope sends the agent a message asking why, and is never blocked. Recording evidence waits for the v0.6 evidence store.
 - **Claude Code hooks, confirmed on 2.1.283 (2026-09-27).** The hooks docs don't say which output of a tool hook reaches the model, so headless sessions settled it. A `PostToolUse` hook's `hookSpecificOutput.additionalContext` reaches the model without blocking anything, and so does a `PreToolUse` one. `decision: "block"` with a `reason` on `PostToolUse` also reaches it. `permissionDecision: "allow"` with a `permissionDecisionReason` on `PreToolUse` reaches only the user. The hook reads `tool_name`, `cwd` and `tool_input.file_path` (`tool_input.notebook_path` for NotebookEdit), which are absolute paths. The editing tools are Write, Edit and NotebookEdit; MultiEdit no longer exists. So the scope sheriff runs after the edit (`after-edit`, which only fires for an edit that happened) and warns through `additionalContext`.
 - **Releases** run from `.github/workflows/release.yml` when a `v*` tag is pushed. The tag must match `<Version>`, and `CHANGELOG.md` must have that version's section, which becomes the release notes. Each OS builds its own NativeAOT binary (archived with `SHA256SUMS`) and its own `Axiomarium.<rid>` tool package, and Linux also packs the `Axiomarium` pointer package, following the .NET 10 docs on RID-specific tools. NuGet gets them through Trusted Publishing, so no API key is stored, with the pointer package pushed last. Fresh runners then install both the binary and the tool and run them. A pull request that touches the release setup runs everything except publishing, so the pipeline is proven before a tag needs it. Released builds ship without symbols. Two limits: on Windows the tool is installed behind an `axm.cmd` launcher that bash only finds by that name, and the Linux binary is built on Ubuntu 24.04, so it needs that glibc or newer.
 
 ### Instruction intelligence (v0.2)
 
-- **Claude Code and Codex first.** Two harnesses are enough to show that the same file gets different instructions. Copilot comes with the adapters in v0.8.
+- **Claude Code and Codex first.** Two harnesses are enough to show that the same file gets different instructions. Copilot comes with the adapters in v0.9.
 - **Harness models follow the docs, then the real harness.** Each model records the docs it was built from and the harness version it was confirmed against. The first models follow the Claude Code memory and hooks docs as read on 2026-09-28 (Claude Code 2.1.283), and the Codex AGENTS.md docs and source as read the same day (Codex 0.156.1, whose loading code matches 0.158.0). Every scenario was recorded again on Claude Code 2.1.284 the same day, and nothing changed but the version, so the Claude Code model is confirmed against 2.1.284.
 - **Dropped files are output, not silence.** A resolution has three parts: loaded (in context order, with reason, timing and bytes), dropped (with the reason) and findings. Every loaded or dropped entry carries the id of the rule that produced it, such as `claude-code/ancestor-memory`, and each rule id maps to its doc section and the harness version it was confirmed against.
 - **"Effective for a file"** means what the harness loads at launch from the launch directory, plus what it loads on demand when the agent reads that file. The launch directory defaults to the repo root and is set with `--cwd`.
-- **v0.2 covers instruction files only.** Skills and hooks move to v0.3, which builds skill discovery for each harness anyway. The vault's own assets reach a harness only through `sync` in v0.8, so `explain` shows what the harness sees, not what the vault holds.
+- **v0.2 covers instruction files only.** Skills and hooks move to v0.3, which builds skill discovery for each harness anyway. The vault's own assets reach a harness only through `sync` in v0.9, so `explain` shows what the harness sees, not what the vault holds.
 - **Skills are available, not loaded.** The model decides when a skill loads, so from v0.3 `explain` lists matching skills as available and never claims they loaded.
-- **No `axm conflicts` command.** Duplicate blocks, dead references and shadowed files are findings, shown by `explain` and `doctor`. Contradictions between rules need a model, so `conflicts --judge` moves to v0.4 with the model providers, and v0.2 stays fully deterministic.
+- **No `axm conflicts` command.** Duplicate blocks, dead references and shadowed files are findings, shown by `explain` and `doctor`. Contradictions between rules need a model, so `conflicts --judge` moves to v0.5 with the model providers, and v0.2 stays fully deterministic.
 - **The JSON output is the contract.** `explain --json` carries a `schemaVersion`, snapshot tests use it, and the text output is rendered from the same resolution. `explain` exits 0 whenever it ran, because every instruction finding is a warning or info, and 2 when it couldn't run.
 - **`explain` output, shape 1 (2026-09-28).** Paths are relative to the repo root with forward slashes, `~/…` under the home folder, and whole otherwise, so outside a repo nothing is relative. The JSON has the `target` and `launchDirectory`, then each harness with `confirmedWith`, its `loaded` files (`path`, `scope`, `timing` as `at-launch` or `when-read`, `rule`, `bytes`, and `cut`, `importedFrom` and `patterns` when they apply) and its `dropped` files (`path`, `rule`, `importedFrom`), then every rule they cite, by id, with its `label`, `summary`, `source` and `leftToModel`. A file the harness leaves to the model shows as NOT LOADED, never DROPPED. `--diff` is text only, because the JSON already lists what each harness loads.
 - **Tests never read the real machine.** The home, `CODEX_HOME` and managed-policy directories, and the harnesses' user settings (Claude Code's `claudeMdExcludes` and Project instructions mode, Codex's `config.toml`), are one injected input, and fixtures supply it.
@@ -100,6 +100,10 @@ Axiomarium is my lab for building, testing and debugging AI coding environments 
 - **`axiomarium.yaml` configures a repo (2026-09-28).** It sits at the repo root and validates against `schemas/axiomarium.schema.json`, which the binary embeds. Its first field is `doctor.ignore`: globs for instruction files that are broken on purpose, such as test fixtures. The doctor doesn't list or check them, and its summary says how many it ignored, so nothing disappears silently. A problem in the file is an error, and a file with problems ignores nothing, so a typo can't hide a finding. This repo ignores `scenarios/` and `findings/*/fixtures/`.
 - **People who don't read code get the warning without asking.** A Claude Code SessionStart hook, `axm hook session-doctor`, runs the doctor's checks and starts the session with a short notice to the user and the model when something is wrong, and prints nothing otherwise. It aims for 200 ms, measured locally, and CI holds the native binary under 1 s.
 - **Claude Code SessionStart hooks, confirmed on 2.1.284 (2026-09-28).** Headless sessions with one kind of output each confirmed the SessionStart section of the hooks docs: plain stdout and `hookSpecificOutput.additionalContext` reach the model, and `systemMessage` doesn't. The transcript records it as a separate `hook_system_message`, which the docs say the user sees. The input names how the session started as `source`. So `session-doctor` gives the user a one-line summary as `systemMessage` and the model every error and warning with its fix as `additionalContext`, and says nothing when there are only info findings or none. Run directly it takes 25 to 70 ms; inside Claude Code on Windows about 450 ms, most of it starting Git Bash. CI times the native binary, cold, on this repo, and runs it on a broken repo as the positive control.
+
+### Skills and hooks (v0.3)
+
+- **v0.3 is skills and hooks, and trigger testing moves to v0.4 (2026-09-28).** M3 as first planned held two things: deterministic skill and hook discovery, and trigger tests that run a model. They ship apart. v0.3 models which skills each harness offers the model and which hooks run, and `axm triggers` finds overlapping descriptions without a model. v0.4 generates trigger prompts and runs them. Every later milestone moves down one, and the versions in the decisions above follow.
 
 ### Brand
 
@@ -223,17 +227,22 @@ What each harness actually reads for a file, and what it silently drops.
 - The release run installed the binary and the dotnet tool on fresh Linux, Windows and macOS runners and ran them ([run](https://github.com/hazeliscoding/axiomarium/actions/runs/36473272914)). On Windows and macOS the first attempt gave up after ten minutes, before NuGet listed the platform packages, and passed on a re-run. The release workflow now waits up to thirty.
 - The owner checked the colors and kaomoji in Windows Terminal.
 
-## M3: v0.3, skills and triggering
+## M3: v0.3, skills and hooks
 
 - [ ] Skill and hook discovery for each harness: Claude Code (`.claude/skills`, `~/.claude/skills`, plugins, and hooks in settings) and Codex (`.agents/skills`, `~/.agents/skills` and `hooks.json`). `axm explain` lists the matching skills as available, never loaded, and the hooks that would run. (Moved from v0.2.)
 - [ ] `axm triggers`: skills whose descriptions overlap, and the terms they share.
+
+## M4: v0.4, trigger testing
+
 - [ ] `axm triggers generate <skill>`: positive, negative, ambiguous, paraphrased and adversarial prompts.
 - [ ] `axm triggers test`: precision and recall for each skill over the generated prompts, and each collision with its prompt, the skill selected and the skill expected.
 - [ ] Emit the prompts as fixtures that existing skill-eval tools can run.
 
 **Done when:** `axm triggers test` on the vault's skills reports precision and recall for each one, and names every collision with a likely cause.
 
-## M4: v0.4, evals
+**For planning (research, 2026-09-28).** Every trigger tester found drives the real harness headless: Anthropic's skill-creator runs `claude -p` and counts a first `Skill` call, `claude plugin eval` grades `tool_used: Skill`, and promptfoo asserts `skill-used` over the Claude Agent SDK and the Codex SDK. None calls a model API with a rebuilt listing, and Claude Code's listing text isn't published. `claude plugin eval` runs in a sealed home, so it can't see the other skills a prompt competes with. `codex exec --json` has no skill event; Codex's own source counts a read of `SKILL.md` as use. The formats worth emitting are the skill-creator's `{query, should_trigger}` set and a `promptfooconfig.yaml`.
+
+## M5: v0.5, evals
 
 - [ ] `axm eval run` and `axm eval compare`: a baseline against a candidate, recording result, cost, tokens, latency and behavior.
 - [ ] Behavioral and regression evals for the starter assets, with history in `.axm/cache.db`.
@@ -242,7 +251,7 @@ What each harness actually reads for a file, and what it silently drops.
 
 **Done when:** comparing an asset before and after a change reports behavior, tokens and latency for both versions, on two different model providers.
 
-## M5: v0.5, evidence
+## M6: v0.6, evidence
 
 - [ ] `schemas/evidence.schema.json`, and `axm evidence record` and `axm evidence check`.
 - [ ] `axm evidence`: each kind of check (build, unit tests, Terraform validate…) as FRESH, STALE or MISSING, with the reason.
@@ -250,7 +259,7 @@ What each harness actually reads for a file, and what it silently drops.
 
 **Done when:** editing a file covered by recorded test evidence turns that evidence STALE with the reason, and running the tests again turns it FRESH.
 
-## M6: v0.6, failure engineering
+## M7: v0.7, failure engineering
 
 - [ ] `schemas/incident.schema.json`, and `axm incident new`, which creates `incidents/<date>-<name>/` with `incident.md`, `evidence.yaml`, `root-cause.md` and `regression.yaml`.
 - [ ] `axm distill <incident>`: the failure class, the root cause, existing protections and possible responses, which prefer an eval or a hook over a new global instruction.
@@ -259,20 +268,20 @@ What each harness actually reads for a file, and what it silently drops.
 
 **Done when:** one real incident from my own sessions goes from `axm incident new` to a regression eval that fails without its guardrail and passes with it.
 
-## M7: v0.7, prompt fossil
+## M8: v0.8, prompt fossil
 
 - [ ] `axm fossil`: uses eval history to find instructions that add tokens or latency, rarely matter, reduce capability or activate needlessly, and suggests a replacement for each.
 
 **Done when:** `axm fossil` on my own instruction files reports each candidate with its measured token and quality impact, and changes no file.
 
-## M8: v0.8, adapters
+## M9: v0.9, adapters
 
 - [ ] `axm sync`: generates each harness's files from the canonical assets (`.claude/`, `.agents/`, `.github/`), shows the diff, and writes only what is approved.
 - [ ] Adapters for Claude Code, Codex, GitHub Copilot and a generic target.
 
 **Done when:** one skill synced to all three harnesses loads in each of them, confirmed with `axm explain` and the real harness.
 
-## M9: v0.9, project intelligence
+## M10: v0.10, project intelligence
 
 - [ ] `axm detect`: runtime, frontend, database, infrastructure, CI and the agent harnesses in use. It absorbs the `axm inspect` once planned for v0.1.
 - [ ] `axm recommend`: assets whose manifests fit what was detected.
