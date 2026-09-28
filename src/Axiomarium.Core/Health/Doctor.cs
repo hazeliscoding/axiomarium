@@ -2,13 +2,14 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using Axiomarium.Core.Assets;
 using Axiomarium.Core.Manifests;
+using Axiomarium.Core.Registry;
 using Axiomarium.Core.Schemas;
 
 namespace Axiomarium.Core.Health;
 
 /// <summary>
 /// Checks the health of a vault: finds every asset, validates its manifest and content file, and checks
-/// that what a valid manifest points to exists. Reads, never writes.
+/// that what a valid manifest points to exists and that its maturity has its evidence. Reads, never writes.
 /// </summary>
 public static class Doctor
 {
@@ -35,8 +36,7 @@ public static class Doctor
         }
 
         var assets = new List<DiscoveredAsset>();
-        var diagnostics = new List<Diagnostic>();
-        var references = new List<Reference>();
+        var found = new Findings();
         foreach (var kind in kinds)
         {
             var names = Directory.EnumerateDirectories(Path.Combine(vaultRoot, kind.Folder()))
@@ -46,22 +46,23 @@ public static class Doctor
                 .Order(StringComparer.Ordinal);
             foreach (var name in names)
             {
-                assets.Add(Examine(vaultRoot, kind, name, diagnostics, references));
+                assets.Add(Examine(vaultRoot, kind, name, found));
             }
         }
 
-        References.ExamineTargets(assets, references, diagnostics);
+        References.ExamineTargets(assets, found.References, found.Diagnostics);
+        MaturityCheck.Examine(found.Claims, ReadUsage(vaultRoot, found.Diagnostics), found.Diagnostics);
 
-        var ordered = diagnostics
+        var ordered = found.Diagnostics
             .OrderBy(diagnostic => diagnostic.File, StringComparer.Ordinal)
             .ThenBy(diagnostic => diagnostic.Location?.Line ?? 0)
             .ToList();
         return new DoctorResult(new DoctorReport(assets, ordered), null);
     }
 
-    private static DiscoveredAsset Examine(
-        string vaultRoot, AssetKind kind, string name, List<Diagnostic> diagnostics, List<Reference> references)
+    private static DiscoveredAsset Examine(string vaultRoot, AssetKind kind, string name, Findings found)
     {
+        var diagnostics = found.Diagnostics;
         var folder = $"{kind.Folder()}/{name}";
         var directory = Path.Combine(vaultRoot, kind.Folder(), name);
 
@@ -83,7 +84,7 @@ public static class Doctor
         try
         {
             var text = File.ReadAllText(Path.Combine(directory, ManifestName));
-            return ExamineManifest(kind, name, folder, directory, manifestFile, text, diagnostics, references);
+            return ExamineManifest(kind, name, folder, directory, manifestFile, text, found);
         }
         catch (Exception problem) when (problem is not OutOfMemoryException)
         {
@@ -132,9 +133,9 @@ public static class Doctor
         string directory,
         string manifestFile,
         string text,
-        List<Diagnostic> diagnostics,
-        List<Reference> references)
+        Findings found)
     {
+        var diagnostics = found.Diagnostics;
         var before = diagnostics.Count;
         var parsed = YamlDocument.Parse(text);
         if (parsed.Problem is { } problem)
@@ -179,7 +180,8 @@ public static class Doctor
         if (diagnostics.Count == before)
         {
             References.ExamineEvals(directory, folder, manifestFile, manifest, parsed.Locations, diagnostics);
-            references.AddRange(References.Collect(manifestFile, manifest, parsed.Locations));
+            found.References.AddRange(References.Collect(manifestFile, manifest, parsed.Locations));
+            found.Claims.Add(new MaturityClaim(manifestFile, Locate(parsed.Locations, "maturity"), kind, folder, Text(manifest, "maturity"), TrueEvals(manifest)));
         }
 
         return new DiscoveredAsset(kind, name, folder, manifestFile, Text(manifest, "maturity"), Text(manifest, "version"));
@@ -223,6 +225,31 @@ public static class Doctor
     }
 
     private static string Text(JsonObject manifest, string field) => manifest[field]!.GetValue<string>();
+
+    private static IReadOnlySet<string> TrueEvals(JsonObject manifest) =>
+        manifest["evals"] is JsonObject evals
+            ? evals.Where(pair => pair.Value is JsonValue value && value.GetValueKind() == JsonValueKind.True).Select(pair => pair.Key).ToHashSet(StringComparer.Ordinal)
+            : new HashSet<string>(StringComparer.Ordinal);
+
+    // A missing log means no usage yet. An unreadable one is an error, and the assets are still checked.
+    private static IReadOnlyList<UsageEntry> ReadUsage(string vaultRoot, List<Diagnostic> diagnostics)
+    {
+        var path = Path.Combine(vaultRoot, UsageLog.File);
+        if (!File.Exists(path))
+        {
+            return [];
+        }
+
+        try
+        {
+            return UsageLog.Parse(File.ReadAllText(path));
+        }
+        catch (Exception problem) when (problem is not OutOfMemoryException)
+        {
+            diagnostics.Add(new Diagnostic(Severity.Error, UsageLog.File, null, $"Couldn't read {UsageLog.File}: {problem.Message}", []));
+            return [];
+        }
+    }
 
     // An error about a missing field has the parent's path, so walk up until a path has a location.
     internal static SourceLocation? Locate(IReadOnlyDictionary<string, SourceLocation> locations, string path)

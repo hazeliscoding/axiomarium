@@ -337,6 +337,98 @@ public class DoctorTests
         Assert.Equal("Unknown maturity: \"production-ready\"", diagnostic.Message);
     }
 
+    private static string Claiming(string maturity, string manifest, params string[] evals) =>
+        evals.Aggregate(manifest.Replace("maturity: experimental", $"maturity: {maturity}"), (text, type) => text.Replace($"{type}: false", $"{type}: true"));
+
+    private static TempVault WithEvalFiles(TempVault vault, string folder, params string[] types) =>
+        types.Aggregate(vault, (v, type) => v.Write($"{folder}/evals/{type}/case-01.yaml", "prompt: x\n"));
+
+    private static string UsageLog(string folder, params string[] repos) =>
+        string.Concat(repos.Select((repo, i) => $"## 2026-10-{i + 1:00} · {repo}\n\nUsed [it](../{folder}/).\n\n"));
+
+    [Fact]
+    public void A_maturity_claim_without_its_evidence_is_an_error()
+    {
+        using var vault = new TempVault().Asset("agents/determinism-auditor", Claiming("tested", SampleManifests.Valid));
+
+        var diagnostic = Assert.Single(Report(vault).Diagnostics);
+
+        Assert.Equal("agents/determinism-auditor/asset.yaml", diagnostic.File);
+        Assert.Equal(new SourceLocation(5, 1), diagnostic.Location);
+        Assert.Equal("maturity \"tested\" lacks its evidence", diagnostic.Message);
+        Assert.Equal(
+            [
+                "Needs 1 usage entry in docs/dogfooding.md, found 0.",
+                "Needs behavioral evals, and evals.behavioral isn't true.",
+                "Needs regression evals, and evals.regression isn't true.",
+                "The evidence supports experimental. Lower the maturity, or add the evidence.",
+            ],
+            diagnostic.Detail);
+    }
+
+    [Fact]
+    public void Usage_and_evals_earn_tested()
+    {
+        using var vault = WithEvalFiles(
+                new TempVault().Asset("agents/determinism-auditor", Claiming("tested", SampleManifests.Valid, "behavioral", "regression")),
+                "agents/determinism-auditor",
+                "behavioral",
+                "regression")
+            .Write("docs/dogfooding.md", UsageLog("agents/determinism-auditor", "carmine-workbench"));
+
+        Assert.Empty(Report(vault).Diagnostics);
+    }
+
+    [Fact]
+    public void A_skill_also_needs_trigger_evals()
+    {
+        using var vault = WithEvalFiles(
+                new TempVault().Asset("skills/x", Claiming("tested", TempVault.Manifest("skill", "x"), "behavioral", "regression")),
+                "skills/x",
+                "behavioral",
+                "regression")
+            .Write("docs/dogfooding.md", UsageLog("skills/x", "carmine-workbench"));
+
+        var diagnostic = Assert.Single(Report(vault).Diagnostics);
+
+        Assert.Equal(
+            ["Needs trigger evals, and evals.trigger isn't true.", "The evidence supports incubating. Lower the maturity, or add the evidence."],
+            diagnostic.Detail);
+    }
+
+    [Fact]
+    public void Battle_tested_counts_different_repos()
+    {
+        using var vault = WithEvalFiles(
+                new TempVault().Asset("agents/determinism-auditor", Claiming("battle-tested", SampleManifests.Valid, "behavioral", "regression")),
+                "agents/determinism-auditor",
+                "behavioral",
+                "regression")
+            .Write("docs/dogfooding.md", UsageLog("agents/determinism-auditor", "a", "a", "b", "b", "b"));
+
+        var diagnostic = Assert.Single(Report(vault).Diagnostics);
+
+        Assert.Equal(
+            ["Needs 3 repos in its usage entries, found 2.", "The evidence supports stable. Lower the maturity, or add the evidence."],
+            diagnostic.Detail);
+    }
+
+    [Fact]
+    public void Unreadable_usage_log_is_an_error_and_the_assets_are_still_checked()
+    {
+        using var vault = new TempVault()
+            .Asset("agents/determinism-auditor", SampleManifests.Valid)
+            .Write("docs/dogfooding.md", "## 2026-10-01 · x\n");
+        using var locked = MakeUnreadable(Path.Combine(vault.Root, "docs", "dogfooding.md"));
+
+        var report = Report(vault);
+
+        var diagnostic = Assert.Single(report.Diagnostics);
+        Assert.Equal("docs/dogfooding.md", diagnostic.File);
+        Assert.StartsWith("Couldn't read docs/dogfooding.md: ", diagnostic.Message);
+        Assert.Equal("determinism-auditor", Assert.Single(report.Assets).Name);
+    }
+
     [Fact]
     public void Duplicate_key_is_reported_with_its_line()
     {

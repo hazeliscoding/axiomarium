@@ -40,7 +40,7 @@ The tool is only worth trusting if these hold. Never break them, not even in deb
 - An asset's `version` follows SemVer. Bump it when the asset's behavior changes.
 - Schemas in `schemas/` are the single source of truth and are embedded in the binary. `SchemaValidator` supports only the keywords in `SchemaValidator.SupportedKeywords`. To use another keyword, extend the validator and its tests first; a test fails if a schema uses an unsupported one.
 - YAML is read with the YAML 1.2 core schema: `yes` and `on` are strings, and numbers keep their source text. Quote a version such as `"1.0"`.
-- Maturity is earned. Raise an asset's level only when the evidence that level requires in `registry/maturity.yaml` exists.
+- Maturity is earned. Raise an asset's level only when the evidence that level requires in `registry/maturity.yaml` exists: usage entries in `docs/dogfooding.md` (a `## YYYY-MM-DD · repo` heading whose section links to the asset's folder) and evals. `axm doctor` fails on a claim without its evidence.
 - Before adding an instruction, ask whether deterministic tooling could enforce it instead. Before adding a skill, write down when it should activate, in its `skill.use_when`. Before adding a hook, decide whether it should block, warn or only gather evidence (`hook.response`), and prefer warning with evidence. Each policy rule names what enforces it in `enforced_by`, and an empty list admits that nothing does yet.
 - Failures become tests, not paragraphs. When an agent fails, capture an incident and add a regression eval. Don't answer a failure with another paragraph of prose.
 

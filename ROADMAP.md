@@ -48,7 +48,7 @@ Axiomarium is my lab for building, testing and debugging AI coding environments 
 - **Each asset has one content file named after its kind:** `agent.md`, `skill.md`, `hook.md`, `policy.md`, `workflow.md` or `experiment.md`. Adapters generate harness files such as `SKILL.md` from it.
 - **Skills, hooks and policies carry a block named after their kind** in `asset.yaml`, validated by `schemas/skill.schema.json`, `hook.schema.json` and `policy.schema.json`. A skill says when it should activate (`use_when`), a hook says whether it blocks, warns or only gathers evidence (`response`), and each policy rule names what enforces it (`enforced_by`). Agents need nothing beyond `permissions` yet, so there is no agent schema.
 - **References are checked:** the content file exists and isn't empty, each `enforced_by` names an asset that exists, and each `evals.<type>: true` has at least one file in the asset's `evals/<type>/`.
-- **Maturity evidence is data** in `registry/maturity.yaml`: each level's promise and what it requires. Usage evidence is a dated entry in `docs/dogfooding.md` that links to the asset's folder. Incubating needs 1 entry. Tested adds behavioral and regression evals, plus trigger evals for skills. Stable needs 3 entries, and battle-tested 5 entries across 3 repos. A maturity claim without its evidence is an error, because the manifest says something untrue. Until v0.4, eval evidence means the eval files exist, not that they pass.
+- **Maturity evidence is data** in `registry/maturity.yaml`: each level's promise and what it requires. The binary embeds it, like the schemas, so every vault is judged by the same promises. Usage evidence is a dated entry in `docs/dogfooding.md`: a heading such as `## 2026-10-02 · carmine-workbench` whose section links to the asset's folder. Incubating needs 1 entry. Tested adds behavioral and regression evals, plus trigger evals for skills. Stable needs 3 entries, and battle-tested 5 entries across 3 repos. A maturity claim without its evidence is an error, because the manifest says something untrue. Until v0.4, eval evidence means the eval files exist, not that they pass.
 - **`validate` and `doctor` render the same result.** `validate` prints only the problems, for CI and hooks. `doctor` adds the inventory, and from v0.2 the instruction findings. `list` shows the inventory and judges nothing.
 - **No `--json` in v0.1.** Agents and hooks read the plain output. JSON becomes a contract with `explain` in v0.2.
 - **`inspect` and `init` move to v0.9.** `inspect` would duplicate `detect`, and `init` has nothing to write until it can detect a stack and install assets. Until then a vault is recognized by its kind folders.
@@ -103,7 +103,7 @@ Agent configuration can be inspected and validated like software.
   - [x] the content file named after the kind, and a check that it exists and isn't empty;
   - [x] `schemas/skill.schema.json`, `hook.schema.json` and `policy.schema.json`, and a check that each of those kinds has its block and no asset has another kind's block;
   - [x] reference checks: `enforced_by` targets and eval folders.
-- [ ] `registry/maturity.yaml` and its schema, and a check that each maturity claim has its evidence.
+- [x] `registry/maturity.yaml` and its schema, and a check that each maturity claim has its evidence.
 - [ ] Commands:
   - [ ] `axm list`: assets grouped by kind, with version, maturity and harness support, filtered by `--kind` and `--harness`.
   - [ ] `axm validate`: every check, printing only the problems, with exit codes for CI.
