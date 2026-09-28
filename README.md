@@ -11,7 +11,7 @@
 
 Axiomarium is my lab for engineering reliable AI coding environments. It holds the agents, skills, hooks, policies, workflows and evals I use, and `axm`, a local CLI that inspects, validates, tests and debugs them. It treats agent configuration as real software infrastructure: kept in git, inspectable, testable, portable, and able to learn from its failures. It's built for my own setup first, and it's public in case it's useful to you too.
 
-> **Status:** early development. `axm list`, `axm validate` and `axm doctor` work from source (`dotnet run --project src/Axiomarium.Cli -- doctor`), and there is no release to install yet. See [ROADMAP.md](ROADMAP.md).
+> **Status:** early development. v0.1 inspects and validates a vault of agent assets with `axm list`, `axm validate` and `axm doctor`, and `axm explain` follows in v0.2. See [ROADMAP.md](ROADMAP.md).
 
 ## The problem
 
@@ -105,6 +105,27 @@ WARNING  dead-import
 
 2 harnesses · 5 loaded · 4 not loaded · 2 warnings  (・_・;)
 ```
+
+## Install
+
+`axm` is one native binary, with no runtime to install.
+
+- **Download** the archive for your platform (Linux x64, Windows x64 or macOS arm64) from the [latest release](https://github.com/hazeliscoding/axiomarium/releases/latest), check it against `SHA256SUMS`, and put `axm` on your `PATH`.
+- **Or install the .NET tool**, which needs the .NET 10 SDK: `dotnet tool install -g Axiomarium`. To try it without installing, run `dnx Axiomarium doctor`.
+
+Then, in a vault such as this repo:
+
+```text
+axm list
+axm validate
+axm doctor
+```
+
+A few platform notes:
+
+- On macOS, a binary downloaded with a browser is quarantined. Clear it with `xattr -d com.apple.quarantine axm`.
+- The Linux binary is built on Ubuntu 24.04, so it needs that glibc or newer.
+- On Windows, the .NET tool runs as `axm` in PowerShell and cmd, and as `axm.cmd` in Git Bash. The downloaded `axm.exe` works everywhere.
 
 ## Principles
 

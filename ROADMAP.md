@@ -30,7 +30,7 @@ Axiomarium is my lab for building, testing and debugging AI coding environments 
 - **No Spectre.Console.** The output is simple enough for a plain writer with ANSI colors, as in pgcheckup, and startup stays fast for hooks. `axm doctor` on this repo takes about 60 ms.
 - **YAML follows the 1.2 core schema:** `yes` and `on` stay strings, and a number JSON can write as is keeps its source text, so an error can say `Quote it: "1.0"`. Other number forms, such as hex, octal, `+1` or `.5`, become their value.
 - **The doctor checks each asset in isolation.** YamlDotNet sometimes throws exceptions that aren't `YamlException`, and reports some errors (tab indentation) at line 1. So reading YAML never throws, a wrong line is replaced by the real one or by none, and anything unexpected while checking one manifest becomes an error on that file while the rest of the vault is still checked.
-- **The version is `0.1.0-dev`** until the v0.1.0 release.
+- **Versions:** between releases, `main` carries the next version with a `-dev` suffix, such as `0.2.0-dev`. A release commit drops the suffix and dates the version's section in `CHANGELOG.md`, and its tag must match.
 - **Projects:** `Axiomarium.Core` (assets, schemas, registry, instruction resolution) and `Axiomarium.Cli`. `Axiomarium.Eval` and `Axiomarium.Adapters` arrive with their milestones.
 - **The command is `axm`.** `axiom` would collide with the CLI of Axiom (axiom.co), and their npm package `axiom` is an AI evals SDK in the same space.
 - **Versioned releases.** Each milestone from M1 on is a release (v0.1, v0.2 …), tagged `vX.Y.Z`, with NativeAOT binaries for `win-x64`, `linux-x64` and `osx-arm64` on GitHub Releases, `SHA256SUMS`, the `Axiomarium` dotnet tool on NuGet, and a `CHANGELOG.md` entry. Each asset also carries its own SemVer `version` in its manifest.
@@ -132,7 +132,7 @@ Agent configuration can be inspected and validated like software.
   - [ ] the release workflow: binaries, `SHA256SUMS`, and release notes from `CHANGELOG.md`;
   - [ ] the `Axiomarium` dotnet tool on NuGet through Trusted Publishing;
   - [ ] a job that installs the release on fresh Linux, Windows and macOS runners and runs `axm validate`;
-  - [ ] install steps in the README.
+  - [x] install steps in the README.
 
 **Done when:** the five starter assets pass `axm validate` in CI; breaking a manifest field, a kind block, a reference or a maturity claim makes `validate` and `doctor` name the file, the field, and the allowed values or the missing evidence; `scope-sheriff` warns a real Claude Code session about an edit outside its scope; and v0.1.0 installs from GitHub Releases and from NuGet on fresh Linux, Windows and macOS runners.
 
