@@ -100,16 +100,16 @@ Agent configuration can be inspected and validated like software.
 
 - [x] Discovery across `agents/`, `skills/`, `hooks/`, `policies/`, `workflows/` and `experiments/`, and the `asset` schema. Manifest errors name the file, the field and the allowed values. (Done in M0.)
 - [x] `CHANGELOG.md`, with the work so far under Unreleased.
-- [ ] Asset structure:
+- [x] Asset structure:
   - [x] the content file named after the kind, and a check that it exists and isn't empty;
   - [x] `schemas/skill.schema.json`, `hook.schema.json` and `policy.schema.json`, and a check that each of those kinds has its block and no asset has another kind's block;
   - [x] reference checks: `enforced_by` targets and eval folders.
 - [x] `registry/maturity.yaml` and its schema, and a check that each maturity claim has its evidence.
-- [ ] Commands:
+- [x] Commands:
   - [x] `axm list`: assets grouped by kind, with version, maturity and harness support, filtered by `--kind` and `--harness`.
   - [x] `axm validate`: every check, printing only the problems, with exit codes for CI.
   - [x] `axm doctor`: rebuilt on the same result as `validate`, plus the inventory.
-- [ ] Scope sheriff:
+- [x] Scope sheriff:
   - [x] Ground truth: log what a real Claude Code hook receives for Write, Edit, MultiEdit and NotebookEdit, confirm which hook output reaches the model, and record the Claude Code version and the docs date.
   - [x] A glob matcher in the core (`*`, `**`, `?` and `{a,b}`), for v0.2 to extend.
   - [x] `axm hook scope-sheriff`.
