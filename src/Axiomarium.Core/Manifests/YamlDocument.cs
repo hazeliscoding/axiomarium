@@ -36,7 +36,7 @@ public static partial class YamlDocument
     /// <returns>The document as JSON with its locations, or the problem that stopped it. Never throws for bad YAML.</returns>
     public static YamlParseResult Parse(string text)
     {
-        if (text.StartsWith('﻿'))
+        if (text.StartsWith('\uFEFF'))
         {
             text = text[1..];
         }

@@ -127,7 +127,7 @@ Agent configuration can be inspected and validated like software.
   - [ ] an empty maturity prints `null`, `--root <file>` says the folder doesn't exist, and a duplicate key `"a:b"` is reported as `a`;
   - [ ] on Windows, virtual terminal mode is enabled for stdout but not stderr;
   - [x] the doctor's text assumes a valid manifest has a maturity and a version without saying so;
-  - [ ] a raw byte order mark sits in the source.
+  - [x] a raw byte order mark sits in the source.
 - [ ] Release v0.1.0:
   - [ ] the release workflow: binaries, `SHA256SUMS`, and release notes from `CHANGELOG.md`;
   - [ ] the `Axiomarium` dotnet tool on NuGet through Trusted Publishing;

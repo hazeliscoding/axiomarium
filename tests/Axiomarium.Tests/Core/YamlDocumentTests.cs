@@ -41,7 +41,7 @@ public class YamlDocumentTests
         const string text = "name: x\nsupports:\n  claude-code: full\ninputs:\n  - a\n";
 
         var lf = YamlDocument.Parse(text);
-        var crlf = YamlDocument.Parse("﻿" + text.Replace("\n", "\r\n"));
+        var crlf = YamlDocument.Parse("\uFEFF" + text.Replace("\n", "\r\n"));
 
         Assert.Null(crlf.Problem);
         Assert.Equal(lf.Root!.ToJsonString(), crlf.Root!.ToJsonString());
