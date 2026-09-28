@@ -65,10 +65,18 @@ public static class SchemaValidator
             var values = allowed.Select(value => value!.GetValue<string>()).ToList();
             if (instance is not JsonValue value || value.GetValueKind() != JsonValueKind.String || !values.Contains(value.GetValue<string>()))
             {
+                var hint = $"Allowed: {string.Join(", ", values)}";
+                if (instance is null)
+                {
+                    // An empty YAML value reads as null, which isn't a value the user wrote.
+                    errors.Add(new SchemaError(path, $"{Subject(path)} is empty", [hint]));
+                    return;
+                }
+
                 var shown = instance is JsonValue { } scalar && scalar.GetValueKind() == JsonValueKind.String
                     ? scalar.GetValue<string>()
-                    : instance?.ToJsonString() ?? "null";
-                errors.Add(new SchemaError(path, $"Unknown {Field(path)}: \"{shown}\"", [$"Allowed: {string.Join(", ", values)}"]));
+                    : instance.ToJsonString();
+                errors.Add(new SchemaError(path, $"Unknown {Field(path)}: \"{shown}\"", [hint]));
             }
 
             return;

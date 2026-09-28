@@ -124,7 +124,7 @@ Agent configuration can be inspected and validated like software.
   - [x] the no-vault hint is chosen by reading the core's message text;
   - [ ] the validator silently ignores a non-string `type` and a schema-valued `additionalProperties`;
   - [ ] only JSON-shaped numbers keep their source text, but the docs say all numbers do;
-  - [ ] an empty maturity prints `null`, `--root <file>` says the folder doesn't exist, and a duplicate key `"a:b"` is reported as `a`;
+  - [x] an empty maturity prints `null`, `--root <file>` says the folder doesn't exist, and a duplicate key `"a:b"` is reported as `a`;
   - [ ] on Windows, virtual terminal mode is enabled for stdout but not stderr;
   - [x] the doctor's text assumes a valid manifest has a maturity and a version without saying so;
   - [x] a raw byte order mark sits in the source.

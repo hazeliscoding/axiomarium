@@ -31,6 +31,17 @@ public class SchemaValidatorTests
     }
 
     [Fact]
+    public void Empty_value_for_an_enum_says_it_is_empty()
+    {
+        var error = Assert.Single(Validate(
+            """{"maturity":null}""",
+            """{"type":"object","properties":{"maturity":{"enum":["experimental","stable"]}}}"""));
+
+        Assert.Equal("maturity is empty", error.Message);
+        Assert.Equal(["Allowed: experimental, stable"], error.Detail);
+    }
+
+    [Fact]
     public void Missing_required_fields_are_listed_in_schema_order()
     {
         var errors = Validate(
