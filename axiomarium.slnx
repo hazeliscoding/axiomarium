@@ -6,4 +6,7 @@
   <Folder Name="/tests/">
     <Project Path="tests/Axiomarium.Tests/Axiomarium.Tests.csproj" />
   </Folder>
+  <Folder Name="/tools/">
+    <Project Path="tools/Axiomarium.GroundTruth/Axiomarium.GroundTruth.csproj" />
+  </Folder>
 </Solution>

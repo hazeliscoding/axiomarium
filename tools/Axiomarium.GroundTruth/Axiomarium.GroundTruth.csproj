@@ -1,17 +1,14 @@
 <Project Sdk="Microsoft.NET.Sdk">
+  <!-- Records what the real Claude Code and Codex load for each scenario. A development tool: never shipped. -->
   <PropertyGroup>
     <OutputType>Exe</OutputType>
+    <RootNamespace>Axiomarium.GroundTruth</RootNamespace>
     <IsPackable>false</IsPackable>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="xunit.v3" />
-  </ItemGroup>
-  <ItemGroup>
     <ProjectReference Include="..\..\src\Axiomarium.Core\Axiomarium.Core.csproj" />
-    <ProjectReference Include="..\..\src\Axiomarium.Cli\Axiomarium.Cli.csproj" />
-    <ProjectReference Include="..\..\tools\Axiomarium.GroundTruth\Axiomarium.GroundTruth.csproj" />
   </ItemGroup>
   <ItemGroup>
-    <Using Include="Xunit" />
+    <InternalsVisibleTo Include="Axiomarium.Tests" />
   </ItemGroup>
 </Project>
