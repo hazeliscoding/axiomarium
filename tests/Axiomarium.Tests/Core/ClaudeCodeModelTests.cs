@@ -237,16 +237,31 @@ public class ClaudeCodeModelTests
         Assert.Equal(["repo/.claude/rules/comma.md", "repo/.claude/rules/mixed.md"], Resolve(vault).Loaded.Select(item => TestMachine.Relative(vault.Root, item.Path)));
     }
 
-    // Recorded in bad-frontmatter: the docs say such a rule loads for every file, but it never loads.
+    // Recorded in bad-frontmatter: as the docs say, a rule whose frontmatter doesn't parse loads for every file.
     [Fact]
-    public void A_rule_whose_frontmatter_does_not_parse_never_loads()
+    public void A_rule_whose_frontmatter_does_not_parse_loads_at_launch_for_every_file()
     {
-        using var vault = new TempVault().Write("repo/.claude/rules/broken.md", "---\npaths: [src/api/**\n---\nbroken\n");
+        using var vault = new TempVault().Write("repo/.claude/rules/broken.md", "---\npaths:\n  - \"src/api/**\"\n bad: indent\n---\nbroken\n");
+
+        var resolution = Resolve(vault);
+
+        Assert.Equal(
+            [("repo/.claude/rules/broken.md", InstructionScope.Project, "claude-code/invalid-frontmatter")],
+            Loaded(vault, resolution, LoadTiming.AtLaunch));
+        Assert.Empty(resolution.Dropped);
+    }
+
+    // Recorded in bad-frontmatter: Claude Code quotes a value that looks like YAML syntax and parses again,
+    // so an unclosed bracket becomes part of a pattern that matches nothing.
+    [Fact]
+    public void A_value_claude_code_can_quote_becomes_a_pattern_that_matches_nothing()
+    {
+        using var vault = new TempVault().Write("repo/.claude/rules/unclosed.md", "---\npaths: [src/api/**\n---\nunclosed\n");
 
         var resolution = Resolve(vault);
 
         Assert.Empty(resolution.Loaded);
-        Assert.Equal([("repo/.claude/rules/broken.md", "claude-code/invalid-frontmatter", null)], Dropped(vault, resolution));
+        Assert.Equal([("repo/.claude/rules/unclosed.md", "claude-code/path-rule-no-match", null)], Dropped(vault, resolution));
     }
 
     // Recorded in bad-frontmatter: Claude Code's YAML reader accepts tab indentation.

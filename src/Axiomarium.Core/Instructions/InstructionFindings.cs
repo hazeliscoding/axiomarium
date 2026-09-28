@@ -187,15 +187,19 @@ public static partial class InstructionFindings
                 rule == ClaudeCodeRules.MissingImport ? DeadImport(dropped, context)
                 : rule == ClaudeCodeRules.ImportTooDeep ? ImportTooDeep(dropped, importedBy, context)
                 : rule == ClaudeCodeRules.AgentsMdHidden && InRepo(dropped.Path) ? AgentsMdHidden(dropped, context)
-                : rule == ClaudeCodeRules.InvalidFrontmatter ? new InstructionFinding(
-                    "rule-frontmatter-invalid", Severity.Warning, context.Show(dropped.Path), 1,
-                    $"{context.Show(dropped.Path)} has frontmatter that doesn't parse, so Claude Code never loads the rule.",
-                    "Fix the YAML between the --- lines: close every bracket and quote, and quote patterns that start with * or {.")
                 : null;
             if (finding is not null)
             {
                 yield return finding;
             }
+        }
+
+        foreach (var item in resolution.Loaded.Where(item => item.Rule == ClaudeCodeRules.InvalidFrontmatter))
+        {
+            yield return new InstructionFinding(
+                "rule-frontmatter-invalid", Severity.Warning, context.Show(item.Path), 1,
+                $"{context.Show(item.Path)} has frontmatter that doesn't parse, so Claude Code ignores all of it and loads the rule for every file.",
+                "Fix the YAML between the --- lines, such as its indentation, so the rule's paths count again.");
         }
 
         if (context.RepoRoot is not { } repoRoot)

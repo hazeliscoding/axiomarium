@@ -28,12 +28,13 @@ internal static partial class Frontmatter
             return new RuleFrontmatter(true, null);
         }
 
-        // Claude Code's YAML reader accepts tab indentation, which the core's doesn't, so try once more
-        // with tabs turned into spaces before calling the frontmatter broken.
+        // When the YAML doesn't parse, Claude Code 2.1.284 tries once more: it quotes each top-level value
+        // that holds a character YAML would read as syntax, and turns leading tabs into spaces. Only if that
+        // fails too is the frontmatter broken.
         var parsed = YamlDocument.Parse(yaml);
         if (parsed.Problem is not null)
         {
-            parsed = YamlDocument.Parse(LeadingTabs().Replace(yaml, tabs => new string(' ', tabs.Length * 2)));
+            parsed = YamlDocument.Parse(LeadingTabs().Replace(QuoteLossyValues(yaml), tabs => new string(' ', tabs.Length * 2)));
         }
 
         if (parsed.Problem is not null)
@@ -49,6 +50,37 @@ internal static partial class Frontmatter
         };
         return new RuleFrontmatter(true, paths);
     }
+
+    // A value already quoted, or a flow list that parses, stays as it is.
+    private static string QuoteLossyValues(string yaml) => string.Join('\n', yaml.Split('\n').Select(line =>
+    {
+        var match = KeyValue().Match(line);
+        if (!match.Success)
+        {
+            return line;
+        }
+
+        var (key, value) = (match.Groups[1].Value, match.Groups[2].Value);
+        var quoted = value.Length > 1 && ((value[0] == '"' && value[^1] == '"') || (value[0] == '\'' && value[^1] == '\''));
+        var list = value.StartsWith('[') && value.EndsWith(']') && YamlDocument.Parse(value) is { Problem: null, Root: JsonArray };
+        return quoted || list || !Lossy().IsMatch(value)
+            ? line
+            : $"{key}: \"{value.Replace("\\", "\\\\", StringComparison.Ordinal).Replace("\"", "\\\"", StringComparison.Ordinal)}\"";
+    }));
+
+    [GeneratedRegex(@"^([a-zA-Z_-]+):\s+(.+)$", RegexOptions.CultureInvariant)]
+    private static partial Regex KeyValue();
+
+    [GeneratedRegex(@"[{}[\]*&#!|>%@`]|: ", RegexOptions.CultureInvariant)]
+    private static partial Regex Lossy();
+
+    // paths is a YAML list or a comma-separated string.
+    private static IReadOnlyList<string>? PathsIn(JsonObject? root) => root?["paths"] switch
+    {
+        JsonArray list => [.. list.Select(item => item?.ToString()).OfType<string>()],
+        JsonValue value => [.. value.ToString().Split(',').Select(pattern => pattern.Trim()).Where(pattern => pattern.Length > 0)],
+        _ => null,
+    };
 
     [GeneratedRegex(@"\A---\r?\n(.*?)\r?\n?---(?:\r?\n|\z)", RegexOptions.Singleline | RegexOptions.CultureInvariant)]
     private static partial Regex Block();

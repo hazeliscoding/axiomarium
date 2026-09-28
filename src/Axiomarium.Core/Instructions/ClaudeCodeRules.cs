@@ -61,9 +61,9 @@ public static class ClaudeCodeRules
     public static HarnessRule PathRuleNoMatch { get; } = new(
         "claude-code/path-rule-no-match", "paths don't match", "A rule whose paths don't match the file doesn't load for it.", Memory + "#path-specific-rules");
 
-    /// <summary>A rule whose frontmatter doesn't parse.</summary>
+    /// <summary>A rule whose frontmatter doesn't parse, which loads for every file.</summary>
     public static HarnessRule InvalidFrontmatter { get; } = new(
-        "claude-code/invalid-frontmatter", "frontmatter doesn't parse", "A rule whose frontmatter doesn't parse never loads. The docs say it loads for every file, but Claude Code 2.1.284 skips it.", Memory + "#rule-frontmatter-reference");
+        "claude-code/invalid-frontmatter", "frontmatter doesn't parse, so every file", "A rule whose frontmatter doesn't parse, even after Claude Code quotes its values and turns tabs into spaces, loads for every file, as if it had no paths.", Memory + "#rule-frontmatter-reference");
 
     /// <summary>AGENTS.md in the launch directory and above.</summary>
     public static HarnessRule AgentsMd { get; } = new(

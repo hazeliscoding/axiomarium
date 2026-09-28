@@ -42,6 +42,7 @@ public class ScenarioReplayTests
         ["claude-code/nested-rule"] = "nested_traversal",
         ["claude-code/import"] = "include",
         ["claude-code/path-rule"] = "path_glob_match",
+        ["claude-code/invalid-frontmatter"] = "session_start",
         ["claude-code/agents-md"] = "agents-md",
         ["claude-code/nested-agents-md"] = "agents-md",
     };
@@ -70,7 +71,7 @@ public class ScenarioReplayTests
                 resolution.Loaded.Where(item => item.Timing == timing).Select(item => (
                     TestMachine.Relative(run.Root, item.Path),
                     item.Scope.ToString(),
-                    RecordedReason[item.Rule.Id],
+                    item.Rule == ClaudeCodeRules.InvalidFrontmatter && item.Timing == LoadTiming.OnRead ? "nested_traversal" : RecordedReason[item.Rule.Id],
                     item.Bytes)));
         }
     }

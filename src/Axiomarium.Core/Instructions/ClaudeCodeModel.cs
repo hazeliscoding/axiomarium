@@ -50,7 +50,7 @@ public static class ClaudeCodeModel
         loading.Memory(userMemory, InstructionScope.User, LoadTiming.AtLaunch, ClaudeCodeRules.UserMemory, managedOnly);
         foreach (var rule in userRules.Where(rule => rule.Always))
         {
-            loading.Rule(rule.Path, InstructionScope.User, LoadTiming.AtLaunch, ClaudeCodeRules.UserRule, managedOnly);
+            loading.Rule(rule.Path, InstructionScope.User, LoadTiming.AtLaunch, Loads(rule, ClaudeCodeRules.UserRule), managedOnly);
         }
 
         foreach (var directory in ancestors)
@@ -59,7 +59,7 @@ public static class ClaudeCodeModel
             loading.Memory(Path.Combine(directory, ".claude", "CLAUDE.md"), InstructionScope.Project, LoadTiming.AtLaunch, ClaudeCodeRules.AncestorMemory, managedOnly);
             foreach (var rule in loading.Rules(Path.Combine(directory, ".claude", "rules"), directory).Where(rule => rule.Always))
             {
-                loading.Rule(rule.Path, InstructionScope.Project, LoadTiming.AtLaunch, ClaudeCodeRules.AncestorRule, managedOnly);
+                loading.Rule(rule.Path, InstructionScope.Project, LoadTiming.AtLaunch, Loads(rule, ClaudeCodeRules.AncestorRule), managedOnly);
             }
 
             loading.Memory(Path.Combine(directory, "CLAUDE.local.md"), InstructionScope.Local, LoadTiming.AtLaunch, ClaudeCodeRules.LocalMemory, managedOnly);
@@ -90,7 +90,7 @@ public static class ClaudeCodeModel
             {
                 if (rule.Always)
                 {
-                    loading.Rule(rule.Path, InstructionScope.Project, LoadTiming.OnRead, ClaudeCodeRules.NestedRule);
+                    loading.Rule(rule.Path, InstructionScope.Project, LoadTiming.OnRead, Loads(rule, ClaudeCodeRules.NestedRule));
                 }
                 else if (rule.Scoped)
                 {
@@ -111,6 +111,10 @@ public static class ClaudeCodeModel
 
         return loading.Result();
     }
+
+    // A rule whose frontmatter doesn't parse loads where a rule without paths would, and says why.
+    private static HarnessRule Loads(RuleFile rule, HarnessRule withoutPaths) =>
+        rule.Frontmatter.Valid ? withoutPaths : ClaudeCodeRules.InvalidFrontmatter;
 
     // What has loaded so far. A file loads once, however many rules reach it.
     private sealed class Loading(string launch, string home, ClaudeSettings settings)
@@ -170,14 +174,13 @@ public static class ClaudeCodeModel
             }
         }
 
-        // A folder's rules, read once. A rule whose frontmatter doesn't parse is dropped the first time.
+        // A folder's rules, read once.
         public IReadOnlyList<RuleFile> Rules(string folder, string patternBase)
         {
             if (!_rules.TryGetValue(folder, out var rules))
             {
                 rules = RuleFile.In(folder, patternBase);
                 _rules[folder] = rules;
-                _dropped.AddRange(rules.Where(rule => !rule.Frontmatter.Valid).Select(rule => new DroppedInstruction(rule.Path, ClaudeCodeRules.InvalidFrontmatter)));
             }
 
             return rules;
