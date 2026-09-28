@@ -113,12 +113,12 @@ Agent configuration can be inspected and validated like software.
   - [x] Ground truth: log what a real Claude Code hook receives for Write, Edit, MultiEdit and NotebookEdit, confirm which hook output reaches the model, and record the Claude Code version and the docs date.
   - [x] A glob matcher in the core (`*`, `**`, `?` and `{a,b}`), for v0.2 to extend.
   - [x] `axm hook scope-sheriff`.
-- [ ] Five starter assets, all experimental:
-  - [ ] `determinism-auditor` (agent): finds decisions an LLM shouldn't own, such as authorization, billing, irreversible actions, state transitions, invariants, retries and idempotency, and suggests the deterministic boundary.
+- [x] Five starter assets, all experimental:
+  - [x] `determinism-auditor` (agent): finds decisions an LLM shouldn't own, such as authorization, billing, irreversible actions, state transitions, invariants, retries and idempotency, and suggests the deterministic boundary.
   - [x] `agent-asset-authoring` (skill): how to write an asset and its manifest.
   - [x] `scope-sheriff` (hook): warns when an edit leaves the task's declared scope and asks the agent to explain why. `hook.md` has the `.axm/scope` contract and the settings that wire it into Claude Code.
   - [x] `deterministic-boundaries` (policy): which decisions belong to code, not to the model. Each rule names what enforces it, or says that nothing does yet.
-  - [ ] `prompt-fossil` (experiment): the write-up and method that v0.7 builds on.
+  - [x] `prompt-fossil` (experiment): the write-up and method that v0.7 builds on.
 - [ ] Write-up in `docs/assets.md`: why assets carry manifests, and what each maturity level promises.
 - [ ] M0 review leftovers:
   - [x] the no-vault hint is chosen by reading the core's message text;

@@ -21,5 +21,6 @@ This file records the user-visible changes to `axm` and the vault's schemas. The
 - `axm --version`.
 - The `determinism-auditor` agent.
 - The `agent-asset-authoring` skill: when an asset should exist at all, how to pick its kind, a manifest to copy (a test keeps it valid), and how to get it through `axm validate`.
+- The `prompt-fossil` experiment: the method for finding instructions that cost tokens but no longer change behavior, by removing them one at a time. Designed, not run yet.
 - The `scope-sheriff` hook asset: the `.axm/scope` contract, the Claude Code settings that wire it in, and its limits.
 - The `deterministic-boundaries` policy: nine rules for which decisions belong to code instead of the model. Eight are enforced by the determinism auditor, and one says that nothing enforces it yet.

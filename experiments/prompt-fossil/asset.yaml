@@ -1,0 +1,26 @@
+# yaml-language-server: $schema=../../schemas/asset.schema.json
+name: prompt-fossil
+kind: experiment
+version: 0.1.0
+description: >-
+  Tests whether instruction files carry fossils, meaning rules that cost tokens
+  every session but no longer change what the agent does, by removing them one
+  at a time and measuring the difference.
+maturity: experimental
+supports:
+  claude-code: experimental
+  codex: experimental
+permissions:
+  filesystem: write
+  shell: any
+  network: required
+side_effects: reversible
+inputs:
+  - instruction-files
+  - eval-tasks
+outputs:
+  - fossil-candidates
+evals:
+  trigger: false
+  behavioral: false
+  regression: false

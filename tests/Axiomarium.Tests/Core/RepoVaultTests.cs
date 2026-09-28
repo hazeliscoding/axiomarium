@@ -12,7 +12,16 @@ public class RepoVaultTests
 
         Assert.Null(result.Problem);
         Assert.Empty(result.Report!.Diagnostics);
-        Assert.Contains(result.Report.Assets, asset => asset.Name == "determinism-auditor");
+        Assert.Subset(
+            result.Report.Assets.Select(asset => asset.Folder).ToHashSet(),
+            new HashSet<string>
+            {
+                "agents/determinism-auditor",
+                "skills/agent-asset-authoring",
+                "hooks/scope-sheriff",
+                "policies/deterministic-boundaries",
+                "experiments/prompt-fossil",
+            });
     }
 
     // The authoring skill teaches by example, so its manifest has to stay valid as the schemas change.
