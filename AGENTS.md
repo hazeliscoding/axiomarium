@@ -26,7 +26,7 @@ The tool is only worth trusting if these hold. Never break them, not even in deb
 
 - **Local first.** No accounts, telemetry, hosted services, update checks or uploads. The only network traffic is model calls made by `axm eval`, `axm triggers`, `axm fossil` and `axm conflicts --judge`, and only when the user runs them.
 - **A deterministic core.** `Axiomarium.Core` makes no model or network calls. A test fails if it references `System.Console`, Spectre.Console or `System.Net.Http`.
-- **Writes only on request.** `list`, `validate`, `doctor`, `inspect`, `explain` and `conflicts` are read-only. `init`, `sync` and `incident new` show what they will write and wait for approval. `fossil` and `distill` recommend changes and never delete or rewrite instructions.
+- **Writes only on request.** `list`, `validate`, `doctor`, `hook`, `detect`, `explain` and `conflicts` are read-only. `init`, `sync` and `incident new` show what they will write and wait for approval. `fossil` and `distill` recommend changes and never delete or rewrite instructions.
 - **Label model output.** Anything a model produced, such as a judged contradiction or a distilled root cause, says so in the output.
 - **Every explain entry cites its rule.** Each loaded or dropped file carries the loading rule that produced it. If you can't name the rule, don't emit the entry.
 - **Harness models follow the docs, then the real harness.** When you change a model, cite the doc section and update the docs date and harness version recorded in the model. If the docs and the real harness disagree, the real harness wins, and the disagreement goes into `ROADMAP.md` as a decision.

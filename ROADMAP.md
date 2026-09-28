@@ -42,6 +42,20 @@ Axiomarium is my lab for building, testing and debugging AI coding environments 
 - **The manifest** declares name, kind, version, description, maturity, support per harness (`full`, `partial` or `experimental`), permissions (filesystem, shell, network), side effects, inputs, outputs and which evals exist.
 - **Maturity is earned.** Experimental: an interesting idea with few or no evals. Incubating: used successfully and still changing. Tested: behavioral and regression evals exist. Stable: behavior changes carefully. Battle-tested: used repeatedly on real projects, with accumulated regression coverage. `axm doctor` checks each asset has the evidence its level requires.
 
+### Asset model (v0.1)
+
+- **The registry is `registry/maturity.yaml` only.** A catalog or compatibility file would restate what every manifest already says, and drift from it. `axm list` is the catalog, and `axm list --harness <harness>` is the compatibility table.
+- **Each asset has one content file named after its kind:** `agent.md`, `skill.md`, `hook.md`, `policy.md`, `workflow.md` or `experiment.md`. Adapters generate harness files such as `SKILL.md` from it.
+- **Skills, hooks and policies carry a block named after their kind** in `asset.yaml`, validated by `schemas/skill.schema.json`, `hook.schema.json` and `policy.schema.json`. A skill says when it should activate (`use_when`), a hook says whether it blocks, warns or only gathers evidence (`response`), and each policy rule names what enforces it (`enforced_by`). Agents need nothing beyond `permissions` yet, so there is no agent schema.
+- **References are checked:** the content file exists and isn't empty, each `enforced_by` names an asset that exists, and each `evals.<type>: true` has at least one file in the asset's `evals/<type>/`.
+- **Maturity evidence is data** in `registry/maturity.yaml`: each level's promise and what it requires. Usage evidence is a dated entry in `docs/dogfooding.md` that links to the asset's folder. Incubating needs 1 entry. Tested adds behavioral and regression evals, plus trigger evals for skills. Stable needs 3 entries, and battle-tested 5 entries across 3 repos. A maturity claim without its evidence is an error, because the manifest says something untrue. Until v0.4, eval evidence means the eval files exist, not that they pass.
+- **`validate` and `doctor` render the same result.** `validate` prints only the problems, for CI and hooks. `doctor` adds the inventory, and from v0.2 the instruction findings. `list` shows the inventory and judges nothing.
+- **No `--json` in v0.1.** Agents and hooks read the plain output. JSON becomes a contract with `explain` in v0.2.
+- **`inspect` and `init` move to v0.9.** `inspect` would duplicate `detect`, and `init` has nothing to write until it can detect a stack and install assets. Until then a vault is recognized by its kind folders.
+- **Hooks run through `axm`.** The harness calls `axm hook <name>`, which reads the hook's JSON on stdin. It needs no extra runtime on any OS, starts fast, and keeps the hook's logic in the tested core, where the protocol for each harness lives. A hook command never exits with 2, because Claude Code reads 2 as "block": bad input exits with 1 and a message.
+- **The scope sheriff reads the task's scope from `.axm/scope`:** one glob per line, relative to the repo root, written by the agent or the user at the start of a task. Without the file the hook is silent. An edit outside the scope sends the agent a message asking why, and is never blocked. Recording evidence waits for the v0.5 evidence store.
+- **Releases** build the NativeAOT binaries on each OS, publish the `Axiomarium` dotnet tool as .NET 10 per-platform NativeAOT packages, and push to NuGet with Trusted Publishing, so no API key is stored. If NativeAOT tool packages don't work, the tool falls back to a framework-dependent build. A job on fresh runners installs each release and runs it.
+
 ### Instruction compiler (v0.2)
 
 - **Claude Code and Codex first.** Two harnesses are enough to show that the same file gets different instructions. Copilot comes with the adapters in v0.8.
@@ -83,25 +97,43 @@ Axiomarium is my lab for building, testing and debugging AI coding environments 
 
 Agent configuration can be inspected and validated like software.
 
-- [ ] Discovery across `agents/`, `skills/`, `hooks/`, `policies/`, `workflows/` and `experiments/`. Manifest errors name the file, the field and the allowed values.
-- [ ] Schemas: `asset`, `agent` and `policy`. The `evidence` and `incident` schemas come with their milestones.
-- [ ] Registry: `registry/catalog.yaml`, `compatibility.yaml` and `maturity.yaml`, with the evidence each maturity level requires.
+- [x] Discovery across `agents/`, `skills/`, `hooks/`, `policies/`, `workflows/` and `experiments/`, and the `asset` schema. Manifest errors name the file, the field and the allowed values. (Done in M0.)
+- [ ] `CHANGELOG.md`, with the work so far under Unreleased.
+- [ ] Asset structure:
+  - [ ] the content file named after the kind, and a check that it exists and isn't empty;
+  - [ ] `schemas/skill.schema.json`, `hook.schema.json` and `policy.schema.json`, and a check that each of those kinds has its block and no asset has another kind's block;
+  - [ ] reference checks: `enforced_by` targets and eval folders.
+- [ ] `registry/maturity.yaml` and its schema, and a check that each maturity claim has its evidence.
 - [ ] Commands:
-  - [ ] `axm list`: assets grouped by kind, with maturity and version.
-  - [ ] `axm validate`: schema and reference checks, with exit codes for CI.
-  - [ ] `axm doctor`: asset counts, schema and reference health, and maturity claims that lack evidence.
-  - [ ] `axm inspect`: the repo's languages, frameworks and detected agent harnesses.
-  - [ ] `axm init`: shows the `axiomarium.yaml` it would write, then writes it on approval.
-- [ ] Five starter assets:
+  - [ ] `axm list`: assets grouped by kind, with version, maturity and harness support, filtered by `--kind` and `--harness`.
+  - [ ] `axm validate`: every check, printing only the problems, with exit codes for CI.
+  - [ ] `axm doctor`: rebuilt on the same result as `validate`, plus the inventory.
+- [ ] Scope sheriff:
+  - [ ] Ground truth: log what a real Claude Code hook receives for Write, Edit, MultiEdit and NotebookEdit, confirm which hook output reaches the model, and record the Claude Code version and the docs date.
+  - [ ] A glob matcher in the core (`*`, `**`, `?` and `{a,b}`), for v0.2 to extend.
+  - [ ] `axm hook scope-sheriff`.
+- [ ] Five starter assets, all experimental:
   - [ ] `determinism-auditor` (agent): finds decisions an LLM shouldn't own, such as authorization, billing, irreversible actions, state transitions, invariants, retries and idempotency, and suggests the deterministic boundary.
   - [ ] `agent-asset-authoring` (skill): how to write an asset and its manifest.
-  - [ ] `scope-sheriff` (hook, experimental): warns when an edit leaves the task's expected scope and asks the agent to explain why.
-  - [ ] `deterministic-boundaries` (policy): which decisions belong to code, not to the model.
+  - [ ] `scope-sheriff` (hook): warns when an edit leaves the task's declared scope and asks the agent to explain why. `hook.md` has the `.axm/scope` contract and the settings that wire it into Claude Code.
+  - [ ] `deterministic-boundaries` (policy): which decisions belong to code, not to the model. Each rule names what enforces it, or says that nothing does yet.
   - [ ] `prompt-fossil` (experiment): the write-up and method that v0.7 builds on.
-- [ ] Write-up: why assets carry manifests, and what each maturity level promises.
-- [ ] Release v0.1.0: the release workflow, `CHANGELOG.md`, and install steps in the README.
+- [ ] Write-up in `docs/assets.md`: why assets carry manifests, and what each maturity level promises.
+- [ ] M0 review leftovers:
+  - [ ] the no-vault hint is chosen by reading the core's message text;
+  - [ ] the validator silently ignores a non-string `type` and a schema-valued `additionalProperties`;
+  - [ ] only JSON-shaped numbers keep their source text, but the docs say all numbers do;
+  - [ ] an empty maturity prints `null`, `--root <file>` says the folder doesn't exist, and a duplicate key `"a:b"` is reported as `a`;
+  - [ ] on Windows, virtual terminal mode is enabled for stdout but not stderr;
+  - [ ] the doctor's text assumes a valid manifest has a maturity and a version without saying so;
+  - [ ] a raw byte order mark sits in the source.
+- [ ] Release v0.1.0:
+  - [ ] the release workflow: binaries, `SHA256SUMS`, and release notes from `CHANGELOG.md`;
+  - [ ] the `Axiomarium` dotnet tool on NuGet through Trusted Publishing;
+  - [ ] a job that installs the release on fresh Linux, Windows and macOS runners and runs `axm validate`;
+  - [ ] install steps in the README.
 
-**Done when:** the five starter assets pass `axm validate`, breaking any manifest field makes `axm doctor` name the file, the field and the allowed values, and v0.1.0 installs from the release on a clean machine.
+**Done when:** the five starter assets pass `axm validate` in CI; breaking a manifest field, a kind block, a reference or a maturity claim makes `validate` and `doctor` name the file, the field, and the allowed values or the missing evidence; `scope-sheriff` warns a real Claude Code session about an edit outside its scope; and v0.1.0 installs from GitHub Releases and from NuGet on fresh Linux, Windows and macOS runners.
 
 ## M2: v0.2, instruction intelligence
 
@@ -185,9 +217,9 @@ Agent configuration can be inspected and validated like software.
 
 ## M9: v0.9, project intelligence
 
-- [ ] `axm detect`: runtime, frontend, database, infrastructure and CI.
+- [ ] `axm detect`: runtime, frontend, database, infrastructure, CI and the agent harnesses in use. It absorbs the `axm inspect` once planned for v0.1.
 - [ ] `axm recommend`: assets whose manifests fit what was detected.
-- [ ] `axm init` uses both, and installs only the assets the user picks.
+- [ ] `axm init`: uses both, shows the `axiomarium.yaml` it would write and the assets it would install, and writes only what the user approves.
 
 **Done when:** `axm init` on three of my repos detects each stack correctly and recommends only assets whose manifests support it.
 
