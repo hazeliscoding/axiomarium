@@ -1,5 +1,5 @@
 {
-  "recorded": "2026-09-28",
+  "recorded": "2026-09-29",
   "claude-code": {
     "version": "2.1.284",
     "launch": [],
@@ -88,5 +88,92 @@
       "read": []
     },
     "hooks": []
+  },
+  "codex": {
+    "version": "0.156.1",
+    "loaded": [],
+    "skills": [
+      {
+        "name": "imagegen",
+        "bundled": true,
+        "entry": "whole"
+      },
+      {
+        "name": "openai-docs",
+        "bundled": true,
+        "entry": "whole"
+      },
+      {
+        "name": "plugin-creator",
+        "bundled": true,
+        "entry": "whole"
+      },
+      {
+        "name": "skill-creator",
+        "bundled": true,
+        "entry": "whole"
+      },
+      {
+        "name": "skill-installer",
+        "bundled": true,
+        "entry": "whole"
+      }
+    ],
+    "hooks": [
+      {
+        "file": "home/.codex/hooks.json",
+        "label": "new",
+        "event": "sessionStart",
+        "matcher": null,
+        "trust": "untrusted",
+        "hash": "sha256:6ed5b6d0becc98a7e89db02a458a88f8681647cad24dd6f3633e27403016c098"
+      },
+      {
+        "file": "home/.codex/hooks.json",
+        "label": "trusted",
+        "event": "sessionStart",
+        "matcher": null,
+        "trust": "trusted",
+        "hash": "sha256:bf7db03f94ac876d1986ca3cdd9018bdf6ca8c793356d64b6ecaeca576a54737"
+      },
+      {
+        "file": "home/.codex/hooks.json",
+        "label": "changed",
+        "event": "sessionStart",
+        "matcher": null,
+        "trust": "modified",
+        "hash": "sha256:4cb9208d3d3e481f9dd19bba799e4d5bd2b2a943d8c4de12b32575f3c5776697"
+      },
+      {
+        "file": "home/.codex/hooks.json",
+        "label": "off",
+        "event": "sessionStart",
+        "matcher": null,
+        "trust": "trusted",
+        "hash": "sha256:91fbdcceea3f5d0a9c22a83d0ba4990ee534a6c493c23b83d565cca0c71159e1",
+        "enabled": false
+      },
+      {
+        "file": "home/.codex/config.toml",
+        "label": "from-toml",
+        "event": "sessionStart",
+        "matcher": "startup",
+        "trust": "untrusted",
+        "hash": "sha256:84fde065216352e3785f5376687858526f9a465522aa3e983b538f31758c1c19"
+      },
+      {
+        "file": "repo/.codex/hooks.json",
+        "label": "before-edit",
+        "event": "preToolUse",
+        "matcher": "apply_patch",
+        "trust": "untrusted",
+        "hash": "sha256:9daf486684654f9959a1e7b60baeb47772bd39cba1ce500957f87a40d9113a10"
+      }
+    ],
+    "hookWarnings": [
+      "loading hooks from both home/.codex/hooks.json and home/.codex/config.toml; prefer a single representation for this layer",
+      "skipping prompt hook in home/.codex/hooks.json: prompt hooks are not supported yet",
+      "invalid matcher \u0022Edit(\u0022 in home/.codex/hooks.json: regex parse error:\n    Edit(\n        ^\nerror: unclosed group"
+    ]
   }
 }
