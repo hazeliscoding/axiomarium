@@ -141,6 +141,19 @@ public class SchemaValidatorTests
     }
 
     [Fact]
+    public void Min_items_counts_list_items_and_still_checks_each_one()
+    {
+        const string schema = """{"type":"object","properties":{"prompts":{"type":"array","minItems":1,"items":{"type":"string"}}}}""";
+
+        var empty = Assert.Single(Validate("""{"prompts":[]}""", schema));
+        var wrongItem = Assert.Single(Validate("""{"prompts":[1]}""", schema));
+
+        Assert.Equal(("prompts", "prompts needs at least 1 item"), (empty.Path, empty.Message));
+        Assert.Equal("prompts[0]", wrongItem.Path);
+        Assert.Empty(Validate("""{"prompts":["one"]}""", schema));
+    }
+
+    [Fact]
     public void Ref_resolves_to_defs()
     {
         var error = Assert.Single(Validate(
