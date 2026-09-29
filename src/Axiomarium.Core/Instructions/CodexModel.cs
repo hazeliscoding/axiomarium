@@ -111,7 +111,8 @@ public static class CodexModel
 
         DropBelowLaunch(launch, Path.GetFullPath(targetFile), names, dropped);
         var (skills, notListed, listing) = CodexSkills.Resolve(launch, machine, config);
-        return new Resolution(loaded, dropped) { Skills = skills, NotListed = notListed, Listing = listing };
+        var (hooks, configured) = CodexHooks.Resolve(launch, machine, config);
+        return new Resolution(loaded, dropped) { Skills = skills, NotListed = notListed, Listing = listing, Hooks = hooks, ConfiguredHooks = configured };
     }
 
     // The global file is trimmed, and the first one that isn't empty wins.

@@ -27,6 +27,15 @@ internal sealed record CodexConfig(long MaxBytes, IReadOnlyList<string> Fallback
     /// <summary><c>skills.max_context_tokens</c>, which replaces the listing's budget, capped at 10,000 tokens.</summary>
     public long? SkillsMaxContextTokens { get; init; }
 
+    /// <summary>The directories whose <c>trust_level</c> is <c>trusted</c>.</summary>
+    public IReadOnlyList<string> TrustedProjects { get; init; } = [];
+
+    /// <summary><c>[hooks.state]</c> in the user config, by hook key with forward slashes: whether each hook is enabled and the hash it's trusted at.</summary>
+    public IReadOnlyDictionary<string, (bool? Enabled, string? TrustedHash)> HookStates { get; init; } = new Dictionary<string, (bool?, string?)>();
+
+    /// <summary>The config file's own <c>[hooks]</c> events, or <see langword="null"/> when it has none.</summary>
+    public TomlTable? Hooks { get; init; }
+
     public static CodexConfig Load(string codexHome)
     {
         var path = Path.Combine(codexHome, "config.toml");
@@ -42,6 +51,27 @@ internal sealed record CodexConfig(long MaxBytes, IReadOnlyList<string> Fallback
                 .Select(pair => Path.GetFullPath(pair.Key))
                 .ToList()
             : [];
+        var trusted = table.TryGetValue("projects", out var trustedProjects) && trustedProjects is TomlTable trustedTable
+            ? trustedTable
+                .Where(pair => pair.Value is TomlTable settings && settings.TryGetValue("trust_level", out var level) && level is "trusted")
+                .Select(pair => Path.GetFullPath(pair.Key))
+                .ToList()
+            : [];
+        var hooks = table.TryGetValue("hooks", out var hooksValue) && hooksValue is TomlTable hooksTable ? hooksTable : null;
+        var states = new Dictionary<string, (bool?, string?)>(OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal);
+        if (hooks?.TryGetValue("state", out var stateValue) == true && stateValue is TomlTable stateTable)
+        {
+            foreach (var (key, value) in stateTable)
+            {
+                if (value is TomlTable state)
+                {
+                    states[key.Replace('\\', '/')] = (
+                        state.TryGetValue("enabled", out var enabled) && enabled is bool flag ? flag : null,
+                        state.TryGetValue("trusted_hash", out var hash) && hash is string text ? text : null);
+                }
+            }
+        }
+
         var skills = table.TryGetValue("skills", out var skillsValue) && skillsValue is TomlTable skillsTable ? skillsTable : [];
         var rules = skills.TryGetValue("config", out var configValue) && configValue is TomlTableArray entries
             ? entries
@@ -63,7 +93,48 @@ internal sealed record CodexConfig(long MaxBytes, IReadOnlyList<string> Fallback
                 && bundledTable.TryGetValue("enabled", out var on) && on is false,
             SkillsListingOff = skills.TryGetValue("include_instructions", out var include) && include is false,
             SkillsMaxContextTokens = skills.TryGetValue("max_context_tokens", out var tokens) && tokens is long budget && budget > 0 ? budget : null,
+            TrustedProjects = trusted,
+            HookStates = states,
+            Hooks = hooks,
         };
+    }
+
+    /// <summary>Whether a project's <c>.codex</c> in <paramref name="directory"/> is trusted: that folder's own entry decides, else the project root's.</summary>
+    public bool IsTrusted(string directory, string projectRoot)
+    {
+        foreach (var folder in new[] { directory, projectRoot })
+        {
+            if (TrustedProjects.Any(project => Paths.Same(project, folder)))
+            {
+                return true;
+            }
+
+            if (UntrustedProjects.Any(project => Paths.Same(project, folder)))
+            {
+                return false;
+            }
+        }
+
+        return false;
+    }
+
+    /// <summary>Reads another layer's <c>config.toml</c>, such as a project's or the system folder's, for its <c>[hooks]</c> alone.</summary>
+    public static TomlTable? HooksIn(string configFile)
+    {
+        if (!File.Exists(configFile))
+        {
+            return null;
+        }
+
+        try
+        {
+            var table = TomlSerializer.Deserialize(File.ReadAllText(configFile), CodexConfigContext.Default.TomlTable);
+            return table?.TryGetValue("hooks", out var hooks) == true ? hooks as TomlTable : null;
+        }
+        catch (TomlException)
+        {
+            return null;
+        }
     }
 
     /// <summary>Whether <c>[[skills.config]]</c> turns the skill at <paramref name="skillFile"/>, listed as <paramref name="name"/>, off.</summary>

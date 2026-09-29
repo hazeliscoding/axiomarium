@@ -113,4 +113,10 @@ public sealed record Resolution(IReadOnlyList<LoadedInstruction> Loaded, IReadOn
 
     /// <summary>The listing's size at launch against its budget, or <see langword="null"/> when the harness has no skills model.</summary>
     public SkillListing? Listing { get; init; }
+
+    /// <summary>The hooks that fire at session start and around an edit of the file, in moment order, each running or not.</summary>
+    public IReadOnlyList<MomentHook> Hooks { get; init; } = [];
+
+    /// <summary>Every hook the harness has configured, on every event, in source order.</summary>
+    public IReadOnlyList<ConfiguredHook> ConfiguredHooks { get; init; } = [];
 }

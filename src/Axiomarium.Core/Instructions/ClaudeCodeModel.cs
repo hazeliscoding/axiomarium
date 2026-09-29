@@ -110,7 +110,8 @@ public static class ClaudeCodeModel
         }
 
         var (skills, notListed, listing) = ClaudeCodeSkills.Resolve(launch, target, machine, settings);
-        return loading.Result() with { Skills = skills, NotListed = notListed, Listing = listing };
+        var (hooks, configured) = ClaudeCodeHooks.Resolve(launch, target, machine, settings);
+        return loading.Result() with { Skills = skills, NotListed = notListed, Listing = listing, Hooks = hooks, ConfiguredHooks = configured };
     }
 
     // A rule whose frontmatter doesn't parse loads where a rule without paths would, and says why.
