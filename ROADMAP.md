@@ -299,9 +299,16 @@ Which skills each harness offers the model for a file, and which hooks run.
 
 - [x] `axm triggers`: overlapping descriptions in each harness's listing and the vault's skills, with the terms they share.
 - [x] Write-up, "Which skills your agent can see", on the demo scenario with skills and a hook added, and `docs/demo/explain.tape` updated to show them.
-- [ ] Release v0.3.0, then render the tape with the release.
+- [x] Release v0.3.0, then render the tape with the release.
 
 **Done when:** every scenario matches what the real Claude Code and Codex recorded, skill listings and hooks included; `axm explain` on the demo scenario shows a skill only one harness lists and a hook only one harness would run for the file; all seven findings pass their fixtures; `axm triggers` on my own setup names each overlapping pair with the terms it shares; and v0.3.0 installs from GitHub Releases and NuGet on fresh runners.
+
+**Done (2026-09-28).** v0.3.0 is out on [GitHub Releases](https://github.com/hazeliscoding/axiomarium/releases/tag/v0.3.0) and on [NuGet](https://www.nuget.org/packages/Axiomarium).
+- All 18 scenarios hold recordings from Claude Code 2.1.284 and Codex 0.156.1, skill listings and hooks included, and both models reproduce every one in CI ([run](https://github.com/hazeliscoding/axiomarium/actions/runs/36513196412)).
+- On the demo scenario, `axm explain` shows `release` listed only by Claude Code and `db-migration` only by Codex, and the after-edit hook runs only in Claude Code, because Codex doesn't load an untrusted project's hooks. A test holds it.
+- All seven findings fire on their `fires` fixture and stay silent on their `clean` one.
+- `axm triggers` on my own setup compared 80 Claude Code and 39 Codex skills and named 84 overlapping pairs, each with the terms it shares, in 156 ms from the native binary.
+- The release run installed the binary and the dotnet tool on fresh Linux, Windows and macOS runners and ran them, all on the first attempt ([run](https://github.com/hazeliscoding/axiomarium/actions/runs/36513226561)).
 
 ## M4: v0.4, trigger testing
 
