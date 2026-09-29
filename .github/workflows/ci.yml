@@ -51,6 +51,18 @@ jobs:
           AXM_BINARY: ${{ github.workspace }}/${{ matrix.binary }}
       - name: Run axm doctor on this repo
         run: ./${{ matrix.binary }} doctor
+      # promptfoo's validate checks a config's structure, not its assertion names, which the unit tests pin.
+      # An export with a broken assert is the positive control: validate has to reject it.
+      - name: Validate the promptfoo export
+        if: runner.os == 'Linux'
+        run: |
+          ./out/axm triggers export deploy --root tests/Axiomarium.Tests/Fixtures/triggers/vault --format promptfoo > "$RUNNER_TEMP/promptfooconfig.yaml"
+          npx --yes promptfoo@0.123.1 validate -c "$RUNNER_TEMP/promptfooconfig.yaml"
+          sed 's/^    assert:$/    assert: "broken"\n    assert_items:/' "$RUNNER_TEMP/promptfooconfig.yaml" > "$RUNNER_TEMP/broken.yaml"
+          if npx --yes promptfoo@0.123.1 validate -c "$RUNNER_TEMP/broken.yaml"; then
+            echo "promptfoo validate accepted a broken config, so the check above proves nothing."
+            exit 1
+          fi
       # The session doctor runs as every Claude Code session starts, so the native binary has to answer
       # within 1 s, cold, on this repo. A broken repo is the positive control: it has to speak up there.
       - name: Time the session doctor hook

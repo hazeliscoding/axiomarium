@@ -1,0 +1,13 @@
+# yaml-language-server: $schema=../../../../../../../../../schemas/trigger-prompts.schema.json
+skill: deploy
+prompts:
+  - prompt: "Ship the shop to production."
+    kind: positive
+    should_trigger: true
+  - prompt: "Format this table."
+    kind: negative
+    should_trigger: false
+  - prompt: "Which one cuts the release?"
+    kind: ambiguous
+    should_trigger: false
+    rival: "ship"
