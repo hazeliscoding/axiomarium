@@ -5,6 +5,7 @@ using Axiomarium.Core.Instructions;
 using Axiomarium.Core.Manifests;
 using Axiomarium.Core.Registry;
 using Axiomarium.Core.Schemas;
+using Axiomarium.Core.Triggers;
 
 namespace Axiomarium.Core.Health;
 
@@ -103,6 +104,10 @@ public static class Doctor
         // Linux wouldn't, and the vault has to mean the same thing on every platform.
         var files = Directory.EnumerateFiles(directory).Select(Path.GetFileName).OfType<string>().ToList();
         ExamineContent(kind, folder, directory, files, diagnostics);
+        if (kind == AssetKind.Skill)
+        {
+            ExamineTriggerPrompts(name, folder, directory, diagnostics);
+        }
 
         if (!files.Contains(ManifestName, StringComparer.Ordinal))
         {
@@ -147,6 +152,29 @@ public static class Doctor
         catch (Exception problem) when (problem is not OutOfMemoryException)
         {
             diagnostics.Add(new Diagnostic(Severity.Error, contentFile, null, $"Couldn't read {content}: {problem.Message}", []));
+        }
+    }
+
+    // A skill's trigger prompts are its trigger evals, so a broken file is an error like a broken manifest.
+    private static void ExamineTriggerPrompts(string name, string folder, string directory, List<Diagnostic> diagnostics)
+    {
+        var path = Path.Combine(directory, TriggerPrompts.RelativePath);
+        if (!File.Exists(path))
+        {
+            return;
+        }
+
+        var file = $"{folder}/{TriggerPrompts.RelativePath}";
+        try
+        {
+            foreach (var problem in TriggerPrompts.Read(File.ReadAllText(path), name).Problems)
+            {
+                diagnostics.Add(new Diagnostic(Severity.Error, file, problem.Location, problem.Message, problem.Detail));
+            }
+        }
+        catch (Exception problem) when (problem is not OutOfMemoryException)
+        {
+            diagnostics.Add(new Diagnostic(Severity.Error, file, null, $"Couldn't read {TriggerPrompts.RelativePath}: {problem.Message}", []));
         }
     }
 
