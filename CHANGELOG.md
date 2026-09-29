@@ -4,6 +4,10 @@ This file records the user-visible changes to `axm` and the vault's schemas. The
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-09-28
+
+Skills and hooks: which skills Claude Code and Codex list for the model, which hooks run, and what keeps them from reaching it.
+
 ### Added
 
 - `axm explain` shows, for each harness, the skills it lists for the model and the hooks that run for the file. A skill is available, never loaded: each row says whether it's listed at launch or joins when the file is read or edited, and the rule that lists it. A skill the harness finds but doesn't list says why, and the listing's size is shown against its budget, with what the budget assumes. Hooks show at session start, before an edit and after one, each RUNS or NOT RUN with the reason, such as an `if` that doesn't match or a Codex hook that isn't trusted. `--diff` also shows the skills only one harness lists, and `--json` gains `skills`, `notListed`, `listing` and `hooks` for each harness, still `schemaVersion` 1. The models cover Claude Code's managed, personal, project, nested, path-scoped, plugin and synced skills and its settings and plugin hooks, and Codex's skill roots, policies and hook trust, confirmed against Claude Code 2.1.284 and Codex 0.156.1.
@@ -58,6 +62,7 @@ The asset model: agent configuration can be inspected and validated like softwar
   - the `deterministic-boundaries` policy: nine rules for which decisions belong to code instead of the model, eight of them enforced by the determinism auditor;
   - the `prompt-fossil` experiment: the method for finding instructions that cost tokens but no longer change behavior. Designed, not run yet.
 
-[Unreleased]: https://github.com/hazeliscoding/axiomarium/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/hazeliscoding/axiomarium/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/hazeliscoding/axiomarium/releases/tag/v0.3.0
 [0.2.0]: https://github.com/hazeliscoding/axiomarium/releases/tag/v0.2.0
 [0.1.0]: https://github.com/hazeliscoding/axiomarium/releases/tag/v0.1.0
