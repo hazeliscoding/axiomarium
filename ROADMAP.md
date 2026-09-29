@@ -331,7 +331,7 @@ Whether the model picks the right skill for a prompt, measured on the real harne
 
 - [x] Spike: one `claude -p` and one `codex exec --json` session on the demo scenario, to settle how a pick shows in each stream, how to stop a session right after it, and how to get a one-turn text answer with tools off. The results go in the decisions, and the trimmed streams become parser fixtures.
 - [x] Prompt files: `schemas/trigger-prompts.schema.json`, and `axm doctor` validating `skills/<name>/evals/trigger/prompts.yaml`.
-- [ ] `axm triggers generate <skill>`: the brief with the skill's rivals, one-turn generation with a schema check and one retry, the preview and approval, `--yes` and `--replace`.
+- [x] `axm triggers generate <skill>`: the brief with the skill's rivals, one-turn generation with a schema check and one retry, the preview and approval, `--yes` and `--replace`.
 - [ ] The runner: the throwaway copy with the vault's skills written in, four sessions at a time, each stopped at its first action, and a parser for each harness's stream.
 - [ ] `axm triggers test`: the plan line, precision and recall for each skill and harness, and each collision, false trigger and miss with its cause.
 - [ ] `axm triggers export <skill> --format skill-creator|promptfoo`, printed, with CI running `promptfoo validate` on the export.

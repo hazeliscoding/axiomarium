@@ -11,7 +11,7 @@ using Axiomarium.Core.Triggers;
 namespace Axiomarium.Cli;
 
 /// <summary>The <c>axm</c> command line: its commands, options and exit codes.</summary>
-public static class AxmCli
+public static partial class AxmCli
 {
     /// <summary>Exit code 0: the command ran and found no errors.</summary>
     public const int Passed = 0;
@@ -46,6 +46,9 @@ public static class AxmCli
     /// <param name="errorVirtualTerminal">Whether the terminal behind <paramref name="error"/> understands ANSI escape codes.</param>
     /// <param name="currentDirectory">The directory commands default to.</param>
     /// <param name="machine">Where the harnesses' user and managed files are, or <see langword="null"/> to take them from <paramref name="environment"/>. Tests pass their own.</param>
+    /// <param name="inputRedirected">Whether <paramref name="input"/> is a file or pipe rather than a terminal, where a command that writes can't ask first.</param>
+    /// <param name="runner">Runs harness sessions for <c>axm triggers</c>, or <see langword="null"/> for real processes. Tests pass one that replays captured streams.</param>
+    /// <param name="clock">The time, for dating what <c>axm triggers generate</c> writes, or <see langword="null"/> for the system clock.</param>
     /// <returns>
     /// 0, 1 or 2. See <see cref="Passed"/>, <see cref="ErrorsFound"/> and <see cref="CouldNotRun"/>.
     /// Bad arguments and unexpected failures return 2, never 1, except for <c>axm hook</c> commands,
@@ -62,7 +65,10 @@ public static class AxmCli
         bool outputVirtualTerminal,
         bool errorVirtualTerminal,
         string currentDirectory,
-        Machine? machine = null)
+        Machine? machine = null,
+        bool inputRedirected = true,
+        IHarnessRunner? runner = null,
+        TimeProvider? clock = null)
     {
         var outputStyle = Style.For(outputRedirected, environment, outputVirtualTerminal);
         var errorStyle = Style.For(errorRedirected, environment, errorVirtualTerminal);
@@ -73,7 +79,9 @@ public static class AxmCli
             option.Action = new VersionAction(output, outputStyle);
         }
 
-        var session = new Session(output, error, outputStyle, errorStyle, currentDirectory, environment, machine);
+        var session = new Session(
+            output, error, outputStyle, errorStyle, currentDirectory, environment, machine,
+            input, inputRedirected, runner ?? new ProcessHarnessRunner(), clock ?? TimeProvider.System);
         root.Subcommands.Add(DoctorCommand(session));
         root.Subcommands.Add(VaultCommand("validate", "Check every asset and print only the problems, for CI and hooks.", ReportText.WriteValidate, session));
         root.Subcommands.Add(ListCommand(session));
@@ -290,6 +298,7 @@ public static class AxmCli
         };
         var command = new Command("triggers", "Find skills whose descriptions overlap in each harness's listing, and the terms they share.");
         command.Options.Add(folder);
+        command.Subcommands.Add(GenerateCommand(session));
         command.SetAction(result =>
         {
             var start = Path.GetFullPath(result.GetValue(folder)!, session.CurrentDirectory);
@@ -358,7 +367,8 @@ public static class AxmCli
     // What every command writes to, and how, for one run of axm.
     private sealed record Session(
         TextWriter Output, TextWriter Error, Style OutputStyle, Style ErrorStyle, string CurrentDirectory,
-        IReadOnlyDictionary<string, string?> Environment, Machine? Machine);
+        IReadOnlyDictionary<string, string?> Environment, Machine? Machine,
+        TextReader Input, bool InputRedirected, IHarnessRunner Runner, TimeProvider Clock);
 
     private sealed class VersionAction(TextWriter output, Style style) : SynchronousCommandLineAction
     {

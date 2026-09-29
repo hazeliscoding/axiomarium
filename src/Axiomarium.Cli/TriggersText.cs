@@ -59,5 +59,46 @@ internal static class TriggersText
         ink.Kaomoji(Kaomoji.ForOutcome(0, pairs), pairs > 0 ? Palette.Warning : Palette.Ok).Line();
     }
 
+    /// <summary>Writes the prompts <c>axm triggers generate</c> got, grouped by kind, and says a model wrote them.</summary>
+    /// <param name="output">Where to write.</param>
+    /// <param name="file">The prompts, labeled with the model that wrote them.</param>
+    /// <param name="version">The Claude Code version that ran the model, or <see langword="null"/> when it didn't say.</param>
+    /// <param name="style">Whether to color.</param>
+    public static void WriteGenerated(TextWriter output, TriggerPromptFile file, string? version, Style style)
+    {
+        var ink = new Ink(output, style);
+        var source = file.Generated is { } generated ? $" from {generated.Model} in Claude Code{(version is null ? "" : $" {version}")}" : "";
+        ink.Write("AXM TRIGGERS GENERATE", Palette.Accent).Write(" // ", Palette.Dim).Write(file.Skill).Write(" // ", Palette.Dim)
+            .Write($"{Count(file.Prompts.Count, "prompt")}{source}").Line();
+        ink.Line();
+
+        var index = 0;
+        foreach (var group in file.Prompts.GroupBy(prompt => prompt.Kind).OrderBy(group => group.Key))
+        {
+            var about = group.Key switch
+            {
+                PromptKind.Positive or PromptKind.Paraphrased => $"should pick {file.Skill}",
+                PromptKind.Negative or PromptKind.Adversarial => $"shouldn't pick {file.Skill}",
+                _ => $"between {file.Skill} and a rival",
+            };
+            ink.Write("  ").Write(TriggerPrompts.Name(group.Key).ToUpperInvariant(), Palette.Dim).Write(" // ", Palette.Dim).Write(about).Line();
+            foreach (var prompt in group)
+            {
+                index++;
+                ink.Write("  ").Write($"{index:00}", Palette.Dim).Write("  ").Write(prompt.Prompt);
+                if (prompt.Kind == PromptKind.Ambiguous)
+                {
+                    ink.Write($"  picks {(prompt.ShouldTrigger ? file.Skill : prompt.Rival)}", Palette.Dim);
+                }
+
+                ink.Line();
+            }
+
+            ink.Line();
+        }
+
+        ink.Write("A model wrote these prompts. Review them before you rely on them.").Line();
+    }
+
     private static string Count(int count, string noun, string? plural = null) => $"{count} {(count == 1 ? noun : plural ?? noun + "s")}";
 }
