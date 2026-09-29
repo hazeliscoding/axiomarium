@@ -1,3 +1,5 @@
+using System.Text;
+using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Axiomarium.Core.Health;
@@ -72,24 +74,107 @@ public static class TriggerPrompts
     public static PromptFileRead Read(string text, string folder)
     {
         var parsed = YamlDocument.Parse(text);
-        if (parsed.Problem is { } yaml)
+        return parsed.Problem is { } yaml
+            ? new PromptFileRead(null, [new PromptProblem(yaml.Location, yaml.Message, [])])
+            : Check(parsed.Root, parsed.Locations, folder);
+    }
+
+    /// <summary>
+    /// Reads a model's answer to <see cref="GenerationBrief"/> as a prompt file for <paramref name="skill"/>,
+    /// labeled with <paramref name="source"/>, and checks it the way <see cref="Read"/> checks a file.
+    /// </summary>
+    /// <param name="answer">The model's answer: a JSON object with <c>prompts</c>, possibly inside a code fence or after a line of text.</param>
+    /// <param name="skill">The skill the prompts are for.</param>
+    /// <param name="source">The harness, model and date that wrote them.</param>
+    /// <returns>The prompt file when the answer is valid, and every problem otherwise. An answer without a JSON object has one problem.</returns>
+    public static PromptFileRead FromAnswer(string answer, string skill, PromptSource source)
+    {
+        var start = answer.IndexOf('{', StringComparison.Ordinal);
+        var end = answer.LastIndexOf('}');
+        JsonObject? answered = null;
+        if (start >= 0 && end > start)
         {
-            return new PromptFileRead(null, [new PromptProblem(yaml.Location, yaml.Message, [])]);
+            try
+            {
+                answered = JsonNode.Parse(answer[start..(end + 1)]) as JsonObject;
+            }
+            catch (JsonException)
+            {
+            }
         }
 
-        var problems = SchemaValidator.Validate(parsed.Root, SchemaCatalog.TriggerPrompts)
-            .Select(error => new PromptProblem(Doctor.Locate(parsed.Locations, error.Path), error.Message, error.Detail))
+        if (answered is null)
+        {
+            return new PromptFileRead(null, [new PromptProblem(null, "the answer isn't JSON", [])]);
+        }
+
+        var root = new JsonObject
+        {
+            ["skill"] = skill,
+            ["generated"] = new JsonObject { ["by"] = source.By, ["model"] = source.Model, ["date"] = source.Date },
+            ["prompts"] = answered["prompts"]?.DeepClone(),
+        };
+        return Check(root, new Dictionary<string, SourceLocation>(), skill);
+    }
+
+    /// <summary>
+    /// Writes <paramref name="file"/> as YAML that <see cref="Read"/> reads back the same, naming its schema and,
+    /// when a model wrote the prompts, saying so.
+    /// </summary>
+    /// <param name="file">The prompts.</param>
+    /// <returns>The file's contents, ending in a newline.</returns>
+    public static string Write(TriggerPromptFile file)
+    {
+        // Lines end in \n on every platform, as the repo's .gitattributes asks.
+        var yaml = new StringBuilder();
+        void Line(string text) => yaml.Append(text).Append('\n');
+
+        Line("# yaml-language-server: $schema=../../../../schemas/trigger-prompts.schema.json");
+        if (file.Generated is not null)
+        {
+            Line("# A model wrote these prompts. Review them before you rely on them.");
+        }
+
+        Line($"skill: {file.Skill}");
+        if (file.Generated is { } source)
+        {
+            Line("generated:");
+            Line($"  by: {source.By}");
+            Line($"  model: {Quoted(source.Model)}");
+            Line($"  date: {Quoted(source.Date)}");
+        }
+
+        Line("prompts:");
+        foreach (var prompt in file.Prompts)
+        {
+            Line($"  - prompt: {Quoted(prompt.Prompt)}");
+            Line($"    kind: {Name(prompt.Kind)}");
+            Line($"    should_trigger: {(prompt.ShouldTrigger ? "true" : "false")}");
+            if (prompt.Rival is { } rival)
+            {
+                Line($"    rival: {Quoted(rival)}");
+            }
+        }
+
+        return yaml.ToString();
+    }
+
+    // Checks the parsed file, whose locations are empty for an answer that has no lines of its own.
+    private static PromptFileRead Check(JsonNode? document, IReadOnlyDictionary<string, SourceLocation> locations, string folder)
+    {
+        var problems = SchemaValidator.Validate(document, SchemaCatalog.TriggerPrompts)
+            .Select(error => new PromptProblem(Doctor.Locate(locations, error.Path), error.Message, error.Detail))
             .ToList();
         if (problems.Count > 0)
         {
             return new PromptFileRead(null, problems);
         }
 
-        var root = parsed.Root!.AsObject();
+        var root = document!.AsObject();
         var skill = root["skill"]!.GetValue<string>();
         if (skill != folder)
         {
-            problems.Add(new PromptProblem(Doctor.Locate(parsed.Locations, "skill"), $"skill \"{skill}\" doesn't match its folder \"{folder}\"", []));
+            problems.Add(new PromptProblem(Doctor.Locate(locations, "skill"), $"skill \"{skill}\" doesn't match its folder \"{folder}\"", []));
         }
 
         var prompts = root["prompts"]!.AsArray().Select(node => node!.AsObject()).Select(Prompt).ToList();
@@ -99,14 +184,14 @@ public static class TriggerPrompts
             if (Expected(prompt.Kind) is { } expected && prompt.ShouldTrigger != expected)
             {
                 problems.Add(new PromptProblem(
-                    Doctor.Locate(parsed.Locations, $"prompts[{i}].should_trigger"),
+                    Doctor.Locate(locations, $"prompts[{i}].should_trigger"),
                     $"prompts[{i}] is a{(prompt.Kind == PromptKind.Adversarial ? "n" : "")} {Name(prompt.Kind)} prompt, so should_trigger must be {(expected ? "true" : "false")}",
                     ["Positive and paraphrased prompts should pick the skill, and negative and adversarial ones shouldn't."]));
             }
 
             if (prompt.Rival is not null && prompt.Kind != PromptKind.Ambiguous)
             {
-                problems.Add(new PromptProblem(Doctor.Locate(parsed.Locations, $"prompts[{i}].rival"), $"prompts[{i}] names a rival, which only an ambiguous prompt does", []));
+                problems.Add(new PromptProblem(Doctor.Locate(locations, $"prompts[{i}].rival"), $"prompts[{i}] names a rival, which only an ambiguous prompt does", []));
             }
         }
 
@@ -115,6 +200,9 @@ public static class TriggerPrompts
             : null;
         return problems.Count > 0 ? new PromptFileRead(null, problems) : new PromptFileRead(new TriggerPromptFile(skill, generated, prompts), []);
     }
+
+    // A JSON string is a valid YAML double-quoted scalar, so any prompt text round-trips.
+    private static string Quoted(string text) => JsonEncodedText.Encode(text, JavaScriptEncoder.UnsafeRelaxedJsonEscaping).Value is var encoded ? $"\"{encoded}\"" : "";
 
     /// <summary>The name a prompt file uses for <paramref name="kind"/>, such as <c>paraphrased</c>.</summary>
     /// <param name="kind">The kind.</param>
