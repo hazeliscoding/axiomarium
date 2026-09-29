@@ -37,6 +37,7 @@ Each field is a claim, and the useful claims are the ones a tool can check. `axm
 - The name matches the folder, the kind matches the kind folder, and the content file exists and isn't empty.
 - What the manifest points to exists: each asset a policy rule names in `enforced_by`, and the eval files behind each `evals` flag that is `true`.
 - A skill's trigger prompts in `evals/trigger/prompts.yaml` match `schemas/trigger-prompts.schema.json`, name the skill's folder, and each prompt's `should_trigger` agrees with its kind.
+- Each eval case is a kebab-case folder under `evals/behavioral/` or `evals/regression/` whose `eval.yaml` matches `schemas/eval.schema.json`. Each check is exactly one kind and takes only its own fields, and a regression case, and only a regression case, names the failure it guards.
 - The maturity has the evidence its level requires.
 
 Every error names the file, the line, the field, and what would be right:
@@ -50,7 +51,38 @@ ERROR  agents/determinism-auditor/asset.yaml:8
        The evidence supports experimental. Lower the maturity, or add the evidence.
 ```
 
-Some claims can't be checked yet, and it's worth being plain about which. `permissions` and `side_effects` are declared, not enforced. `supports` is the author's word until `axm explain` and `axm sync` can show an asset loading in each harness. And until v0.5, an eval counts once its files exist, whether or not it passes.
+Some claims can't be checked yet, and it's worth being plain about which. `permissions` and `side_effects` are declared, not enforced. `supports` is the author's word until `axm explain` and `axm sync` can show an asset loading in each harness. And until v0.6, an eval counts once its files exist, whether or not it passes.
+
+## Eval cases
+
+A behavioral or regression eval is a folder under the asset's `evals/behavioral/` or `evals/regression/`. Its `eval.yaml` says what to ask and what to check, and a `repo/` beside it holds the files the session starts with, when it needs any. `axm eval` runs the case in a copy of `repo/` with the asset installed.
+
+```yaml
+# skills/agent-asset-authoring/evals/behavioral/new-hook/eval.yaml
+prompt: Add a hook that warns when a database migration file changes. It runs after an edit.
+allow:
+  - axm validate
+  - axm list
+checks:
+  - loaded: agent-asset-authoring
+  - file: hooks/*/hook.md
+  - file: hooks/*/asset.yaml
+    contains: "response: warn"
+  - run: axm validate
+  - ran: git commit
+    not: true
+judge:
+  rubric: The hook warns and never blocks.
+```
+
+A run passes when every check passes:
+
+- `file` looks for a file that matches a glob, and with `contains`, for a text in it, in any case.
+- `run` runs a command in the copy after the session, and expects its `exit`, 0 unless it says otherwise.
+- `loaded`, `ran` and `reply` read what the harness recorded, never what the reply claims: the skills the session loaded and the agents it ran, the commands it ran, and its final message.
+- `not: true` turns a check around.
+
+`allow` lists the commands the session may run. A judge's rubric is graded by a model, shown as model judgment, and never changes what the checks decided. A regression case also says, in `guards`, which failure it guards against.
 
 ## What each maturity level promises
 

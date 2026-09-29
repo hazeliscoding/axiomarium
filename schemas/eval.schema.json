@@ -1,0 +1,96 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/hazeliscoding/axiomarium/blob/main/schemas/eval.schema.json",
+  "title": "Axiomarium eval case",
+  "description": "An asset's evals/behavioral/<case>/eval.yaml or evals/regression/<case>/eval.yaml: a prompt that axm eval runs in a copy of the case's repo/ with the asset installed, and the checks that decide each run.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["prompt", "checks"],
+  "properties": {
+    "prompt": {
+      "description": "What the user asks, as they'd type it. It's the session's first message.",
+      "type": "string",
+      "minLength": 1
+    },
+    "allow": {
+      "description": "Commands the session may run, each the start of a command line, such as axm validate. Claude Code denies every other command. Codex's sandbox can't hold a session to them, so a ran check reports the rest.",
+      "type": "array",
+      "items": {
+        "description": "A command's leading words, such as axm validate, without parentheses or wildcards: axm writes each harness's own rule from them.",
+        "type": "string",
+        "pattern": "^[^()*\\r\\n]+$"
+      }
+    },
+    "checks": {
+      "description": "What decides a run: it passes when every check passes. Each check is one of file, run, loaded, ran or reply.",
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/check" }
+    },
+    "judge": {
+      "description": "A rubric a model grades each run against. Its verdict is shown as model judgment and never changes what the checks decided.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["rubric"],
+      "properties": {
+        "rubric": {
+          "description": "What a good run does, in plain words.",
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "guards": {
+      "description": "Regression cases only, and required for them: the failure this case guards against, and where it's recorded.",
+      "type": "string",
+      "minLength": 1
+    }
+  },
+  "$defs": {
+    "check": {
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "properties": {
+        "file": {
+          "description": "A glob relative to the repo, such as hooks/*/hook.md. Passes when a file matches it, or with contains, when a matching file contains the text. The repo's .git never matches.",
+          "type": "string",
+          "minLength": 1
+        },
+        "contains": {
+          "description": "With file only: text a matching file must contain, in any case.",
+          "type": "string",
+          "minLength": 1
+        },
+        "run": {
+          "description": "A command run in the repo after the session, where axm is the axm that runs the eval. Passes when it exits with exit.",
+          "type": "string",
+          "minLength": 1
+        },
+        "exit": {
+          "description": "With run only: the exit code to expect. 0 when left out.",
+          "type": "integer"
+        },
+        "loaded": {
+          "description": "A skill the session loaded or an agent it ran, by name.",
+          "type": "string",
+          "minLength": 1
+        },
+        "ran": {
+          "description": "The leading words of a command the session ran, such as git push. Each step of a chained command counts, by its program's name.",
+          "type": "string",
+          "minLength": 1
+        },
+        "reply": {
+          "description": "Text the session's final message contains, in any case.",
+          "type": "string",
+          "minLength": 1
+        },
+        "not": {
+          "description": "Passes when the check would fail, such as a file that must not exist. A run check says what to expect with exit instead.",
+          "type": "boolean"
+        }
+      }
+    }
+  }
+}
