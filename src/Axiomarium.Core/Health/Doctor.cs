@@ -355,7 +355,12 @@ public static partial class Doctor
         Text(manifest, "version"),
         manifest["supports"]!.AsObject().ToDictionary(pair => pair.Key, pair => pair.Value!.GetValue<string>(), StringComparer.Ordinal),
         Text(manifest, "description"),
-        kind == AssetKind.Skill && manifest["skill"] is JsonObject skill && skill["use_when"] is JsonValue useWhen && useWhen.GetValueKind() == JsonValueKind.String ? useWhen.GetValue<string>() : null);
+        kind == AssetKind.Skill && manifest["skill"] is JsonObject skill && skill["use_when"] is JsonValue useWhen && useWhen.GetValueKind() == JsonValueKind.String ? useWhen.GetValue<string>() : null,
+        kind == AssetKind.Hook && manifest["hook"] is JsonObject hook
+            && hook["event"] is JsonValue hookEvent && hookEvent.GetValueKind() == JsonValueKind.String
+            && hook["command"] is JsonValue command && command.GetValueKind() == JsonValueKind.String
+            ? new HookBlock(hookEvent.GetValue<string>(), command.GetValue<string>())
+            : null);
 
     private static IReadOnlySet<string> TrueEvals(JsonObject manifest) =>
         manifest["evals"] is JsonObject evals

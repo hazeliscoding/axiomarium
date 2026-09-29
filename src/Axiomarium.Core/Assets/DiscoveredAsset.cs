@@ -20,4 +20,14 @@ public sealed record DiscoveredAsset(AssetKind Kind, string Name, string Folder,
 /// A skill's <c>skill.use_when</c>: when it should activate. <see langword="null"/> for other kinds, and for
 /// a skill whose block is missing or invalid, which the report has an error for.
 /// </param>
-public sealed record AssetManifest(string Maturity, string Version, IReadOnlyDictionary<string, string> Supports, string Description, string? UseWhen = null);
+/// <param name="Hook">
+/// A hook's <c>hook</c> block: when it runs and what. <see langword="null"/> for other kinds, and for a hook whose
+/// block is missing or invalid, which the report has an error for.
+/// </param>
+public sealed record AssetManifest(
+    string Maturity, string Version, IReadOnlyDictionary<string, string> Supports, string Description, string? UseWhen = null, HookBlock? Hook = null);
+
+/// <summary>When a hook runs and what it runs, from its <c>hook</c> block.</summary>
+/// <param name="Event">The event it runs on: <c>session-start</c>, <c>before-edit</c> or <c>after-edit</c>.</param>
+/// <param name="Command">The command the harness runs, such as <c>axm hook scope-sheriff</c>.</param>
+public sealed record HookBlock(string Event, string Command);
