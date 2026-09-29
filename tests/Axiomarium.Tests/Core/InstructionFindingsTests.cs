@@ -303,7 +303,10 @@ public class InstructionFindingsTests
     public void Every_finding_id_is_listed()
     {
         Assert.Equal(
-            ["dead-import", "import-too-deep", "agents-md-hidden", "rule-frontmatter-invalid", "rule-matches-nothing", "codex-byte-cap", "codex-empty-override", "duplicate-block", "dead-link"],
+            [
+                "dead-import", "import-too-deep", "agents-md-hidden", "rule-frontmatter-invalid", "rule-matches-nothing", "codex-byte-cap", "codex-empty-override", "duplicate-block", "dead-link",
+                "skill-name-clash", "skill-description-cut", "skill-listing-over-budget", "skill-frontmatter-invalid", "skill-paths-match-nothing", "hook-never-runs", "codex-hook-untrusted",
+            ],
             InstructionFindings.Ids);
     }
 }

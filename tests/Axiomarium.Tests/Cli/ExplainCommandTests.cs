@@ -178,7 +178,7 @@ public class ExplainCommandTests
 
             """,
             output);
-        Assert.EndsWith("2 harnesses · 0 loaded · 0 not loaded · 16 skills listed · 2 hooks run\n", output);
+        Assert.EndsWith("2 harnesses · 0 loaded · 0 not loaded · 16 skills listed · 2 hooks run · 1 warning\n", output);
     }
 
     [Fact]
