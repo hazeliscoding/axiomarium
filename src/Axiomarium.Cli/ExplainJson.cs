@@ -167,6 +167,11 @@ public static class ExplainJson
                 writer.WriteEndArray();
             }
 
+            if (skill.Fallback is { } fallback)
+            {
+                writer.WriteString("fallback", fallback);
+            }
+
             writer.WriteEndObject();
         }
 
@@ -179,6 +184,11 @@ public static class ExplainJson
             writer.WriteString("name", skill.Name);
             WritePath(writer, skill.Path, show);
             writer.WriteString("rule", skill.Rule.Id);
+            if (skill.Detail is { } detail)
+            {
+                writer.WriteString("detail", detail);
+            }
+
             writer.WriteEndObject();
         }
 

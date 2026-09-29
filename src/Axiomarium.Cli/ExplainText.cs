@@ -219,11 +219,12 @@ public static class ExplainText
 
             var label = skill.Patterns is { Count: > 0 } patterns ? $"paths: {string.Join(", ", patterns)}" : skill.Rule.Label;
             var when = skill.Timing == LoadTiming.AtLaunch ? "at launch" : "when the file is read or edited";
-            when += skill.Cut ? ", description cut" : skill.NameOnly ? ", name only" : "";
+            when += skill.Cut ? ", description cut" : skill.NameOnly ? ", name only" : skill.Fallback is not null ? ", first line as description" : "";
             rows.Add((skill.Name, skill.Path is null ? "built in" : show(skill.Path), label, when));
         }
 
-        var hidden = notListed.Select(skill => (skill.Name, Path: skill.Path is null ? "built in" : show(skill.Path), skill.Rule.Label)).ToList();
+        var hidden = notListed.Select(skill => (
+            skill.Name, Path: skill.Path is null ? "built in" : show(skill.Path), Label: skill.Detail is null ? skill.Rule.Label : $"{skill.Rule.Label}: {skill.Detail}")).ToList();
         var nameWidth = rows.Select(row => row.Name.Length).Concat(hidden.Select(row => row.Name.Length)).DefaultIfEmpty(0).Max() + 3;
         var pathWidth = rows.Select(row => row.Path.Length).Concat(hidden.Select(row => row.Path.Length)).DefaultIfEmpty(0).Max() + 3;
         var labelWidth = rows.Select(row => row.Label.Length).DefaultIfEmpty(0).Max() + 3;

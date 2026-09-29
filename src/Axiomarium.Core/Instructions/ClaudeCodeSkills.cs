@@ -10,11 +10,6 @@ namespace Axiomarium.Core.Instructions;
 /// </remarks>
 internal static class ClaudeCodeSkills
 {
-    // The listing's budget scales with the model's context window, which no file says, so it assumes the
-    // common one and says so.
-    private const int AssumedWindow = 200_000;
-    private const string Assumption = "a 200k-token context window";
-
     /// <summary>Claude Code's built-in skills in listing order, with the length of each entry, as recorded on 2.1.284.</summary>
     public static IReadOnlyList<(string Name, int Chars)> BuiltIns { get; } =
     [
@@ -262,7 +257,8 @@ internal static class ClaudeCodeSkills
             var nameOnly = state == "name-only";
             var (chars, cut) = Entry(name, text, nameOnly);
             var timing = paths is not null || nestedFrom is not null ? LoadTiming.OnRead : LoadTiming.AtLaunch;
-            var skill = new AvailableSkill(name, file, timing, paths is not null ? ClaudeCodeSkillRules.PathsSkill : rule, chars, cut, nameOnly, paths);
+            var fallback = command || front.Description is not null ? null : front.Valid ? "it has no description" : "its frontmatter doesn't parse";
+            var skill = new AvailableSkill(name, file, timing, paths is not null ? ClaudeCodeSkillRules.PathsSkill : rule, chars, cut, nameOnly, paths, fallback);
             (paths is not null ? _byPaths : nestedFrom is not null ? _nested : _atLaunch).Add(skill);
         }
 
@@ -289,9 +285,13 @@ internal static class ClaudeCodeSkills
         // The listing at launch joins its entries with newlines.
         public (IReadOnlyList<AvailableSkill>, IReadOnlyList<UnlistedSkill>, SkillListing) Result()
         {
+            // The budget scales with the model's context window: 1M tokens for a model the settings name as a
+            // 1M variant, and otherwise the common 200k, which the listing says it assumes.
             var chars = _atLaunch.Sum(skill => skill.Chars) + Math.Max(0, _atLaunch.Count - 1);
-            var budget = (int)Math.Round(AssumedWindow * 4 * settings.ListingBudgetFraction);
-            return ([.. _atLaunch, .. _nested, .. _byPaths], _notListed, new SkillListing(chars, budget, "characters", Assumption, ClaudeCodeSkillRules.ListingBudget));
+            var million = settings.Model is { } model && (model.Contains("[1m]", StringComparison.OrdinalIgnoreCase) || model.Contains("sonnet-5", StringComparison.OrdinalIgnoreCase));
+            var budget = (int)Math.Round((million ? 1_000_000 : 200_000) * 4 * settings.ListingBudgetFraction);
+            var assumption = million ? "a 1M-token context window, from the model setting" : "a 200k-token context window";
+            return ([.. _atLaunch, .. _nested, .. _byPaths], _notListed, new SkillListing(chars, budget, "characters", assumption, ClaudeCodeSkillRules.ListingBudget));
         }
 
         // An entry is "- name: text", or "- name" alone. Text past the cap ends in an ellipsis at the cap.

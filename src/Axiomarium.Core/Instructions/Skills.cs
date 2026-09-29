@@ -12,14 +12,27 @@ namespace Axiomarium.Core.Instructions;
 /// <param name="Cut">Whether its description is cut at the harness's cap for one entry.</param>
 /// <param name="NameOnly">Whether a setting lists it by name, without its description.</param>
 /// <param name="Patterns">The patterns that matched the file, for a skill that joins by its <c>paths</c>.</param>
+/// <param name="Fallback">
+/// Why the listing shows the skill's first body line instead of a description, such as <c>its frontmatter
+/// doesn't parse</c>, or <see langword="null"/> when it has a description.
+/// </param>
 public sealed record AvailableSkill(
-    string Name, string? Path, LoadTiming Timing, HarnessRule Rule, int Chars, bool Cut = false, bool NameOnly = false, IReadOnlyList<string>? Patterns = null);
+    string Name,
+    string? Path,
+    LoadTiming Timing,
+    HarnessRule Rule,
+    int Chars,
+    bool Cut = false,
+    bool NameOnly = false,
+    IReadOnlyList<string>? Patterns = null,
+    string? Fallback = null);
 
 /// <summary>A skill the harness knows about but doesn't list for the model, for this file or at all.</summary>
 /// <param name="Name">The skill's name.</param>
 /// <param name="Path">Its <c>SKILL.md</c> or command file, or <see langword="null"/> for a skill built into the harness.</param>
 /// <param name="Rule">The rule that keeps it out of the listing.</param>
-public sealed record UnlistedSkill(string Name, string? Path, HarnessRule Rule);
+/// <param name="Detail">More on why, when the rule has several causes, such as <c>it has no description</c>.</param>
+public sealed record UnlistedSkill(string Name, string? Path, HarnessRule Rule, string? Detail = null);
 
 /// <summary>The size of a harness's skill listing at launch, against the budget past which it cuts descriptions.</summary>
 /// <param name="Size">What the listing takes, built-in skills included, in <paramref name="Unit"/>.</param>
