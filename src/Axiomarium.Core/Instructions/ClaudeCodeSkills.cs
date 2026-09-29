@@ -258,7 +258,8 @@ internal static class ClaudeCodeSkills
             var (chars, cut) = Entry(name, text, nameOnly);
             var timing = paths is not null || nestedFrom is not null ? LoadTiming.OnRead : LoadTiming.AtLaunch;
             var fallback = command || front.Description is not null ? null : front.Valid ? "it has no description" : "its frontmatter doesn't parse";
-            var skill = new AvailableSkill(name, file, timing, paths is not null ? ClaudeCodeSkillRules.PathsSkill : rule, chars, cut, nameOnly, paths, fallback);
+            var shown = nameOnly || text.Length == 0 ? null : cut ? text[..(settings.ListingMaxDescChars - 1)] + "…" : text;
+            var skill = new AvailableSkill(name, file, timing, paths is not null ? ClaudeCodeSkillRules.PathsSkill : rule, chars, cut, nameOnly, paths, fallback, shown);
             (paths is not null ? _byPaths : nestedFrom is not null ? _nested : _atLaunch).Add(skill);
         }
 

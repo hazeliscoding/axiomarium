@@ -15,4 +15,9 @@ public sealed record DiscoveredAsset(AssetKind Kind, string Name, string Folder,
 /// <param name="Maturity">Its maturity, such as <c>experimental</c>.</param>
 /// <param name="Version">Its SemVer version.</param>
 /// <param name="Supports">Each harness it supports, such as <c>claude-code</c>, and how well: <c>full</c>, <c>partial</c> or <c>experimental</c>.</param>
-public sealed record AssetManifest(string Maturity, string Version, IReadOnlyDictionary<string, string> Supports);
+/// <param name="Description">What the asset is, from its <c>description</c>.</param>
+/// <param name="UseWhen">
+/// A skill's <c>skill.use_when</c>: when it should activate. <see langword="null"/> for other kinds, and for
+/// a skill whose block is missing or invalid, which the report has an error for.
+/// </param>
+public sealed record AssetManifest(string Maturity, string Version, IReadOnlyDictionary<string, string> Supports, string Description, string? UseWhen = null);

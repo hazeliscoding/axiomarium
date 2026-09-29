@@ -114,7 +114,7 @@ internal static class CodexSkills
             var aliased = $"- {skill.Name}: {description} (file: r{aliases[skill.Root]}/{relative})";
             aliasedCost += Tokens(aliased);
             absoluteCost += Tokens($"- {skill.Name}: {description} (file: {Slashes(skill.File)})");
-            skills.Add(new AvailableSkill(skill.Name, skill.File, LoadTiming.AtLaunch, skill.Rule, aliased.Length, cut));
+            skills.Add(new AvailableSkill(skill.Name, skill.File, LoadTiming.AtLaunch, skill.Rule, aliased.Length, cut, Text: description));
         }
 
         var (budget, assumption) = config.SkillsMaxContextTokens is { } tokens

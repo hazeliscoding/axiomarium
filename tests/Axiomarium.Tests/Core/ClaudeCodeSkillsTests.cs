@@ -147,6 +147,24 @@ public class ClaudeCodeSkillsTests
         Assert.Equal("- bare: Just a body line.".Length, Chars("bare"));
     }
 
+    [Fact]
+    public void Each_skill_carries_the_text_its_entry_shows()
+    {
+        using var vault = Repo()
+            .Write("repo/.claude/skills/tables/SKILL.md", Skill("Formats tables", "when_to_use: when the user pastes a table\n"))
+            .Write("repo/.claude/skills/long/SKILL.md", Skill(new string('x', 2000)))
+            .Write("repo/.claude/skills/quiet/SKILL.md", Skill("Listed by name."))
+            .Write("repo/.claude/settings.json", """{ "skillOverrides": { "quiet": "name-only" } }""");
+
+        var resolution = Resolve(vault);
+
+        string? Text(string name) => resolution.Skills.Single(skill => skill.Name == name).Text;
+        Assert.Equal("Formats tables - when the user pastes a table", Text("tables"));
+        Assert.Equal(new string('x', 1535) + "…", Text("long"));
+        Assert.Null(Text("quiet"));
+        Assert.All(resolution.Skills.Where(skill => skill.Path is null), skill => Assert.Null(skill.Text));
+    }
+
     // Recorded in claude-code-skills: a pattern without a slash matches at any depth, as in a .gitignore.
     [Fact]
     public void A_skills_paths_match_the_way_a_gitignore_line_does()

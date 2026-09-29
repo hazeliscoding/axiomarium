@@ -16,6 +16,10 @@ namespace Axiomarium.Core.Instructions;
 /// Why the listing shows the skill's first body line instead of a description, such as <c>its frontmatter
 /// doesn't parse</c>, or <see langword="null"/> when it has a description.
 /// </param>
+/// <param name="Text">
+/// What its entry shows after the name, as the model sees it, cut included, or <see langword="null"/> for a
+/// skill listed by name only or built into the harness, whose text isn't recorded.
+/// </param>
 public sealed record AvailableSkill(
     string Name,
     string? Path,
@@ -25,7 +29,8 @@ public sealed record AvailableSkill(
     bool Cut = false,
     bool NameOnly = false,
     IReadOnlyList<string>? Patterns = null,
-    string? Fallback = null);
+    string? Fallback = null,
+    string? Text = null);
 
 /// <summary>A skill the harness knows about but doesn't list for the model, for this file or at all.</summary>
 /// <param name="Name">The skill's name.</param>
