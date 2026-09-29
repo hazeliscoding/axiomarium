@@ -1,5 +1,3 @@
-using System.Text.Json;
-using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 
 namespace Axiomarium.Core.Triggers;
@@ -27,23 +25,23 @@ public static partial class CodexStream
         string? command = null, message = null, error = null;
         foreach (var line in lines)
         {
-            if (Event(line) is not { } e)
+            if (JsonEvents.Parse(line) is not { } e)
             {
                 continue;
             }
 
-            var item = e["item"] as JsonObject;
-            if (command is null && item is not null && Text(item, "type") == "command_execution")
+            var item = JsonEvents.Child(e, "item");
+            if (command is null && JsonEvents.Text(item, "type") == "command_execution")
             {
-                command = Text(item, "command") ?? "";
+                command = JsonEvents.Text(item, "command") ?? "";
             }
-            else if (message is null && item is not null && Text(item, "type") == "agent_message")
+            else if (message is null && JsonEvents.Text(item, "type") == "agent_message")
             {
-                message = Text(item, "text");
+                message = JsonEvents.Text(item, "text");
             }
-            else if (Text(e, "type") is "turn.failed" or "error")
+            else if (JsonEvents.Text(e, "type") is "turn.failed" or "error")
             {
-                error ??= e["error"] is JsonObject failure ? Text(failure, "message") : Text(e, "message");
+                error ??= JsonEvents.Text(JsonEvents.Child(e, "error"), "message") ?? JsonEvents.Text(e, "message");
             }
         }
 
@@ -58,8 +56,8 @@ public static partial class CodexStream
     /// <param name="line">One line Codex printed.</param>
     /// <returns><see langword="true"/> for a completed command or the end of the turn.</returns>
     public static bool EndsPick(string line) =>
-        Event(line) is { } e && (Text(e, "type") is "turn.completed" or "turn.failed" or "error"
-            || (Text(e, "type") == "item.completed" && e["item"] is JsonObject item && Text(item, "type") == "command_execution"));
+        JsonEvents.Parse(line) is { } e && (JsonEvents.Text(e, "type") is "turn.completed" or "turn.failed" or "error"
+            || (JsonEvents.Text(e, "type") == "item.completed" && JsonEvents.Text(JsonEvents.Child(e, "item"), "type") == "command_execution"));
 
     // Paths ending in SKILL.md: single-quoted, double-quoted or bare, in the order they appear. PowerShell
     // commands on Windows carry doubled backslashes.
@@ -75,26 +73,6 @@ public static partial class CodexStream
         var parts = path.Split('/', '\\');
         return parts.Length > 1 ? parts[^2] : path;
     }
-
-    private static JsonObject? Event(string line)
-    {
-        if (!line.TrimStart().StartsWith('{'))
-        {
-            return null;
-        }
-
-        try
-        {
-            return JsonNode.Parse(line) as JsonObject;
-        }
-        catch (JsonException)
-        {
-            return null;
-        }
-    }
-
-    private static string? Text(JsonObject node, string name) =>
-        node[name] is JsonValue value && value.GetValueKind() == JsonValueKind.String ? value.GetValue<string>() : null;
 
     [GeneratedRegex("""'([^']*?SKILL\.md)'|"([^"']*?SKILL\.md)"|((?:[A-Za-z]:)?[^\s'"|;&<>(){}]*SKILL\.md)""", RegexOptions.CultureInvariant)]
     private static partial Regex SkillPath();

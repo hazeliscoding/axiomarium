@@ -41,6 +41,11 @@ internal static class TriggerSessions
                 {
                     return await Run(runner, folder, session, model, home);
                 }
+                catch (Exception problem) when (problem is not OperationCanceledException)
+                {
+                    // One session's failure is its own problem: the rest of a long run still counts.
+                    return new SessionResult(session, [], null, null, $"the session failed: {problem.Message}");
+                }
                 finally
                 {
                     gate.Release();
@@ -49,13 +54,17 @@ internal static class TriggerSessions
         }
         finally
         {
-            try
+            // A harness that was just stopped can hold a file a moment longer, so the delete waits and retries.
+            for (var attempt = 1; attempt <= 5 && Directory.Exists(folder); attempt++)
             {
-                Directory.Delete(folder, recursive: true);
-            }
-            catch (Exception problem) when (problem is IOException or UnauthorizedAccessException)
-            {
-                // A stopped harness can hold a file a moment longer. The copy is scratch space.
+                try
+                {
+                    Directory.Delete(folder, recursive: true);
+                }
+                catch (Exception problem) when (problem is IOException or UnauthorizedAccessException)
+                {
+                    await Task.Delay(TimeSpan.FromSeconds(1));
+                }
             }
         }
     }

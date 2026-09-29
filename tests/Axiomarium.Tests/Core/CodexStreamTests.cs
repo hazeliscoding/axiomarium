@@ -61,6 +61,17 @@ public class CodexStreamTests
     }
 
     [Fact]
+    public void An_event_with_a_key_twice_still_reads()
+    {
+        const string read = """{"type":"item.completed","item":{"id":"item_1","id":"item_2","type":"command_execution","command":"cat .agents/skills/deploy/SKILL.md"}}""";
+
+        var session = CodexStream.Read([read], "/tmp/run", "/home/dev");
+
+        Assert.Equal(["deploy"], session.Loads);
+        Assert.True(CodexStream.EndsPick(read));
+    }
+
+    [Fact]
     public void A_failed_turn_says_why()
     {
         var session = CodexStream.Read(["""{"type":"turn.failed","error":{"message":"You've hit your usage limit."}}"""], "/tmp/run", "/home/dev");

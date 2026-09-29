@@ -56,6 +56,18 @@ public class ClaudeCodeStreamTests
         Assert.Empty(ClaudeCodeStream.Loads(Session(bash, skill("release"))));
     }
 
+    // A real run met an event with a key twice. JSON allows it, and it mustn't lose the pick.
+    [Fact]
+    public void An_event_with_a_key_twice_still_reads()
+    {
+        const string skill = """{"type":"assistant","id":"a","id":"b","message":{"content":[{"type":"tool_use","id":"t1","id":"t2","name":"Skill","input":{"skill":"release"}}]}}""";
+
+        var session = ClaudeCodeStream.Read([skill]);
+
+        Assert.Equal([new ClaudeCodeStep("Skill", "release", null)], session.Steps);
+        Assert.False(ClaudeCodeStream.EndsPick(skill));
+    }
+
     [Fact]
     public void The_first_tool_call_other_than_a_skill_ends_a_pick_and_nothing_else_does()
     {
