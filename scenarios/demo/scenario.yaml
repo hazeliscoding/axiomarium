@@ -1,3 +1,4 @@
-description: "The demo in the write-up and the README: a shop whose CLAUDE.md hides the AGENTS.md every other agent reads, and imports a file someone renamed."
+description: "The demo in the write-ups and the README: a shop whose CLAUDE.md hides the AGENTS.md every other agent reads and imports a file someone renamed, with a skill and an after-edit hook for each harness that the other never sees."
 launch: .
 target: src/api/orders.cs
+action: edit
