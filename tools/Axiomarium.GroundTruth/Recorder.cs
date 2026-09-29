@@ -22,6 +22,7 @@ internal static partial class Recorder
         {
             CopyDirectory(Path.Combine(scenario.Directory, "repo"), Path.Combine(run, "repo"));
             CopyDirectory(Path.Combine(scenario.Directory, "home"), Path.Combine(run, "home"));
+            FillInRunFolder(run);
 
             // A scenario can't hold its own .git, and Codex finds the project root by it.
             Run("git", ["init", "-q"], Path.Combine(run, "repo"), []);
@@ -67,14 +68,23 @@ internal static partial class Recorder
             ["version"] = Version("codex", last: true),
             ["loaded"] = Entries(CodexBlock.Parse(output, files)),
             ["skills"] = Skills(CodexSkillBlock.Parse(output, run, scenario.SkillFiles()), "bundled"),
-            ["hooks"] = new JsonArray([.. hooks.Select(hook => new JsonObject
+            ["hooks"] = new JsonArray([.. hooks.Select(hook =>
             {
-                ["file"] = hook.File,
-                ["label"] = hook.Label,
-                ["event"] = hook.Event,
-                ["matcher"] = hook.Matcher,
-                ["trust"] = hook.Trust,
-                ["hash"] = hook.Hash,
+                var entry = new JsonObject
+                {
+                    ["file"] = hook.File,
+                    ["label"] = hook.Label,
+                    ["event"] = hook.Event,
+                    ["matcher"] = hook.Matcher,
+                    ["trust"] = hook.Trust,
+                    ["hash"] = hook.Hash,
+                };
+                if (!hook.Enabled)
+                {
+                    entry["enabled"] = false;
+                }
+
+                return entry;
             })]),
         };
         if (warnings.Count > 0)
@@ -228,6 +238,16 @@ internal static partial class Recorder
         finally
         {
             File.Delete(borrowed);
+        }
+    }
+
+    // A config file can't know where the run happens, so absolute paths in it, such as trust keys, start with
+    // {run}, which becomes the run folder with forward slashes.
+    private static void FillInRunFolder(string run)
+    {
+        foreach (var file in Directory.EnumerateFiles(Path.Combine(run, "home"), "config.toml", SearchOption.AllDirectories))
+        {
+            File.WriteAllText(file, File.ReadAllText(file).Replace("{run}", Slashes(run), StringComparison.Ordinal));
         }
     }
 

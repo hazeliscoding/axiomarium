@@ -15,7 +15,8 @@ internal sealed record HookRun(string File, string Label, string Hook);
 /// <param name="Matcher">Its matcher, or null when it has none.</param>
 /// <param name="Trust">Whether Codex will run it: trusted, untrusted, modified or managed.</param>
 /// <param name="Hash">The hash Codex trusts it by.</param>
-internal sealed record CodexHook(string File, string Label, string Event, string? Matcher, string Trust, string Hash);
+/// <param name="Enabled">Whether the user config leaves it on.</param>
+internal sealed record CodexHook(string File, string Label, string Event, string? Matcher, string Trust, string Hash, bool Enabled);
 
 internal static class HookMarkers
 {
@@ -98,7 +99,8 @@ internal static class CodexHookList
                 hook["eventName"]!.GetValue<string>(),
                 hook["matcher"]?.GetValue<string>(),
                 hook["trustStatus"]!.GetValue<string>(),
-                hook["currentHash"]!.GetValue<string>()));
+                hook["currentHash"]!.GetValue<string>(),
+                hook["enabled"]?.GetValue<bool>() ?? true));
         }
 
         var warnings = (entry["warnings"] as JsonArray ?? [])
