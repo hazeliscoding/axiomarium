@@ -37,10 +37,11 @@ internal static partial class TriggersText
     /// <param name="versions">The version each installed harness reported, by harness.</param>
     /// <param name="missing">Why each harness that couldn't run was skipped.</param>
     /// <param name="model">The model asked for, or <see langword="null"/> for each harness's own.</param>
+    /// <param name="notes">A note about each harness's listing, such as being over its budget, by harness.</param>
     /// <param name="style">Whether to color and add a kaomoji.</param>
     public static void WriteTestResults(
         TextWriter output, TriggerResults results, IReadOnlyList<SessionResult> sessions, IReadOnlyDictionary<Harness, string> versions,
-        IReadOnlyDictionary<Harness, string> missing, string? model, Style style)
+        IReadOnlyDictionary<Harness, string> missing, string? model, IReadOnlyDictionary<Harness, string> notes, Style style)
     {
         var ink = new Ink(output, style);
         var index = 0;
@@ -56,6 +57,11 @@ internal static partial class TriggersText
 
             var picker = sessions.FirstOrDefault(session => session.Session.Harness == harness && session.Model is not null)?.Model ?? model ?? "its configured model";
             ink.Write("  ").Write($"{title} {Version().Match(versions[harness]).Value}".TrimEnd(), Palette.Dim).Write(" // ", Palette.Dim).Write($"picks by {picker}").Line();
+            if (notes.TryGetValue(harness, out var note))
+            {
+                ink.Write($"  note: {note}", Palette.Dim).Line();
+            }
+
             foreach (var skill in results.Background.Where(skill => skill.Harness == harness))
             {
                 ink.Write($"  background: {skill.Name}, loaded in {skill.Runs} of {Count(skill.Of, "run")}, so it isn't counted as a pick", Palette.Dim).Line();

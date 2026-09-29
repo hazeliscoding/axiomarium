@@ -7,8 +7,8 @@ public class CodexStreamTests
 {
     private static string[] Fixture(string name) => File.ReadAllLines(Path.Combine(RepoRoot.Path, "tests", "Axiomarium.Tests", "Fixtures", "triggers", name));
 
-    private static string Command(string command, string type = "item.completed") =>
-        new JsonObject { ["type"] = type, ["item"] = new JsonObject { ["id"] = "item_1", ["type"] = "command_execution", ["command"] = command, ["status"] = "completed" } }.ToJsonString();
+    private static string Command(string command, string type = "item.completed", string id = "item_1") =>
+        new JsonObject { ["type"] = type, ["item"] = new JsonObject { ["id"] = id, ["type"] = "command_execution", ["command"] = command, ["status"] = "completed" } }.ToJsonString();
 
     [Fact]
     public void The_first_command_s_skill_reads_are_the_loads_in_the_order_it_read_them()
@@ -38,11 +38,25 @@ public class CodexStreamTests
         Assert.Equal(["deploy", "ship"], session.Loads);
     }
 
+    // A command that only reads skills is how Codex loads them, like Claude Code's Skill calls, so it doesn't end
+    // the loads. The first real run met using-superpowers read on its own, then the skill the task needed.
+    [Fact]
+    public void Commands_that_only_read_skills_keep_loading_until_one_does_something_else()
+    {
+        const string alone = "\"C:\\\\Program Files\\\\pwsh.exe\" -Command \"Get-Content -LiteralPath 'C:\\\\Users\\\\dev\\\\.codex\\\\skills\\\\using-superpowers\\\\SKILL.md'\"";
+        string[] lines = [Command(alone, id: "item_1"), Command("cat .agents/skills/deploy/SKILL.md && rg --files", id: "item_2"), Command("cat .agents/skills/late/SKILL.md", id: "item_3")];
+
+        var session = CodexStream.Read(lines, "/tmp/run", "/home/dev");
+
+        Assert.Equal(["using-superpowers", "deploy"], session.Loads);
+        Assert.Equal([false, true, false], lines.Select(CodexStream.EndsPick));
+    }
+
     [Fact]
     public void Only_the_first_command_counts_and_a_first_command_without_a_skill_loads_nothing()
     {
         var session = CodexStream.Read(
-            [Command("rg --files"), Command("cat .agents/skills/deploy/SKILL.md")],
+            [Command("rg --files", id: "item_1"), Command("cat .agents/skills/deploy/SKILL.md", id: "item_2")],
             workingDirectory: "/tmp/run",
             home: "/home/dev");
 
@@ -63,7 +77,7 @@ public class CodexStreamTests
     [Fact]
     public void An_event_with_a_key_twice_still_reads()
     {
-        const string read = """{"type":"item.completed","item":{"id":"item_1","id":"item_2","type":"command_execution","command":"cat .agents/skills/deploy/SKILL.md"}}""";
+        const string read = """{"type":"item.completed","item":{"id":"item_1","id":"item_2","type":"command_execution","command":"cat .agents/skills/deploy/SKILL.md && ls"}}""";
 
         var session = CodexStream.Read([read], "/tmp/run", "/home/dev");
 

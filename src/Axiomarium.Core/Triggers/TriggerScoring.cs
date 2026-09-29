@@ -66,9 +66,11 @@ public static class TriggerScoring
     /// <param name="results">Every session's result.</param>
     /// <param name="prompts">The prompt file of each skill under test, by skill name.</param>
     /// <returns>
-    /// The scores, with each run's pick being its first load that isn't a background skill. A skill is background
-    /// on a harness when it isn't under test and every scored run there loaded it, across at least two prompts,
-    /// such as a plugin skill that tells the agent to use skills before anything else.
+    /// The scores. A run picks the skill under test when it loaded it before its first other action, whatever it
+    /// loaded first, as promptfoo's <c>skill-used</c> counts. A collision names the first other skill the run
+    /// loaded that isn't background. A skill is background on a harness when it isn't under test and every scored
+    /// run there loaded it, across at least two prompts, such as a plugin skill that tells the agent to use skills
+    /// before anything else.
     /// </returns>
     public static TriggerResults Score(IReadOnlyList<SessionResult> results, IReadOnlyDictionary<string, TriggerPromptFile> prompts)
     {
@@ -90,8 +92,9 @@ public static class TriggerScoring
                 .OrderBy(skill => skill.Name, StringComparer.Ordinal));
         }
 
-        string? Pick(SessionResult result) =>
-            result.Loads.FirstOrDefault(name => !background.Any(skill => skill.Harness == result.Session.Harness && skill.Name == name));
+        // The skill a collision names: the first one loaded that's neither background nor the skill expected.
+        string? Other(SessionResult result, string skill) =>
+            result.Loads.FirstOrDefault(name => name != skill && !background.Any(item => item.Harness == result.Session.Harness && item.Name == name));
 
         var scores = new List<SkillScore>();
         var problems = new List<ProblemRuns>();
@@ -102,20 +105,21 @@ public static class TriggerScoring
             foreach (var prompt in group.GroupBy(result => result.Session.Prompt).OrderBy(prompt => prompt.Key))
             {
                 var text = prompts[skill].Prompts[prompt.Key];
-                var picks = prompt.Select(Pick).ToList();
+                var runs = prompt.ToList();
                 var outcomes = new List<(ProblemKind Kind, string? Expected, string? Picked)>();
-                foreach (var pick in picks)
+                foreach (var run in runs)
                 {
-                    if (text.ShouldTrigger && pick == skill)
+                    var loaded = run.Loads.Contains(skill, StringComparer.Ordinal);
+                    if (text.ShouldTrigger && loaded)
                     {
                         truePositives++;
                     }
                     else if (text.ShouldTrigger)
                     {
                         falseNegatives++;
-                        outcomes.Add(pick is null ? (ProblemKind.Miss, skill, null) : (ProblemKind.Collision, skill, pick));
+                        outcomes.Add(Other(run, skill) is { } other ? (ProblemKind.Collision, skill, other) : (ProblemKind.Miss, skill, null));
                     }
-                    else if (pick == skill)
+                    else if (loaded)
                     {
                         falsePositives++;
                         outcomes.Add(text is { Kind: PromptKind.Ambiguous, Rival: { } rival } ? (ProblemKind.Collision, rival, skill) : (ProblemKind.FalseTrigger, null, skill));
@@ -124,7 +128,7 @@ public static class TriggerScoring
 
                 problems.AddRange(outcomes
                     .GroupBy(outcome => outcome)
-                    .Select(outcome => new ProblemRuns(harness, skill, prompt.Key, text, outcome.Key.Kind, outcome.Key.Expected, outcome.Key.Picked, outcome.Count(), picks.Count)));
+                    .Select(outcome => new ProblemRuns(harness, skill, prompt.Key, text, outcome.Key.Kind, outcome.Key.Expected, outcome.Key.Picked, outcome.Count(), runs.Count)));
             }
 
             scores.Add(new SkillScore(harness, skill, truePositives, falsePositives, falseNegatives));

@@ -87,7 +87,9 @@ public static partial class AxmCli
 
         var scored = TriggerScoring.Score(results, plan.Prompts);
         scored = scored with { Problems = TriggerCauses.Explain(scored.Problems, listings) };
-        TriggersText.WriteTestResults(session.Output, scored, results, versions, missing, model, session.OutputStyle);
+        var notes = listings.Select(item => (item.Key, Note: TriggerCauses.BudgetNote(item.Value)))
+            .Where(item => item.Note is not null).ToDictionary(item => item.Key, item => item.Note!);
+        TriggersText.WriteTestResults(session.Output, scored, results, versions, missing, model, notes, session.OutputStyle);
 
         // Picks are the model's behavior, not errors in the vault, so the test passes whenever it ran.
         return Passed;
