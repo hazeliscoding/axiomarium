@@ -36,6 +36,7 @@ Each field is a claim, and the useful claims are the ones a tool can check. `axm
 - The manifest matches `schemas/asset.schema.json`, and its kind's block matches that block's schema.
 - The name matches the folder, the kind matches the kind folder, and the content file exists and isn't empty.
 - What the manifest points to exists: each asset a policy rule names in `enforced_by`, and the eval files behind each `evals` flag that is `true`.
+- A skill's trigger prompts in `evals/trigger/prompts.yaml` match `schemas/trigger-prompts.schema.json`, name the skill's folder, and each prompt's `should_trigger` agrees with its kind.
 - The maturity has the evidence its level requires.
 
 Every error names the file, the line, the field, and what would be right:
