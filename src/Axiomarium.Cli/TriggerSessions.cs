@@ -23,14 +23,16 @@ internal static class TriggerSessions
     /// <param name="sessions">The sessions to run.</param>
     /// <param name="model">The model to ask each harness for, or <see langword="null"/> for the one it's set to.</param>
     /// <param name="home">The home folder, which <c>~/</c> in Codex's commands stands for.</param>
+    /// <param name="built">Called with the copy's folder once it's built and before any session runs, such as to read what each harness lists there.</param>
     /// <returns>Each session's result, in the order of <paramref name="sessions"/>.</returns>
     public static async Task<IReadOnlyList<SessionResult>> RunAsync(
-        IHarnessRunner runner, WorkspacePlan plan, string repoRoot, IReadOnlyList<TriggerSession> sessions, string? model, string home)
+        IHarnessRunner runner, WorkspacePlan plan, string repoRoot, IReadOnlyList<TriggerSession> sessions, string? model, string home, Action<string>? built = null)
     {
         var folder = runner.CreateFolder();
         try
         {
             Build(plan, repoRoot, folder);
+            built?.Invoke(folder);
             using var gate = new SemaphoreSlim(Parallel);
             return await Task.WhenAll(sessions.Select(async session =>
             {
