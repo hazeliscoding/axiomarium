@@ -6,7 +6,7 @@ using Axiomarium.Core.Triggers;
 namespace Axiomarium.Cli;
 
 /// <summary>Renders <c>axm triggers</c>: each harness's overlapping skill pairs, with the terms they share.</summary>
-internal static class TriggersText
+internal static partial class TriggersText
 {
     /// <summary>Writes the report: a block per harness, then the summary line.</summary>
     /// <param name="output">Where to write.</param>

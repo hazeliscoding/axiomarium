@@ -65,6 +65,33 @@ internal sealed class FakeRunner : IHarnessRunner
         0,
         "");
 
+    /// <summary>A Claude Code session that loads <paramref name="skills"/>, then runs a command, where it's stopped.</summary>
+    public static HarnessOutput ClaudePick(params string[] skills) => new(
+        true,
+        [
+            new JsonObject { ["type"] = "system", ["subtype"] = "init", ["model"] = "claude-opus-5-5", ["claude_code_version"] = "2.1.284", ["skills"] = new JsonArray() }.ToJsonString(),
+            .. skills.Select(skill => Assistant(new JsonObject { ["type"] = "tool_use", ["name"] = "Skill", ["input"] = new JsonObject { ["skill"] = skill } })),
+            Assistant(new JsonObject { ["type"] = "tool_use", ["name"] = "Bash", ["input"] = new JsonObject { ["command"] = "git status" } }),
+        ],
+        null,
+        "");
+
+    /// <summary>A Codex session whose first command reads <paramref name="skills"/> from the repo's <c>.agents/skills</c>, where it's stopped.</summary>
+    public static HarnessOutput CodexRead(params string[] skills)
+    {
+        var command = skills.Length == 0 ? "rg --files" : string.Join(" && ", skills.Select(skill => $"cat .agents/skills/{skill}/SKILL.md"));
+        JsonObject Item(string type) =>
+            new() { ["type"] = type, ["item"] = new JsonObject { ["id"] = "item_1", ["type"] = "command_execution", ["command"] = command, ["status"] = "completed" } };
+        return new(true, [new JsonObject { ["type"] = "thread.started" }.ToJsonString(), Item("item.started").ToJsonString(), Item("item.completed").ToJsonString()], null, "");
+    }
+
+    /// <summary>What each harness prints for <c>--version</c>.</summary>
+    public static HarnessOutput Version(HarnessCall call) =>
+        new(true, [call.Command == "claude" ? "2.1.284 (Claude Code)" : "codex-cli 0.156.1"], 0, "");
+
+    private static string Assistant(JsonObject block) =>
+        new JsonObject { ["type"] = "assistant", ["message"] = new JsonObject { ["role"] = "assistant", ["content"] = new JsonArray(block) } }.ToJsonString();
+
     /// <summary>A captured stream from the spike, as a session that was stopped at its last line.</summary>
     public static HarnessOutput Fixture(string name) =>
         new(true, File.ReadAllLines(Path.Combine(RepoRoot.Path, "tests", "Axiomarium.Tests", "Fixtures", "triggers", name)), null, "");

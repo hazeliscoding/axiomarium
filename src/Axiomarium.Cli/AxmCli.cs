@@ -299,6 +299,7 @@ public static partial class AxmCli
         var command = new Command("triggers", "Find skills whose descriptions overlap in each harness's listing, and the terms they share.");
         command.Options.Add(folder);
         command.Subcommands.Add(GenerateCommand(session));
+        command.Subcommands.Add(TestCommand(session));
         command.SetAction(result =>
         {
             var start = Path.GetFullPath(result.GetValue(folder)!, session.CurrentDirectory);

@@ -333,7 +333,7 @@ Whether the model picks the right skill for a prompt, measured on the real harne
 - [x] Prompt files: `schemas/trigger-prompts.schema.json`, and `axm doctor` validating `skills/<name>/evals/trigger/prompts.yaml`.
 - [x] `axm triggers generate <skill>`: the brief with the skill's rivals, one-turn generation with a schema check and one retry, the preview and approval, `--yes` and `--replace`.
 - [x] The runner: the throwaway copy with the vault's skills written in, four sessions at a time, each stopped at its first action, and a parser for each harness's stream.
-- [ ] `axm triggers test`: the plan line, precision and recall for each skill and harness, and each collision, false trigger and miss with its cause.
+- [x] `axm triggers test`: the plan line, precision and recall for each skill and harness, and each collision, false trigger and miss with its cause.
 - [ ] `axm triggers export <skill> --format skill-creator|promptfoo`, printed, with CI running `promptfoo validate` on the export.
 - [ ] Prompts for `agent-asset-authoring`: generated, reviewed by the owner, committed, and `evals.trigger: true` set.
 - [ ] Docs in `docs/`: `docs/README.md` as the home and reading order, `docs/cli.md` for every command, option, exit code and output contract, and `docs/findings.md` linking each finding, with tests that relative links resolve and that every command and finding id is documented.
