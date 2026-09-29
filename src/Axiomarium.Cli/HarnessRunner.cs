@@ -30,6 +30,10 @@ public interface IHarnessRunner
     /// <param name="cancellation">Stops the session early.</param>
     /// <returns>What it printed. A command that isn't installed comes back as not started, never as an exception.</returns>
     Task<HarnessOutput> RunAsync(HarnessCall call, CancellationToken cancellation = default);
+
+    /// <summary>Creates an empty folder for a trigger test's throwaway copy. The caller fills it, and deletes it when done.</summary>
+    /// <returns>The folder's absolute path, outside the home folder.</returns>
+    string CreateFolder();
 }
 
 /// <summary>Runs harness sessions as processes, with the user's own environment and login.</summary>
@@ -41,6 +45,9 @@ public sealed class ProcessHarnessRunner : IHarnessRunner
         : "/tmp/axm-triggers";
 
     /// <inheritdoc/>
+    public string CreateFolder() => Directory.CreateDirectory(Path.Combine(ScratchRoot, NewName())).FullName;
+
+    /// <inheritdoc/>
     public async Task<HarnessOutput> RunAsync(HarnessCall call, CancellationToken cancellation = default)
     {
         if (Resolve(call.Command) is not { } program)
@@ -48,7 +55,7 @@ public sealed class ProcessHarnessRunner : IHarnessRunner
             return new HarnessOutput(false, [], null, $"{call.Command} isn't on PATH.");
         }
 
-        var scratch = call.Folder is null ? Path.Combine(ScratchRoot, $"{DateTime.UtcNow:yyyyMMddHHmmss}-{Guid.NewGuid():N}"[..27]) : null;
+        var scratch = call.Folder is null ? Path.Combine(ScratchRoot, NewName()) : null;
         if (scratch is not null)
         {
             Directory.CreateDirectory(scratch);
@@ -129,6 +136,9 @@ public sealed class ProcessHarnessRunner : IHarnessRunner
         var stderr = await error.ContinueWith(task => task.IsCompletedSuccessfully ? task.Result : "", TaskScheduler.Default);
         return new HarnessOutput(true, lines, stopped ? null : process.ExitCode, stderr);
     }
+
+    // Sortable by time, and unique across parallel runs.
+    private static string NewName() => $"{DateTime.UtcNow:yyyyMMddHHmmss}-{Guid.NewGuid():N}"[..27];
 
     // PATH lookup the way a shell does it: on Windows, with the extensions a command can have.
     private static string? Resolve(string command)
