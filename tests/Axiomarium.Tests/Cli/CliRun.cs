@@ -18,12 +18,21 @@ internal static partial class CliRun
         string stdin = "",
         bool? errorVirtualTerminal = null,
         Axiomarium.Core.Instructions.Machine? machine = null,
-        string? currentDirectory = null)
+        string? currentDirectory = null,
+        IHarnessRunner? runner = null,
+        TimeProvider? clock = null,
+        bool inputRedirected = true)
     {
         // Tests never read the real machine, and these commands read the harnesses' files from it.
         if (machine is null && args is ["doctor" or "explain" or "triggers", ..] or ["hook", "session-doctor", ..])
         {
             throw new InvalidOperationException($"{string.Join(' ', args)} reads the harnesses' files: pass a machine that lives in the test's own folder.");
+        }
+
+        // Tests never run a model, and these commands start harness sessions.
+        if (runner is null && args is ["triggers", "generate" or "test", ..])
+        {
+            throw new InvalidOperationException($"{string.Join(' ', args)} starts harness sessions: pass a runner that replays captured streams.");
         }
 
         var output = new StringWriter { NewLine = "\n" };
@@ -39,7 +48,10 @@ internal static partial class CliRun
             outputVirtualTerminal: virtualTerminal,
             errorVirtualTerminal: errorVirtualTerminal ?? virtualTerminal,
             currentDirectory ?? Environment.CurrentDirectory,
-            machine);
+            machine,
+            inputRedirected,
+            runner,
+            clock);
         return (exitCode, output.ToString(), error.ToString());
     }
 

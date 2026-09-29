@@ -25,4 +25,5 @@ return AxmCli.Run(
     Console.IsErrorRedirected,
     outputVirtualTerminal: !Console.IsOutputRedirected && WindowsConsole.TryEnableVirtualTerminal(WindowsConsole.Stream.Output),
     errorVirtualTerminal: !Console.IsErrorRedirected && WindowsConsole.TryEnableVirtualTerminal(WindowsConsole.Stream.Error),
-    Environment.CurrentDirectory);
+    Environment.CurrentDirectory,
+    inputRedirected: Console.IsInputRedirected);

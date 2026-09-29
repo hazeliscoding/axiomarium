@@ -6,6 +6,7 @@ This file records the user-visible changes to `axm` and the vault's schemas. The
 
 ### Added
 
+- `axm triggers generate <skill>` has Claude Code write trigger prompts for a vault skill: positive, paraphrased, negative and adversarial ones, and ambiguous ones aimed at the listed skills it overlaps most. It asks for one turn with tools off, checks the answer against the schema and retries once, shows every prompt grouped by kind, and writes `evals/trigger/prompts.yaml` only after you approve, labeled with the model and date. It refuses before calling the model when the file exists (unless `--replace`) or there's no terminal to ask in (unless `--yes`). `--model` picks the model. It never edits `asset.yaml`.
 - `schemas/trigger-prompts.schema.json`: a skill's trigger prompts in `evals/trigger/prompts.yaml`, each a prompt with its kind (positive, paraphrased, negative, adversarial or ambiguous) and whether it should pick the skill, and a `generated` block naming the harness, model and date when a model wrote them. `axm doctor` and `axm validate` report a file that doesn't match the schema, names another skill, has a prompt whose `should_trigger` contradicts its kind, or gives a rival to a prompt that isn't ambiguous.
 
 ## [0.3.0] - 2026-09-28
