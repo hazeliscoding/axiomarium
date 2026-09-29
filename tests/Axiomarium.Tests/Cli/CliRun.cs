@@ -21,7 +21,7 @@ internal static partial class CliRun
         string? currentDirectory = null)
     {
         // Tests never read the real machine, and these commands read the harnesses' files from it.
-        if (machine is null && args is ["doctor" or "explain", ..] or ["hook", "session-doctor", ..])
+        if (machine is null && args is ["doctor" or "explain" or "triggers", ..] or ["hook", "session-doctor", ..])
         {
             throw new InvalidOperationException($"{string.Join(' ', args)} reads the harnesses' files: pass a machine that lives in the test's own folder.");
         }

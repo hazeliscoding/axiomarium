@@ -6,6 +6,7 @@ using Axiomarium.Core.Assets;
 using Axiomarium.Core.Health;
 using Axiomarium.Core.Hooks;
 using Axiomarium.Core.Instructions;
+using Axiomarium.Core.Triggers;
 
 namespace Axiomarium.Cli;
 
@@ -77,6 +78,7 @@ public static class AxmCli
         root.Subcommands.Add(VaultCommand("validate", "Check every asset and print only the problems, for CI and hooks.", ReportText.WriteValidate, session));
         root.Subcommands.Add(ListCommand(session));
         root.Subcommands.Add(ExplainCommand(session));
+        root.Subcommands.Add(TriggersCommand(session));
         root.Subcommands.Add(HookCommand(input, session));
 
         var parsed = root.Parse(args);
@@ -274,6 +276,33 @@ public static class AxmCli
             }
 
             // Every instruction finding is a warning or info, so explain passes whenever it ran.
+            return Passed;
+        });
+        return command;
+    }
+
+    private static Command TriggersCommand(Session session)
+    {
+        var folder = new Option<string>("--root")
+        {
+            Description = "Where to start. The harnesses launch at the repo root above it, and the vault there or at --root adds its skills. Defaults to the current directory.",
+            DefaultValueFactory = _ => session.CurrentDirectory,
+        };
+        var command = new Command("triggers", "Find skills whose descriptions overlap in each harness's listing, and the terms they share.");
+        command.Options.Add(folder);
+        command.SetAction(result =>
+        {
+            var start = Path.GetFullPath(result.GetValue(folder)!, session.CurrentDirectory);
+            var machine = session.Machine ?? Machine.FromEnvironment(session.Environment, start);
+            var checkedOverlap = TriggerOverlap.Check(start, machine);
+            if (checkedOverlap.Report is not { } report)
+            {
+                return CouldNotRunWith(session, checkedOverlap.Problem!, hint: null);
+            }
+
+            TriggersText.Write(session.Output, report, machine.Home, session.OutputStyle);
+
+            // Overlap is shared wording, not a problem found, so triggers passes whenever it ran.
             return Passed;
         });
         return command;
