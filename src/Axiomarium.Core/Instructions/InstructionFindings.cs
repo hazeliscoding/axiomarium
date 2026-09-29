@@ -23,7 +23,32 @@ public sealed record InstructionFile(string Path, IReadOnlyList<Harness> LoadedB
 /// <param name="Files">Every instruction file the harnesses load or drop, in the order they meet them, ignored files left out.</param>
 /// <param name="Findings">Each finding once, warnings first, then by file and line, ignored files left out.</param>
 /// <param name="Ignored">How many instruction files the ignore globs left out.</param>
-public sealed record InstructionCheck(IReadOnlyList<InstructionFile> Files, IReadOnlyList<InstructionFinding> Findings, int Ignored);
+public sealed record InstructionCheck(IReadOnlyList<InstructionFile> Files, IReadOnlyList<InstructionFinding> Findings, int Ignored)
+{
+    /// <summary>The repo's and the user's skills, as the harnesses list them from the repo root, built-in ones left out.</summary>
+    public IReadOnlyList<InventorySkill> Skills { get; init; } = [];
+
+    /// <summary>Every hook the harnesses have configured, launched from the repo root.</summary>
+    public IReadOnlyList<InventoryHook> Hooks { get; init; } = [];
+}
+
+/// <summary>A skill in the setup, and which harnesses list it for at least one file.</summary>
+/// <param name="Name">The name the first harness to list it uses.</param>
+/// <param name="Path">Its <c>SKILL.md</c> or command file, as the doctor shows paths.</param>
+/// <param name="ListedBy">The harnesses that list it for some file, in harness order. Empty when none does.</param>
+/// <param name="NotListed">Why no harness lists it, when none does.</param>
+/// <param name="Source">The rule the first harness lists it by, such as <c>claude-code/personal-skill</c>, or <see langword="null"/> when none does.</param>
+/// <param name="InRepo">Whether its file is in the repo, rather than in the home folder, a plugin or the system.</param>
+public sealed record InventorySkill(string Name, string Path, IReadOnlyList<Harness> ListedBy, HarnessRule? NotListed, HarnessRule? Source, bool InRepo);
+
+/// <summary>A hook a harness has configured, and why it can't run, if it can't.</summary>
+/// <param name="Harness">The harness.</param>
+/// <param name="Event">The harness's event, such as <c>SessionStart</c>.</param>
+/// <param name="Path">The file that declares it, as the doctor shows paths.</param>
+/// <param name="Handler">What it runs.</param>
+/// <param name="Blocked">Why it can never run, or <see langword="null"/> when it can.</param>
+/// <param name="InRepo">Whether the file that declares it is in the repo.</param>
+public sealed record InventoryHook(Harness Harness, string Event, string Path, string Handler, HarnessRule? Blocked, bool InRepo);
 
 /// <summary>Finds the problems in what the harnesses load. Each finding is documented in <c>findings/&lt;id&gt;/finding.md</c>.</summary>
 public static partial class InstructionFindings
@@ -93,9 +118,21 @@ public static partial class InstructionFindings
         }
 
         Harness[] harnesses = [Harness.ClaudeCode, Harness.Codex];
-        var explanations = targets.Where(target => !Ignored(target)).Distinct(Context.PathComparer)
-            .Select(target => Explainer.Explain(target, root, harnesses, machine, root, repoRoot: root))
-            .ToList();
+        targets = [.. targets.Where(target => !Ignored(target)).Distinct(Context.PathComparer)];
+        var explanations = targets.Select(target => Explainer.Explain(target, root, harnesses, machine, root, repoRoot: root)).ToList();
+
+        // A skill with paths joins the listing for the files they match, so one such file is explained too.
+        var atRoot = explanations.FirstOrDefault()?.Harnesses ?? [];
+        var skillTargets = atRoot
+            .SelectMany(harness => harness.Resolution.NotListed)
+            .Where(skill => skill.Rule == ClaudeCodeSkillRules.PathsSkillNoMatch && skill.Path is not null)
+            .Select(skill => Frontmatter.ReadSkill(File.ReadAllText(skill.Path!)).Paths is { } patterns
+                ? context.Files.FirstOrDefault(file => PathPatterns.MatchLikeGitignore(patterns, root, file))
+                : null)
+            .OfType<string>()
+            .Where(target => !Ignored(target) && !targets.Contains(target, Context.PathComparer))
+            .Distinct(Context.PathComparer);
+        explanations.AddRange(skillTargets.Select(target => Explainer.Explain(target, root, harnesses, machine, root, repoRoot: root)));
 
         // A file is listed once, in the order the harnesses first meet it, with every harness that loads it.
         var files = new List<(string Path, List<Harness> LoadedBy)>();
@@ -138,7 +175,62 @@ public static partial class InstructionFindings
         return new InstructionCheck(
             [.. files.Select(file => new InstructionFile(context.Show(file.Path), [.. file.LoadedBy.Order()]))],
             findings,
-            context.Files.Count(file => IsInstructionFile(file) && Ignored(file)));
+            context.Files.Count(file => IsInstructionFile(file) && Ignored(file)))
+        {
+            Skills = Skills(explanations, context, Ignored),
+            Hooks = [.. atRoot.SelectMany(harness => harness.Resolution.ConfiguredHooks
+                .Where(hook => !Ignored(hook.Path))
+                .Select(hook => new InventoryHook(harness.Harness, hook.Event, context.Show(hook.Path), hook.Handler, hook.Blocked, Instructions.Paths.IsUnder(hook.Path, root))))],
+        };
+    }
+
+    // Each skill once, in the order the harnesses first meet it, with every harness that lists it for some file.
+    private static List<InventorySkill> Skills(IEnumerable<Explanation> explanations, Context context, Func<string, bool> ignored)
+    {
+        var skills = new List<(string Name, string Path, List<Harness> ListedBy, HarnessRule? NotListed, HarnessRule? Source)>();
+        void Meet(string name, string path, Harness? listedBy, HarnessRule rule)
+        {
+            if (ignored(path))
+            {
+                return;
+            }
+
+            var index = skills.FindIndex(skill => Instructions.Paths.Same(skill.Path, path));
+            if (index < 0)
+            {
+                skills.Add((name, path, [], null, null));
+                index = skills.Count - 1;
+            }
+
+            var skill = skills[index];
+            if (listedBy is { } harness && !skill.ListedBy.Contains(harness))
+            {
+                skill.ListedBy.Add(harness);
+            }
+
+            skills[index] = skill with { NotListed = skill.NotListed ?? (listedBy is null ? rule : null), Source = skill.Source ?? (listedBy is null ? null : rule) };
+        }
+
+        foreach (var harness in explanations.SelectMany(explanation => explanation.Harnesses))
+        {
+            foreach (var skill in harness.Resolution.Skills.Where(skill => !Explainer.IsBuiltIn(skill) && skill.Path is not null))
+            {
+                Meet(skill.Name, skill.Path!, harness.Harness, skill.Rule);
+            }
+
+            foreach (var skill in harness.Resolution.NotListed.Where(skill => skill.Path is not null))
+            {
+                Meet(skill.Name, skill.Path!, null, skill.Rule);
+            }
+        }
+
+        return [.. skills.Select(skill => new InventorySkill(
+            skill.Name,
+            context.Show(skill.Path),
+            [.. skill.ListedBy.Order()],
+            skill.ListedBy.Count == 0 ? skill.NotListed : null,
+            skill.Source,
+            context.RepoRoot is { } root && Instructions.Paths.IsUnder(skill.Path, root)))];
     }
 
     // Whether a path as findings show it is inside the repo and ignored. Home and absolute paths never are.
