@@ -281,7 +281,7 @@ Which skills each harness offers the model for a file, and which hooks run.
 - [x] Codex skills: every root, `[[skills.config]]` and `agents/openai.yaml`, names (with a plugin repo's `plugin:skill`), and the listing's format, root table, caps and budget. `Machine` gains Codex's admin folder.
 - [x] Hooks for both harnesses: sources, merging, trust, matchers and `if`, at `session-start`, `before-edit` and `after-edit`.
 - [x] `axm explain`: SKILLS and HOOKS blocks for each harness, skills in `--diff`, and the new fields in `--json`.
-- [ ] `axm doctor`: SKILLS and HOOKS inventories and their counts, with `session-doctor` still under 1 s in CI.
+- [x] `axm doctor`: SKILLS and HOOKS inventories and their counts, with `session-doctor` still under 1 s in CI.
 - [ ] Findings, each with `finding.md` and fires and clean fixtures, shown by `explain` and `doctor`:
 
 | Finding | Severity | Fires when |

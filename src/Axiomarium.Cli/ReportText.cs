@@ -64,6 +64,42 @@ public static class ReportText
             ink.Line();
         }
 
+        // The vault's own skills and hooks are assets above; these are what the harnesses find. Skills from
+        // outside the repo, which follow the user into every repo, take one row per harness and source.
+        var skills = SkillRows(report.Instructions.Skills);
+        if (skills.Count > 0)
+        {
+            var nameWidth = skills.Max(skill => skill.Name.Length) + 3;
+            var pathWidth = skills.Max(skill => skill.Path.Length) + 3;
+            ink.Write("  ").Write("HARNESS SKILLS", Palette.Dim).Line();
+            foreach (var (name, path, status, listed) in skills)
+            {
+                index++;
+                ink.Write("  ").Write($"{index:00}", Palette.Dim).Write("  ").Write(name.PadRight(nameWidth), Palette.Bold).Write(path.PadRight(pathWidth), Palette.Path)
+                    .Write(status, listed ? null : Palette.Dim).Line();
+            }
+
+            ink.Line();
+        }
+
+        // The repo's hooks one by one; hooks from outside it take one row per file.
+        var hooks = HookRows(report.Instructions.Hooks);
+        if (hooks.Count > 0)
+        {
+            var eventWidth = hooks.Max(hook => hook.Event.Length) + 3;
+            var pathWidth = hooks.Max(hook => hook.Path.Length) + 3;
+            var handlerWidth = hooks.Max(hook => hook.Handler.Length) + 3;
+            ink.Write("  ").Write("HARNESS HOOKS", Palette.Dim).Line();
+            foreach (var (name, path, handler, harness, blocked) in hooks)
+            {
+                index++;
+                ink.Write("  ").Write($"{index:00}", Palette.Dim).Write("  ").Write(name.PadRight(eventWidth)).Write(path.PadRight(pathWidth), Palette.Path)
+                    .Write(handler.PadRight(handlerWidth), Palette.Bold).Write(harness).Write(blocked, Palette.Warning).Line();
+            }
+
+            ink.Line();
+        }
+
         foreach (var diagnostic in (report.Vault?.Diagnostics ?? []).Concat(report.Config))
         {
             WriteDiagnostic(ink, diagnostic);
@@ -85,6 +121,53 @@ public static class ReportText
     }
 
     // What the doctor looked at: the assets, when there is a vault, and the instruction files.
+    private static List<(string Name, string Path, string Status, bool Listed)> SkillRows(IReadOnlyList<InventorySkill> skills)
+    {
+        static string Status(InventorySkill skill) =>
+            skill.ListedBy.Count > 0 ? string.Join(" ", skill.ListedBy.Select(harness => harness.Name())) : $"not listed: {skill.NotListed?.Label}";
+
+        var rows = new List<(string Name, string Path, string Status, bool Listed)>();
+        foreach (var group in skills.GroupBy(skill => skill.InRepo ? skill.Path : $"{Status(skill)}|{skill.Source?.Label}"))
+        {
+            var first = group.First();
+            var count = group.Count();
+            if (first.InRepo || count == 1)
+            {
+                rows.Add((first.Name, first.Path, Status(first), first.ListedBy.Count > 0));
+                continue;
+            }
+
+            // The folder every skill in the group sits in.
+            var folders = group.Select(skill => skill.Path.Split('/')[..^1]).ToList();
+            var shared = folders[0].TakeWhile((segment, at) => folders.All(folder => folder.Length > at && folder[at] == segment)).ToList();
+            var label = first.Source?.Label is { } source ? $"{source} skills" : "skills";
+            rows.Add(($"{count} {label}", string.Join('/', shared), Status(first), first.ListedBy.Count > 0));
+        }
+
+        return rows;
+    }
+
+    private static List<(string Event, string Path, string Handler, string Harness, string Blocked)> HookRows(IReadOnlyList<InventoryHook> hooks)
+    {
+        var rows = new List<(string Event, string Path, string Handler, string Harness, string Blocked)>();
+        foreach (var group in hooks.Select((hook, at) => (Hook: hook, At: at)).GroupBy(pair => pair.Hook.InRepo ? $"{pair.At}" : $"{pair.Hook.Harness}|{pair.Hook.Path}", pair => pair.Hook))
+        {
+            var first = group.First();
+            var count = group.Count();
+            var blocked = group.Count(hook => hook.Blocked is not null);
+            if (first.InRepo || count == 1)
+            {
+                var handler = first.Handler.Length > 48 ? first.Handler[..47] + "…" : first.Handler;
+                rows.Add((first.Event, first.Path, handler, first.Harness.Name(), first.Blocked is { } rule ? $", can't run: {rule.Label}" : ""));
+                continue;
+            }
+
+            rows.Add(($"{count} hooks", first.Path, "", first.Harness.Name(), blocked > 0 ? $", {blocked} can't run" : ""));
+        }
+
+        return rows;
+    }
+
     private static void WriteInventory(Ink ink, HealthReport report)
     {
         if (report.Vault is { } vault)
@@ -93,6 +176,15 @@ public static class ReportText
         }
 
         ink.Write(Count(report.Instructions.Files.Count, "instruction file"));
+        if (report.Instructions.Skills.Count > 0)
+        {
+            ink.Write(" · ", Palette.Dim).Write(Count(report.Instructions.Skills.Count, "skill"));
+        }
+
+        if (report.Instructions.Hooks.Count > 0)
+        {
+            ink.Write(" · ", Palette.Dim).Write(Count(report.Instructions.Hooks.Count, "hook"));
+        }
     }
 
     /// <summary>

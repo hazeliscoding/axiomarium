@@ -30,7 +30,7 @@ public static class CodexSkillRules
 
     /// <summary>The old user skills folder.</summary>
     public static HarnessRule CodexHomeSkill { get; } = new(
-        "codex/codex-home-skill", "user, old folder", "$CODEX_HOME/skills, where user skills used to live, is still listed.", Roots);
+        "codex/codex-home-skill", "CODEX_HOME", "$CODEX_HOME/skills, where user skills used to live, is still listed.", Roots);
 
     /// <summary>A skill Codex can't read.</summary>
     public static HarnessRule Invalid { get; } = new(

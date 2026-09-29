@@ -23,6 +23,53 @@ public class RepoHealthTests
         Assert.Equal((0, 1, 0), (report.ErrorCount, report.WarningCount, report.InfoCount));
     }
 
+    // A skill with paths joins the listing only for files they match, so the doctor explains one of those too.
+    [Fact]
+    public void The_skill_inventory_holds_every_skill_the_harnesses_list_for_some_file_and_why_the_rest_are_not()
+    {
+        using var vault = new TempVault()
+            .Folder("repo/.git")
+            .Write("repo/.claude/skills/deploy/SKILL.md", "---\ndescription: Deploys.\n---\nSteps.\n")
+            .Write("repo/.claude/skills/typescript/SKILL.md", "---\ndescription: TypeScript.\npaths: \"*.ts\"\n---\nSteps.\n")
+            .Write("repo/.claude/skills/manual/SKILL.md", "---\ndescription: By hand.\ndisable-model-invocation: true\n---\nSteps.\n")
+            .Write("repo/web/.claude/skills/ui/SKILL.md", "---\ndescription: The UI.\n---\nSteps.\n")
+            .Write("repo/.agents/skills/ship/SKILL.md", "---\ndescription: Ships.\n---\nSteps.\n")
+            .Write("home/.claude/skills/mine/SKILL.md", "---\ndescription: Mine.\n---\nSteps.\n")
+            .Write("repo/src/app.ts", "export const a = 1;\n");
+
+        var skills = Examine(vault).Instructions.Skills;
+
+        Assert.Equal(
+            [
+                ("mine", "~/.claude/skills/mine/SKILL.md", "claude-code", "claude-code/personal-skill", false),
+                ("deploy", ".claude/skills/deploy/SKILL.md", "claude-code", "claude-code/project-skill", true),
+                ("manual", ".claude/skills/manual/SKILL.md", "", "claude-code/model-invocation-off", true),
+                ("typescript", ".claude/skills/typescript/SKILL.md", "claude-code", "claude-code/paths-skill", true),
+                ("ship", ".agents/skills/ship/SKILL.md", "codex", "codex/repo-skill", true),
+                ("ui", "web/.claude/skills/ui/SKILL.md", "claude-code", "claude-code/nested-skill", true),
+            ],
+            skills.Select(skill => (skill.Name, skill.Path, string.Join(" ", skill.ListedBy.Select(harness => harness.Name())), (skill.Source ?? skill.NotListed)!.Id, skill.InRepo)));
+    }
+
+    [Fact]
+    public void The_hook_inventory_holds_every_configured_hook_for_both_harnesses()
+    {
+        using var vault = new TempVault()
+            .Folder("repo/.git")
+            .Folder("home/.codex")
+            .Write("repo/.claude/settings.json", """{ "hooks": { "Stop": [ { "hooks": [ { "type": "command", "command": "notify" } ] } ] } }""")
+            .Write("home/.codex/hooks.json", """{ "hooks": { "SessionStart": [ { "hooks": [ { "type": "command", "command": "hello" } ] } ] } }""");
+
+        var hooks = Examine(vault).Instructions.Hooks;
+
+        Assert.Equal(
+            [
+                (Harness.ClaudeCode, "Stop", ".claude/settings.json", "notify", null, true),
+                (Harness.Codex, "SessionStart", "~/.codex/hooks.json", "hello", "codex/hook-untrusted", false),
+            ],
+            hooks.Select(hook => (hook.Harness, hook.Event, hook.Path, hook.Handler, hook.Blocked?.Id, hook.InRepo)));
+    }
+
     [Fact]
     public void A_file_no_harness_loads_is_listed_with_nobody()
     {

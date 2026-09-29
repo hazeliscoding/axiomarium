@@ -125,6 +125,40 @@ public class DoctorCommandTests
             output);
     }
 
+    // The repo's own skills and hooks get a row each; those from outside it, one row per harness and source.
+    [Fact]
+    public void The_harnesses_skills_and_hooks_are_listed_with_the_ones_from_outside_the_repo_grouped()
+    {
+        using var vault = new TempVault()
+            .Folder("repo/.git")
+            .Folder("home/.codex")
+            .Write("repo/.claude/skills/deploy/SKILL.md", "---\ndescription: Deploys.\n---\nSteps.\n")
+            .Write("repo/.claude/settings.json", """{ "hooks": { "Stop": [ { "hooks": [ { "type": "command", "command": "notify" } ] } ] } }""")
+            .Write("home/.claude/skills/review/SKILL.md", "---\ndescription: Reviews.\n---\nSteps.\n")
+            .Write("home/.claude/skills/triage/SKILL.md", "---\ndescription: Triages.\n---\nSteps.\n")
+            .Write("home/.codex/hooks.json", """{ "hooks": { "SessionStart": [ { "hooks": [ { "type": "command", "command": "a" } ] }, { "hooks": [ { "type": "command", "command": "b" } ] } ] } }""");
+
+        var (exitCode, output, _) = Doctor(vault, root: Path.Combine(vault.Root, "repo"));
+
+        Assert.Equal(AxmCli.Passed, exitCode);
+        Assert.Equal(
+            """
+            AXM DOCTOR // 0 instruction files · 3 skills · 3 hooks
+
+              HARNESS SKILLS
+              01  2 personal skills   ~/.claude/skills                 claude-code
+              02  deploy              .claude/skills/deploy/SKILL.md   claude-code
+
+              HARNESS HOOKS
+              03  Stop      .claude/settings.json   notify   claude-code
+              04  2 hooks   ~/.codex/hooks.json              codex, 2 can't run
+
+            0 instruction files · 3 skills · 3 hooks · 0 errors
+
+            """,
+            output);
+    }
+
     [Fact]
     public void Ignored_files_are_counted_and_a_broken_config_is_an_error()
     {
