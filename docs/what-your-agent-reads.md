@@ -13,7 +13,7 @@ The demo is a small shop, in [`scenarios/demo/`](../scenarios/demo). It's the ki
 - `.claude/rules/api.md` is a rule for files under `src/api/`.
 - `src/api/AGENTS.md` holds the API's own rules.
 
-Here is what each harness loads when the agent works on `src/api/orders.cs`:
+Here is what each harness loads when the agent works on `src/api/orders.cs`. The demo's skills and hooks, which `axm explain` shows too, are in [Which skills your agent can see](which-skills-your-agent-can-see.md):
 
 ```text
 $ axm explain src/api/orders.cs
@@ -27,11 +27,13 @@ AXM EXPLAIN // src/api/orders.cs
   --  docs/testing.md        DROPPED     file is missing, imported by CLAUDE.md:6
   --  AGENTS.md              DROPPED     a CLAUDE file exists and doesn't import it
   --  src/api/AGENTS.md      DROPPED     a CLAUDE file exists and doesn't import it
+…
 
   CODEX // launched at the repo root
   01  ~/.codex/AGENTS.md     global              at launch
   02  AGENTS.md              project             at launch
   --  src/api/AGENTS.md      NOT LOADED  below the launch directory
+…
 
 WARNING  agents-md-hidden
          Claude Code skips AGENTS.md, because CLAUDE.md exists and doesn't import it, so instructions written there for every agent never reach Claude Code.
@@ -45,7 +47,7 @@ WARNING  agents-md-hidden
          Claude Code skips src/api/AGENTS.md, because CLAUDE.md exists and doesn't import it, so instructions written there for every agent never reach Claude Code.
          Fix: Add a CLAUDE.md next to it that says @AGENTS.md.
 
-2 harnesses · 5 loaded · 4 not loaded · 3 warnings
+2 harnesses · 5 loaded · 4 not loaded · 15 skills listed · 1 hook runs · 4 warnings
 ```
 
 Adding one CLAUDE.md took every AGENTS.md away from Claude Code, the nested one too. Codex never sees `CLAUDE.md` or the API rule. The API's own rules reach neither harness: Claude Code hides them, and Codex leaves files below its launch directory to the model, which may or may not open them. `--diff` puts the split side by side:
@@ -59,12 +61,14 @@ AXM EXPLAIN // src/api/orders.cs // diff
   01  ~/.claude/CLAUDE.md    user                at launch
   02  CLAUDE.md              project             at launch
   03  .claude/rules/api.md   paths: src/api/**   when the file is read
+…
 
   ONLY CODEX
   01  ~/.codex/AGENTS.md     global              at launch
   02  AGENTS.md              project             at launch
+…
 
-3 only in Claude Code · 2 only in Codex
+3 files only in Claude Code · 2 only in Codex · 1 skill only in Claude Code · 1 only in Codex
 ```
 
 The two agents share no instructions at all.
@@ -95,7 +99,7 @@ Three limits:
 
 - The Claude Code sessions are headless. What the terminal shows you comes from the docs.
 - A few cases can't be recorded with a fake home, such as a managed policy file or the 4 MiB limit, so those follow the docs.
-- Skills and hooks aren't covered yet. `axm explain` lists them from v0.3, as available rather than loaded, because the model decides when a skill loads.
+- Skills and hooks are recorded too, and have their own write-up: [Which skills your agent can see](which-skills-your-agent-can-see.md).
 
 ## Check your own repo
 

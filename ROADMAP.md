@@ -298,7 +298,7 @@ Which skills each harness offers the model for a file, and which hooks run.
 | `codex-hook-untrusted` | warning | A Codex hook was never trusted, changed since it was, or sits in a project that isn't trusted, so it never runs |
 
 - [x] `axm triggers`: overlapping descriptions in each harness's listing and the vault's skills, with the terms they share.
-- [ ] Write-up, "Which skills your agent can see", on the demo scenario with skills and a hook added, and `docs/demo/explain.tape` updated to show them.
+- [x] Write-up, "Which skills your agent can see", on the demo scenario with skills and a hook added, and `docs/demo/explain.tape` updated to show them.
 - [ ] Release v0.3.0, then render the tape with the release.
 
 **Done when:** every scenario matches what the real Claude Code and Codex recorded, skill listings and hooks included; `axm explain` on the demo scenario shows a skill only one harness lists and a hook only one harness would run for the file; all seven findings pass their fixtures; `axm triggers` on my own setup names each overlapping pair with the terms it shares; and v0.3.0 installs from GitHub Releases and NuGet on fresh runners.
