@@ -20,7 +20,7 @@ inputs:
 outputs:
   - asset-folder
 evals:
-  trigger: false
+  trigger: true
   behavioral: false
   regression: false
 skill:

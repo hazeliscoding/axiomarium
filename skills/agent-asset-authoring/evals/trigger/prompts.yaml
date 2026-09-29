@@ -1,0 +1,59 @@
+# yaml-language-server: $schema=../../../../schemas/trigger-prompts.schema.json
+# A model wrote these prompts. Review them before you rely on them.
+skill: agent-asset-authoring
+generated:
+  by: claude-code
+  model: "claude-opus-5-5"
+  date: "2026-09-29"
+prompts:
+  - prompt: "Create a new skill asset under skills/ in our Axiomarium vault that teaches agents how to summarize PR diffs, with its asset.yaml and content file, and make sure it passes axm validate."
+    kind: positive
+    should_trigger: true
+  - prompt: "Add a hook asset under hooks/ that blocks commits containing secrets. Write the asset.yaml and the hook's content file."
+    kind: positive
+    should_trigger: true
+  - prompt: "axm validate is failing on agents/release-manager/asset.yaml. Fix the asset so it validates cleanly."
+    kind: positive
+    should_trigger: true
+  - prompt: "I have a guideline about retry backoff for flaky network calls. Should it be a policy or a skill in the vault? Pick the kind and write the asset."
+    kind: positive
+    should_trigger: true
+  - prompt: "Rewrite the content file for workflows/triage-bugs so it covers the new severity labels, and update its asset.yaml to match."
+    kind: positive
+    should_trigger: true
+  - prompt: "Package the way I review database migrations into something reusable in this repo that coding bots can load, including the metadata manifest and the instruction text."
+    kind: paraphrased
+    should_trigger: true
+  - prompt: "Set up a new trial in here comparing two phrasings of the summarizer prompt, and fill out its manifest so the checker accepts it."
+    kind: paraphrased
+    should_trigger: true
+  - prompt: "Is 'always run tests before pushing' worth its own entry in this library, or is it already covered? If it earns a spot, draft it as a rule and get the linter happy."
+    kind: paraphrased
+    should_trigger: true
+  - prompt: "The release-notes persona's YAML descriptor is missing an owner field and its prompt body is out of date. Bring both up to date."
+    kind: paraphrased
+    should_trigger: true
+  - prompt: "Fix the off-by-one error in the pagination helper in src/api/list.ts; the last page always comes back empty."
+    kind: negative
+    should_trigger: false
+  - prompt: "Add a GitHub Actions job that runs pytest on Python 3.11 and 3.12 for every pull request."
+    kind: negative
+    should_trigger: false
+  - prompt: "Why does my React dashboard component re-render every time the parent's state changes, and how do I stop it?"
+    kind: negative
+    should_trigger: false
+  - prompt: "Write a Postgres migration that adds a nullable last_login timestamp column to the users table."
+    kind: negative
+    should_trigger: false
+  - prompt: "Move our static assets from src/assets/ to public/ and update the webpack config and image imports so the build still works."
+    kind: adversarial
+    should_trigger: false
+  - prompt: "Write a Claude Code hook in .claude/settings.json that runs prettier on every file after it's edited."
+    kind: adversarial
+    should_trigger: false
+  - prompt: "axm validate crashes with a nil pointer when an asset.yaml has an empty tags list. Fix the validator's Go code in cmd/validate and add a regression test."
+    kind: adversarial
+    should_trigger: false
+  - prompt: "Update the IAM policy YAML in infra/policies/ so the ingest lambda can read from the uploads S3 bucket."
+    kind: adversarial
+    should_trigger: false
