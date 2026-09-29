@@ -267,6 +267,26 @@ public class ExplainCommandTests
         Assert.Equal(("codex/skill-invalid", "it has no description"), (codex["rule"]!.GetValue<string>(), codex["detail"]!.GetValue<string>()));
     }
 
+    // The write-up's claim, on the recorded demo: each harness lists a skill the other doesn't, and only
+    // Claude Code runs its after-edit hook.
+    [Fact]
+    public void On_the_demo_each_harness_lists_a_skill_the_other_does_not_and_only_claude_code_runs_its_hook()
+    {
+        using var vault = Axiomarium.Tests.GroundTruth.ScenarioReplayTests.Copy("demo");
+
+        var (_, output, _) = Explain(vault, "src/api/orders.cs", "--json");
+
+        var harnesses = JsonNode.Parse(output)!["harnesses"]!.AsArray();
+        string[] Skills(int harness) =>
+            [.. harnesses[harness]!["skills"]!.AsArray().Where(skill => skill!["path"] is not null).Select(skill => skill!["name"]!.GetValue<string>())];
+        (string, bool, string)[] Hooks(int harness) =>
+            [.. harnesses[harness]!["hooks"]!.AsArray().Select(hook => (hook!["moment"]!.GetValue<string>(), hook["runs"]!.GetValue<bool>(), hook["rule"]!.GetValue<string>()))];
+        Assert.Equal(["release"], Skills(0));
+        Assert.Equal(["db-migration"], Skills(1));
+        Assert.Equal([("after-edit", true, "claude-code/project-hook")], Hooks(0));
+        Assert.Equal([("after-edit", false, "codex/hook-project-untrusted")], Hooks(1));
+    }
+
     [Fact]
     public void Diff_needs_both_harnesses()
     {

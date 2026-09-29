@@ -208,7 +208,7 @@ public class ScenarioReplayTests
 
     // A copy with the .git marker the recorder's `git init` gives each run, which a scenario can't hold, and
     // with {run} filled in, as the recorder does.
-    private static TempVault Copy(string name)
+    internal static TempVault Copy(string name)
     {
         var run = new TempVault();
         var source = Path.Combine(ScenariosFolder, name);
