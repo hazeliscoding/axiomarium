@@ -63,6 +63,8 @@ public static partial class InstructionFindings
     [
         "dead-import", "import-too-deep", "agents-md-hidden", "rule-frontmatter-invalid", "rule-matches-nothing",
         "codex-byte-cap", "codex-empty-override", "duplicate-block", "dead-link",
+        "skill-name-clash", "skill-description-cut", "skill-listing-over-budget", "skill-frontmatter-invalid", "skill-paths-match-nothing",
+        "hook-never-runs", "codex-hook-untrusted",
     ];
 
     /// <summary>The findings in what <paramref name="explanation"/> says each harness loads and drops.</summary>
@@ -249,7 +251,7 @@ public static partial class InstructionFindings
                 Harness.Codex => Codex(harness.Resolution, context),
                 _ => [],
             };
-            foreach (var finding in found.Concat(DuplicateBlocks(harness.Resolution, context)))
+            foreach (var finding in found.Concat(DuplicateBlocks(harness.Resolution, context)).Concat(SkillFindings(harness, context)).Concat(HookFindings(harness, context)))
             {
                 yield return finding;
             }

@@ -148,6 +148,7 @@ Axiomarium is my lab for building, testing and debugging AI coding environments 
 - **Codex is recorded in CI.** On Windows Codex finds `~/.agents/skills` through the Known Folder profile, whatever `HOME` says, so a local recording would read the owner's real skills. `.github/workflows/record-codex.yml` installs the confirmed Codex on Ubuntu and records every scenario offline: `codex debug prompt-input` for the listing, and `codex app-server`'s `hooks/list` for each hook with its trust. It runs on demand and on pull requests that touch `scenarios/`, uploads the recordings, and fails when they differ from what's committed. The local recorder refuses Codex on Windows. Whether a Codex hook fires needs a model turn, so the model's hook matching follows the source at 0.156.1 and isn't recorded.
 - **Scenario skills and hooks carry markers.** The listing shows descriptions, not bodies, so each scenario skill's description starts with its marker, and each scenario hook command prints its marker. `scenario.yaml` gains `action: read | edit`. A recording that lists an unmarked skill that isn't a built-in fails, and nothing of that skill is written.
 - **`explain --json` stays shape 1.** Each harness gains `skills`, `notListed`, `listing` and `hooks`. No existing field changes, so `schemaVersion` stays 1.
+- **Skill and hook findings are for what the user can fix (2026-09-28).** They leave out plugin, synced, bundled and managed skills and hooks. A copied skills folder clashes a skill at a time, so `skill-name-clash` makes one finding for the clashes between the same folders, naming up to three skills: on a real home with about 150 skills, 21 near-identical warnings became one, which matters because `session-doctor` hands every warning to the model. `skill-paths-match-nothing` checks only the repo's own skills, since a personal skill may match in another repo, and the skill's own files count as matches, because Claude Code lists the skill when the agent reads them.
 - **`axm triggers` finds overlap, not collisions.** For each harness it compares every skill listed from the repo root, plus the vault's skills as they'd be listed after sync (their description and `use_when`), on the text the model sees. A term weighs more the rarer it is in that listing, and each pair above a fixed threshold is shown with the terms it shares. It exits 0 whenever it ran and isn't a doctor finding, because only `triggers test` in v0.4 can call a pair a collision.
 
 ### Brand
@@ -283,7 +284,7 @@ Which skills each harness offers the model for a file, and which hooks run.
 - [x] Hooks for both harnesses: sources, merging, trust, matchers and `if`, at `session-start`, `before-edit` and `after-edit`.
 - [x] `axm explain`: SKILLS and HOOKS blocks for each harness, skills in `--diff`, and the new fields in `--json`.
 - [x] `axm doctor`: SKILLS and HOOKS inventories and their counts, with `session-doctor` still under 1 s in CI.
-- [ ] Findings, each with `finding.md` and fires and clean fixtures, shown by `explain` and `doctor`:
+- [x] Findings, each with `finding.md` and fires and clean fixtures, shown by `explain` and `doctor`:
 
 | Finding | Severity | Fires when |
 |---|---|---|

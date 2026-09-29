@@ -153,7 +153,11 @@ public class DoctorCommandTests
               03  Stop      .claude/settings.json   notify   claude-code
               04  2 hooks   ~/.codex/hooks.json              codex, 2 can't run
 
-            0 instruction files · 3 skills · 3 hooks · 0 errors
+            WARNING  codex-hook-untrusted
+                     ~/.codex/hooks.json has 2 hooks Codex hasn't trusted, so they never run.
+                     Fix: Review the hooks in Codex and trust them, which records each one's hash under [hooks.state] in ~/.codex/config.toml.
+
+            0 instruction files · 3 skills · 3 hooks · 0 errors · 1 warning
 
             """,
             output);
