@@ -1,5 +1,4 @@
 using System.Text.Json;
-using System.Text.Json.Nodes;
 
 namespace Axiomarium.Core.Triggers;
 
@@ -36,24 +35,24 @@ public static class ClaudeCodeStream
         var steps = new List<ClaudeCodeStep>();
         foreach (var line in lines)
         {
-            if (Event(line) is not { } e)
+            if (JsonEvents.Parse(line) is not { } e)
             {
                 continue;
             }
 
-            switch (Text(e, "type"))
+            switch (JsonEvents.Text(e, "type"))
             {
-                case "system" when Text(e, "subtype") == "init":
-                    model = Text(e, "model");
-                    version = Text(e, "claude_code_version");
-                    skills.AddRange((e["skills"] as JsonArray ?? []).Select(skill => skill is JsonValue value && value.GetValueKind() == JsonValueKind.String ? value.GetValue<string>() : null).OfType<string>());
+                case "system" when JsonEvents.Text(e, "subtype") == "init":
+                    model = JsonEvents.Text(e, "model");
+                    version = JsonEvents.Text(e, "claude_code_version");
+                    skills.AddRange(JsonEvents.Items(JsonEvents.Child(e, "skills")).Where(skill => skill.ValueKind == JsonValueKind.String).Select(skill => skill.GetString()!));
                     break;
                 case "assistant":
                     steps.AddRange(Content(e).Select(Step).OfType<ClaudeCodeStep>());
                     break;
                 case "result":
-                    result = Text(e, "result");
-                    isError = e["is_error"]?.GetValueKind() == JsonValueKind.True;
+                    result = JsonEvents.Text(e, "result");
+                    isError = JsonEvents.Child(e, "is_error")?.ValueKind == JsonValueKind.True;
                     break;
             }
         }
@@ -74,35 +73,17 @@ public static class ClaudeCodeStream
     /// <param name="line">One line the harness printed.</param>
     /// <returns><see langword="true"/> for the first action that isn't loading a skill, or the end of the session.</returns>
     public static bool EndsPick(string line) =>
-        Event(line) is { } e && (Text(e, "type") == "result"
-            || (Text(e, "type") == "assistant" && Content(e).Any(block => Text(block, "type") == "tool_use" && Text(block, "name") != "Skill")));
+        JsonEvents.Parse(line) is { } e && (JsonEvents.Text(e, "type") == "result"
+            || (JsonEvents.Text(e, "type") == "assistant" && Content(e).Any(block => JsonEvents.Text(block, "type") == "tool_use" && JsonEvents.Text(block, "name") != "Skill")));
 
-    private static ClaudeCodeStep? Step(JsonObject block) => Text(block, "type") switch
+    private static ClaudeCodeStep? Step(JsonElement block) => JsonEvents.Text(block, "type") switch
     {
-        "tool_use" => new ClaudeCodeStep(Text(block, "name"), Text(block, "name") == "Skill" && block["input"] is JsonObject input ? Text(input, "skill") : null, null),
-        "text" => new ClaudeCodeStep(null, null, Text(block, "text")),
+        "tool_use" => new ClaudeCodeStep(
+            JsonEvents.Text(block, "name"), JsonEvents.Text(block, "name") == "Skill" ? JsonEvents.Text(JsonEvents.Child(block, "input"), "skill") : null, null),
+        "text" => new ClaudeCodeStep(null, null, JsonEvents.Text(block, "text")),
         _ => null,
     };
 
-    private static IEnumerable<JsonObject> Content(JsonObject e) => (e["message"]?["content"] as JsonArray ?? []).OfType<JsonObject>();
-
-    private static JsonObject? Event(string line)
-    {
-        if (!line.TrimStart().StartsWith('{'))
-        {
-            return null;
-        }
-
-        try
-        {
-            return JsonNode.Parse(line) as JsonObject;
-        }
-        catch (JsonException)
-        {
-            return null;
-        }
-    }
-
-    private static string? Text(JsonObject node, string name) =>
-        node[name] is JsonValue value && value.GetValueKind() == JsonValueKind.String ? value.GetValue<string>() : null;
+    private static IEnumerable<JsonElement> Content(JsonElement e) =>
+        JsonEvents.Items(JsonEvents.Child(JsonEvents.Child(e, "message"), "content")).Where(block => block.ValueKind == JsonValueKind.Object);
 }

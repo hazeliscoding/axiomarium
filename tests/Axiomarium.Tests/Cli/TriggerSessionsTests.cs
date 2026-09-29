@@ -85,6 +85,19 @@ public class TriggerSessionsTests
         Assert.All(results, result => Assert.Empty(result.Loads));
     }
 
+    // A real run lost all 102 sessions to one bad line. One session's failure stays that session's problem.
+    [Fact]
+    public void A_session_that_throws_becomes_a_problem_and_the_others_still_count()
+    {
+        using var vault = Repo();
+        var runner = new FakeRunner(call => call.Input == "Prompt 1." ? throw new InvalidOperationException("boom") : Stream(call)) { FolderRoot = vault.Root };
+
+        var results = Run(vault, runner, [Session(Harness.ClaudeCode, 0), Session(Harness.ClaudeCode, 1)]);
+
+        Assert.Equal([(0, null), (1, "the session failed: boom")], results.Select(result => (result.Session.Prompt, result.Problem)));
+        Assert.Equal(["release"], results[0].Loads);
+    }
+
     [Fact]
     public void At_most_four_sessions_run_at_once()
     {
