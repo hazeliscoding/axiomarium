@@ -1,6 +1,8 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using System.Text.RegularExpressions;
 using Axiomarium.Core.Assets;
+using Axiomarium.Core.Evals;
 using Axiomarium.Core.Instructions;
 using Axiomarium.Core.Manifests;
 using Axiomarium.Core.Registry;
@@ -13,7 +15,7 @@ namespace Axiomarium.Core.Health;
 /// Checks the health of a vault: finds every asset, validates its manifest and content file, and checks
 /// that what a valid manifest points to exists and that its maturity has its evidence. Reads, never writes.
 /// </summary>
-public static class Doctor
+public static partial class Doctor
 {
     private const string ManifestName = "asset.yaml";
 
@@ -109,6 +111,8 @@ public static class Doctor
             ExamineTriggerPrompts(name, folder, directory, diagnostics);
         }
 
+        ExamineEvalCases(folder, directory, diagnostics);
+
         if (!files.Contains(ManifestName, StringComparer.Ordinal))
         {
             diagnostics.Add(new Diagnostic(Severity.Error, folder, null, $"Missing {ManifestName}", RenameHint(files, ManifestName, "asset.yml") ?? []));
@@ -177,6 +181,65 @@ public static class Doctor
             diagnostics.Add(new Diagnostic(Severity.Error, file, null, $"Couldn't read {TriggerPrompts.RelativePath}: {problem.Message}", []));
         }
     }
+
+    // An asset's eval cases are its behavioral and regression evals, so a broken case is an error like a broken manifest.
+    private static void ExamineEvalCases(string folder, string directory, List<Diagnostic> diagnostics)
+    {
+        foreach (var type in Enum.GetValues<EvalType>())
+        {
+            var evals = $"{folder}/evals/{EvalCases.Folder(type)}";
+            var path = Path.Combine(directory, "evals", EvalCases.Folder(type));
+            if (!Directory.Exists(path))
+            {
+                continue;
+            }
+
+            foreach (var loose in Visible(Directory.EnumerateFiles(path)))
+            {
+                diagnostics.Add(new Diagnostic(
+                    Severity.Error, $"{evals}/{loose}", null, $"{loose} isn't in a case folder", ["Each case is a folder with its eval.yaml and, when the session needs files, a repo/."]));
+            }
+
+            foreach (var name in Visible(Directory.EnumerateDirectories(path)))
+            {
+                var caseFolder = $"{evals}/{name}";
+                if (!KebabCase().IsMatch(name))
+                {
+                    diagnostics.Add(new Diagnostic(
+                        Severity.Error, caseFolder, null, $"The case folder {name} isn't kebab-case", ["Name it in lowercase words joined by hyphens, such as new-hook."]));
+                    continue;
+                }
+
+                var files = Directory.EnumerateFiles(Path.Combine(path, name)).Select(Path.GetFileName).OfType<string>().ToList();
+                if (!files.Contains(EvalCases.FileName, StringComparer.Ordinal))
+                {
+                    diagnostics.Add(new Diagnostic(
+                        Severity.Error, caseFolder, null, $"Missing {EvalCases.FileName}", RenameHint(files, EvalCases.FileName, "eval.yml") ?? ["A case says what to ask and what to check in eval.yaml."]));
+                    continue;
+                }
+
+                var file = $"{caseFolder}/{EvalCases.FileName}";
+                try
+                {
+                    foreach (var problem in EvalCases.Read(File.ReadAllText(Path.Combine(path, name, EvalCases.FileName)), name, type).Problems)
+                    {
+                        diagnostics.Add(new Diagnostic(Severity.Error, file, problem.Location, problem.Message, problem.Detail));
+                    }
+                }
+                catch (Exception problem) when (problem is not OutOfMemoryException)
+                {
+                    diagnostics.Add(new Diagnostic(Severity.Error, file, null, $"Couldn't read {EvalCases.FileName}: {problem.Message}", []));
+                }
+            }
+        }
+    }
+
+    // Hidden files and folders, such as .gitkeep, only keep a folder in git.
+    private static IEnumerable<string> Visible(IEnumerable<string> paths) =>
+        paths.Select(Path.GetFileName).OfType<string>().Where(name => !name.StartsWith('.')).Order(StringComparer.Ordinal);
+
+    [GeneratedRegex("^[a-z0-9]+(-[a-z0-9]+)*$")]
+    private static partial Regex KebabCase();
 
     // A file that differs only in case, or goes by a known misspelling, is almost certainly the one meant.
     private static string[]? RenameHint(List<string> files, string expected, params string[] misspellings)

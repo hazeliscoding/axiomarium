@@ -4,6 +4,15 @@ This file records the user-visible changes to `axm` and the vault's schemas. The
 
 ## [Unreleased]
 
+### Added
+
+- `schemas/eval.schema.json`: an asset's eval cases, each a folder under `evals/behavioral/` or `evals/regression/` with an `eval.yaml` (the prompt, the commands the session may run, the checks and an optional judge's rubric) and a `repo/` for the files the session starts with. A check is one of `file`, `run`, `loaded`, `ran` or `reply`, and `not: true` turns it around. A regression case names the failure it guards in `guards`.
+- `axm validate` and `axm doctor` check every eval case: its schema, that each check is exactly one kind and takes only its own fields, that each `file` glob is valid, and that the case is a kebab-case folder with its `eval.yaml`.
+
+### Changed
+
+- Files directly in an asset's `evals/behavioral/` or `evals/regression/` are errors: each case is now a folder with an `eval.yaml`.
+
 ## [0.4.0] - 2026-09-29
 
 Trigger testing: whether the agent picks the right skill for a prompt, measured on the real Claude Code and Codex.

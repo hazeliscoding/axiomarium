@@ -12,6 +12,7 @@ public static class SchemaCatalog
     private static readonly Lazy<JsonObject> PolicySchema = new(() => Load("schemas/policy.schema.json"));
     private static readonly Lazy<JsonObject> RepoSchema = new(() => Load("schemas/axiomarium.schema.json"));
     private static readonly Lazy<JsonObject> TriggerPromptsSchema = new(() => Load("schemas/trigger-prompts.schema.json"));
+    private static readonly Lazy<JsonObject> EvalSchema = new(() => Load("schemas/eval.schema.json"));
 
     /// <summary>The schema every <c>asset.yaml</c> must satisfy.</summary>
     public static JsonObject Asset => AssetSchema.Value;
@@ -21,6 +22,9 @@ public static class SchemaCatalog
 
     /// <summary>The schema a skill's <c>evals/trigger/prompts.yaml</c> must satisfy.</summary>
     public static JsonObject TriggerPrompts => TriggerPromptsSchema.Value;
+
+    /// <summary>The schema an asset's eval case, <c>evals/behavioral/&lt;case&gt;/eval.yaml</c> or <c>evals/regression/&lt;case&gt;/eval.yaml</c>, must satisfy.</summary>
+    public static JsonObject Eval => EvalSchema.Value;
 
     /// <summary>The schema for the block named after <paramref name="kind"/> in its <c>asset.yaml</c>.</summary>
     /// <param name="kind">The asset's kind.</param>

@@ -335,7 +335,7 @@ public class DoctorTests
     {
         using var vault = new TempVault()
             .Asset("agents/determinism-auditor", SampleManifests.Valid.Replace("behavioral: false", "behavioral: true"))
-            .Write("agents/determinism-auditor/evals/behavioral/billing/case-01.yaml", "prompt: x\n");
+            .Write("agents/determinism-auditor/evals/behavioral/billing/eval.yaml", "prompt: x\nchecks:\n  - reply: ok\n");
 
         Assert.Empty(Report(vault).Diagnostics);
     }
@@ -368,7 +368,9 @@ public class DoctorTests
         evals.Aggregate(manifest.Replace("maturity: experimental", $"maturity: {maturity}"), (text, type) => text.Replace($"{type}: false", $"{type}: true"));
 
     private static TempVault WithEvalFiles(TempVault vault, string folder, params string[] types) =>
-        types.Aggregate(vault, (v, type) => v.Write($"{folder}/evals/{type}/case-01.yaml", "prompt: x\n"));
+        types.Aggregate(vault, (v, type) => type == "trigger"
+            ? v.Write($"{folder}/evals/trigger/case-01.yaml", "prompt: x\n")
+            : v.Write($"{folder}/evals/{type}/case-01/eval.yaml", $"prompt: x\nchecks:\n  - reply: ok\n{(type == "regression" ? "guards: A past failure.\n" : "")}"));
 
     private static string UsageLog(string folder, params string[] repos) =>
         string.Concat(repos.Select((repo, i) => $"## 2026-10-{i + 1:00} · {repo}\n\nUsed [it](../{folder}/).\n\n"));
