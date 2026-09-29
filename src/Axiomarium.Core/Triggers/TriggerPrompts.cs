@@ -202,7 +202,7 @@ public static class TriggerPrompts
     }
 
     // A JSON string is a valid YAML double-quoted scalar, so any prompt text round-trips.
-    private static string Quoted(string text) => JsonEncodedText.Encode(text, JavaScriptEncoder.UnsafeRelaxedJsonEscaping).Value is var encoded ? $"\"{encoded}\"" : "";
+    internal static string Quoted(string text) => JsonEncodedText.Encode(text, JavaScriptEncoder.UnsafeRelaxedJsonEscaping).Value is var encoded ? $"\"{encoded}\"" : "";
 
     /// <summary>The name a prompt file uses for <paramref name="kind"/>, such as <c>paraphrased</c>.</summary>
     /// <param name="kind">The kind.</param>
