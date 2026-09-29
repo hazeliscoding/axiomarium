@@ -339,7 +339,7 @@ Whether the model picks the right skill for a prompt, measured on the real harne
 - [x] `axm triggers export <skill> --format skill-creator|promptfoo`, printed, with CI running `promptfoo validate` on the export.
 - [x] Prompts for `agent-asset-authoring`: generated, reviewed by the owner, committed, and `evals.trigger: true` set.
 - [x] Docs in `docs/`: `docs/README.md` as the home and reading order, `docs/cli.md` for every command, option, exit code and output contract, and `docs/findings.md` linking each finding, with tests that relative links resolve and that every command and finding id is documented.
-- [ ] Write-up, "Does your agent pick the right skill?", on a real run.
+- [x] Write-up, "Does your agent pick the right skill?", on a real run.
 - [ ] Release v0.4.0.
 
 **Done when:** `axm triggers test` on the vault's skills reports precision and recall for each one on both harnesses, and names every collision, false trigger and miss with a cause from the listing; the vault skill's prompts were written by `generate` after approval; the promptfoo export validates in CI; the docs tests pass; and v0.4.0 installs from GitHub Releases and NuGet on fresh runners.
