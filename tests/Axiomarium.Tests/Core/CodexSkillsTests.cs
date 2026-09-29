@@ -167,6 +167,7 @@ public class CodexSkillsTests
         var resolution = Resolve(vault);
 
         Assert.True(resolution.Skills.Single().Cut);
+        Assert.Equal(new string('x', 1021) + "...", resolution.Skills.Single().Text);
         Assert.Equal("tokens", resolution.Listing!.Unit);
         Assert.Equal(5440, resolution.Listing.Budget);
         Assert.InRange(resolution.Listing.Size, 1024 / 4, 1200 / 4);

@@ -217,7 +217,7 @@ public static class Doctor
             found.Claims.Add(new MaturityClaim(manifestFile, Locate(parsed.Locations, "maturity"), kind, folder, Text(manifest, "maturity"), TrueEvals(manifest)));
         }
 
-        return new DiscoveredAsset(kind, name, folder, manifestFile, Fields(manifest));
+        return new DiscoveredAsset(kind, name, folder, manifestFile, Fields(kind, manifest));
     }
 
     private static void ExamineBlocks(
@@ -259,10 +259,12 @@ public static class Doctor
 
     private static string Text(JsonObject manifest, string field) => manifest[field]!.GetValue<string>();
 
-    private static AssetManifest Fields(JsonObject manifest) => new(
+    private static AssetManifest Fields(AssetKind kind, JsonObject manifest) => new(
         Text(manifest, "maturity"),
         Text(manifest, "version"),
-        manifest["supports"]!.AsObject().ToDictionary(pair => pair.Key, pair => pair.Value!.GetValue<string>(), StringComparer.Ordinal));
+        manifest["supports"]!.AsObject().ToDictionary(pair => pair.Key, pair => pair.Value!.GetValue<string>(), StringComparer.Ordinal),
+        Text(manifest, "description"),
+        kind == AssetKind.Skill && manifest["skill"] is JsonObject skill && skill["use_when"] is JsonValue useWhen && useWhen.GetValueKind() == JsonValueKind.String ? useWhen.GetValue<string>() : null);
 
     private static IReadOnlySet<string> TrueEvals(JsonObject manifest) =>
         manifest["evals"] is JsonObject evals

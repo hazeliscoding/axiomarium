@@ -30,6 +30,18 @@ public class DoctorTests
     }
 
     [Fact]
+    public void A_skill_carries_its_description_and_when_to_use_it()
+    {
+        using var vault = new TempVault().Asset("skills/x", TempVault.Manifest("skill", "x")).Asset("agents/y", TempVault.Manifest("agent", "y"));
+
+        var assets = Report(vault).Assets;
+
+        Assert.Equal(
+            [("Reviews a codebase for decisions an LLM shouldn't own.", null), ("Reviews a codebase for decisions an LLM shouldn't own.", "Writing or changing an asset.")],
+            assets.Select(asset => (asset.Manifest!.Description, asset.Manifest.UseWhen)));
+    }
+
+    [Fact]
     public void An_invalid_manifest_carries_none_of_its_fields()
     {
         using var vault = new TempVault().Asset(
