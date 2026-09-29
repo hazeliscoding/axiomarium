@@ -378,7 +378,7 @@ Whether the model picks the right skill for a prompt, measured on the real harne
 What an asset does once it's active, measured on the real harnesses, and whether a change made it better.
 
 - [x] Spike, on Windows with both harnesses: what a full session's stream reports (tokens, cost, turns, duration and the final message); whether the sealed home works with the borrowed login and the model setting, and what still leaks, such as Codex's `~/.agents/skills`, also with `USERPROFILE` set to the fake home; a positive control that asks for a write outside the copy and a command outside `allow`, which both harnesses must refuse before any eval runs; whether hooks in the copy's `.claude/settings.json` fire in `-p`, and whether Codex can load an agent; and the timeout and turn cap, from the length of `agent-asset-authoring`'s sessions. The results go in the decisions, and the trimmed streams become parser fixtures.
-- [ ] Eval cases: `schemas/eval.schema.json`, `axm doctor` validating each case, and the five checks.
+- [x] Eval cases: `schemas/eval.schema.json`, `axm doctor` validating each case, and the five checks.
 - [ ] `axm eval run`: the asset installed in the copy, the sealed home and `--real-home`, the session limits, the report and the history.
 - [ ] `axm eval compare`: git-ref and `none` baselines, alternating sessions, the side-by-side report and reusing a saved baseline.
 - [ ] `axm conflicts <path> --judge` and the eval judge, through either harness, with quotes checked against the files. (Moved from v0.2.)
