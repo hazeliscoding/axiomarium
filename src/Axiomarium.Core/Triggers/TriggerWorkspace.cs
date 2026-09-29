@@ -58,23 +58,12 @@ public static class TriggerWorkspace
             var manifest = asset.Manifest!;
             var content = Path.Combine(vaultRoot!, asset.Folder, asset.Kind.ContentFile());
             var body = File.Exists(content) ? File.ReadAllText(content).Replace("\r\n", "\n", StringComparison.Ordinal) : "";
-            if (manifest.Supports.ContainsKey(Harness.ClaudeCode.Name()))
+            foreach (var harness in harnesses.Where(harness => manifest.Supports.ContainsKey(harness.Name())))
             {
-                var folder = $".claude/skills/{asset.Name}/";
+                var file = Evals.EvalInstall.SkillFile(asset.Name, manifest.Description, manifest.UseWhen!, body, harness);
+                var folder = file.Path[..(file.Path.LastIndexOf('/') + 1)];
                 copy.RemoveWhere(path => path.StartsWith(folder, StringComparison.Ordinal));
-                write.Add(new WorkspaceFile(
-                    folder + "SKILL.md",
-                    $"---\nname: {asset.Name}\ndescription: {TriggerPrompts.Quoted(manifest.Description)}\nwhen_to_use: {TriggerPrompts.Quoted(manifest.UseWhen!)}\n---\n{body}"));
-            }
-
-            // Codex has no when_to_use, so both go in the description, as sync would list them.
-            if (manifest.Supports.ContainsKey(Harness.Codex.Name()))
-            {
-                var folder = $".agents/skills/{asset.Name}/";
-                copy.RemoveWhere(path => path.StartsWith(folder, StringComparison.Ordinal));
-                write.Add(new WorkspaceFile(
-                    folder + "SKILL.md",
-                    $"---\nname: {asset.Name}\ndescription: {TriggerPrompts.Quoted($"{manifest.Description} - {manifest.UseWhen}")}\n---\n{body}"));
+                write.Add(file);
             }
         }
 
