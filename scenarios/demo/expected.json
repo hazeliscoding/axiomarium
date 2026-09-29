@@ -27,6 +27,12 @@
     "skills": {
       "launch": [
         {
+          "name": "release",
+          "file": "repo/.claude/skills/release/SKILL.md",
+          "entry": "whole",
+          "chars": 143
+        },
+        {
           "name": "dataviz",
           "builtIn": true,
           "entry": "whole",
@@ -107,7 +113,13 @@
       ],
       "read": []
     },
-    "hooks": []
+    "hooks": [
+      {
+        "file": "repo/.claude/settings.json",
+        "label": "test-api",
+        "hook": "PostToolUse:Edit"
+      }
+    ]
   },
   "codex": {
     "version": "0.156.1",
