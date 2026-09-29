@@ -29,7 +29,14 @@ AXM TRIGGERS TEST // 1 skill · 17 prompts × 3 runs · 2 harnesses · 102 sessi
 
 Claude Code picked the skill in all 27 runs that should have, and in none of the 24 that shouldn't. The adversarial prompts didn't fool it. These numbers come from the first run, whose rule the fix below changed, but the new rule can't lower a perfect recall, and it could only add false triggers where a run loaded the skill after another one, which none did.
 
-Codex, after the fix described below:
+Codex, after the fix described below, on two of its models: `gpt-6-astra`, which my Codex is set to, and `gpt-6-sol`, its everyday coding model.
+
+| Model | Runs scored | Precision | Recall |
+|---|---|---|---|
+| `gpt-6-astra` | 32 of 51 | 1.00 (21 of 21) | 0.78 (21 of 27) |
+| `gpt-6-sol` | 51 of 51 | 1.00 (6 of 6) | 0.22 (6 of 27) |
+
+The `gpt-6-astra` run:
 
 ```text
 $ axm triggers test --harness codex
@@ -48,9 +55,11 @@ $ axm triggers test --harness codex
   --  codex  19 sessions: You’ve hit your usage limit. …
 ```
 
-Codex missed the skill in 6 of 27 runs. One went to Codex's own `skill-creator`, which a prompt about creating a skill can fairly reach for. Three read `using-superpowers` and then acted without the skill, and two picked no skill at all. Its listing is also more than half again over its budget, so Codex shortens every description in it, this one's included.
+`gpt-6-astra` missed the skill in 6 of 27 runs. One went to Codex's own `skill-creator`, which a prompt about creating a skill can fairly reach for. Three read `using-superpowers` and then acted without the skill, and two picked no skill at all. My ChatGPT plan ran out of `gpt-6-astra` partway through, so 19 sessions weren't scored, all of them negative or adversarial prompts, and its precision rests on the 5 of those that ran.
 
-My ChatGPT plan ran out partway through the Codex run, so 19 sessions weren't scored, all of them negative or adversarial prompts. The precision of 21 of 21 rests on the 5 of those that ran.
+`gpt-6-sol` ran every session and never picked the skill when it shouldn't have, but in 20 of its 21 misses it loaded no skill at all before its first other action. Whether it would have read the skill a step later, the test can't say: it stops each session at the first action that isn't loading a skill, so a model that looks around before reaching for a skill scores low. That's a limit of the measure as much as a trait of the model, and the same prompts, the same skill and the same listing gave 0.78 on one model and 0.22 on the other.
+
+Both runs saw the same listing, more than half again over its budget, so Codex shortens every description in it, this one's included.
 
 ## What the first run got wrong
 
@@ -77,7 +86,7 @@ Each wrong run gets the first cause the listing shows: the expected skill isn't 
 - **It's a sample.** Three runs of 17 prompts give rates, not guarantees, and the same prompt can go either way on another day.
 - **The prompts came from a model.** I reviewed them, but they're one model's idea of how people ask.
 - **A cause is the likely one.** It's what the listing shows, not what the model thought. "No cause found" is common, because the pick often comes from meaning rather than shared words.
-- **The first action is the cut-off.** A skill an agent would load only after reading some files doesn't count.
+- **The first action is the cut-off.** A skill an agent would load only after reading some files doesn't count, which is why `gpt-6-sol` scored so much lower than `gpt-6-astra`.
 - **It's my setup, and my plan's limits.** Your skills compete differently, which is why the test runs on yours. A run of 102 sessions can reach a plan's usage limit, and the report lists what didn't run.
 
 ## Try it on your skills
