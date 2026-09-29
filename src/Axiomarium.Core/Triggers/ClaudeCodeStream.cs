@@ -61,6 +61,12 @@ public static class ClaudeCodeStream
         return new ClaudeCodeSession(model, version, skills, steps, result, isError);
     }
 
+    /// <summary>The skills a session loaded before its first other action: its <c>Skill</c> calls before any other tool.</summary>
+    /// <param name="session">The session.</param>
+    /// <returns>The skills, in the order it loaded them. Text between them isn't an action, so it doesn't end them.</returns>
+    public static IReadOnlyList<string> Loads(ClaudeCodeSession session) =>
+        [.. session.Steps.TakeWhile(step => step.Tool is null or "Skill").Select(step => step.Skill).OfType<string>()];
+
     /// <summary>
     /// Whether <paramref name="line"/> ends the skills a session loads: a tool call other than <c>Skill</c>, or
     /// the session's result. The runner stops a trigger test's session there.

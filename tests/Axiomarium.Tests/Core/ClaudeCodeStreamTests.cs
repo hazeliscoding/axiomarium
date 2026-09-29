@@ -42,6 +42,20 @@ public class ClaudeCodeStreamTests
         Assert.Null(session.Model);
     }
 
+    // Text before a skill isn't an action, and a skill loaded after another tool came too late to count.
+    [Fact]
+    public void The_loads_are_the_skills_called_before_any_other_tool()
+    {
+        ClaudeCodeSession Session(params ClaudeCodeStep[] steps) => new(null, null, [], steps, null, false);
+        var skill = (string name) => new ClaudeCodeStep("Skill", name, null);
+        var bash = new ClaudeCodeStep("Bash", null, null);
+        var text = new ClaudeCodeStep(null, null, "I'll use the release skill.");
+
+        Assert.Equal(["release"], ClaudeCodeStream.Loads(ClaudeCodeStream.Read(Fixture("claude-code-skill-then-bash.jsonl"))));
+        Assert.Equal(["using-superpowers", "release"], ClaudeCodeStream.Loads(Session(text, skill("using-superpowers"), skill("release"), bash, skill("late"))));
+        Assert.Empty(ClaudeCodeStream.Loads(Session(bash, skill("release"))));
+    }
+
     [Fact]
     public void The_first_tool_call_other_than_a_skill_ends_a_pick_and_nothing_else_does()
     {
