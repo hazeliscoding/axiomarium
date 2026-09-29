@@ -1,0 +1,59 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo MARKER home/.codex/hooks.json new"
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo MARKER home/.codex/hooks.json trusted"
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo MARKER home/.codex/hooks.json changed"
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo MARKER home/.codex/hooks.json off"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "prompt",
+            "prompt": "Check the edit."
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit(",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo MARKER home/.codex/hooks.json bad-matcher"
+          }
+        ]
+      }
+    ]
+  }
+}
