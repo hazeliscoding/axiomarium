@@ -419,6 +419,7 @@ Axiomarium reaches 1.0 when someone can clone it, then run `axm init`, `axm doct
 - A "why did you ignore my rule?" skill that runs `axm explain` and says whether the rule loaded at all.
 - A local dashboard, `axm ui`, much later and only after the CLI: instruction graphs, activation heatmaps, token use, evidence history and failure timelines.
 - `axm triggers test` for any skill in the listing, not only the vault's, and a `--sealed` home for a clean baseline.
+- A wider window for `axm triggers test` than the first action, for models that look at files before loading a skill: on the same prompts, Codex's `gpt-6-sol` loaded no skill before its first action in 20 of 21 misses, and scored 0.22 recall against `gpt-6-astra`'s 0.78.
 - A generated docs site from `docs/`, near v1.0, with pages for wiring hooks and for how the ground truth works.
 - winget and Homebrew.
 - A short launch video.
