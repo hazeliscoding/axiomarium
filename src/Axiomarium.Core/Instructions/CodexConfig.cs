@@ -36,6 +36,15 @@ internal sealed record CodexConfig(long MaxBytes, IReadOnlyList<string> Fallback
     /// <summary>The config file's own <c>[hooks]</c> events, or <see langword="null"/> when it has none.</summary>
     public TomlTable? Hooks { get; init; }
 
+    /// <summary><c>model</c>: the model Codex uses unless told otherwise, or <see langword="null"/> for its default.</summary>
+    public string? Model { get; init; }
+
+    /// <summary><c>model_reasoning_effort</c>, or <see langword="null"/> for the model's default.</summary>
+    public string? ReasoningEffort { get; init; }
+
+    /// <summary><c>windows.sandbox</c>: <c>elevated</c> or <c>unelevated</c>, or <see langword="null"/> when it isn't set.</summary>
+    public string? WindowsSandbox { get; init; }
+
     public static CodexConfig Load(string codexHome)
     {
         var path = Path.Combine(codexHome, "config.toml");
@@ -96,6 +105,10 @@ internal sealed record CodexConfig(long MaxBytes, IReadOnlyList<string> Fallback
             TrustedProjects = trusted,
             HookStates = states,
             Hooks = hooks,
+            Model = table.TryGetValue("model", out var model) && model is string modelName ? modelName : null,
+            ReasoningEffort = table.TryGetValue("model_reasoning_effort", out var effort) && effort is string effortName ? effortName : null,
+            WindowsSandbox = table.TryGetValue("windows", out var windows) && windows is TomlTable windowsTable
+                && windowsTable.TryGetValue("sandbox", out var sandbox) && sandbox is string sandboxName ? sandboxName : null,
         };
     }
 
