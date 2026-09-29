@@ -85,6 +85,8 @@ public static class ExplainJson
                 }
 
                 writer.WriteEndArray();
+                WriteSkills(writer, harness.Resolution, rules, Show);
+                WriteHooks(writer, harness.Resolution, rules, Show);
                 writer.WriteEndObject();
             }
 
@@ -128,6 +130,130 @@ public static class ExplainJson
         }
 
         output.WriteLine(Encoding.UTF8.GetString(buffer.WrittenSpan));
+    }
+
+    // The skills a harness lists, in listing order, a built-in one with a null path; the ones it keeps out;
+    // and the listing's size against its budget.
+    private static void WriteSkills(Utf8JsonWriter writer, Resolution resolution, Dictionary<string, HarnessRule> rules, Func<string, string> show)
+    {
+        writer.WriteStartArray("skills");
+        foreach (var skill in resolution.Skills)
+        {
+            rules.TryAdd(skill.Rule.Id, skill.Rule);
+            writer.WriteStartObject();
+            writer.WriteString("name", skill.Name);
+            WritePath(writer, skill.Path, show);
+            writer.WriteString("timing", skill.Timing == LoadTiming.AtLaunch ? "at-launch" : "when-read");
+            writer.WriteString("rule", skill.Rule.Id);
+            writer.WriteNumber("chars", skill.Chars);
+            if (skill.Cut)
+            {
+                writer.WriteBoolean("cut", true);
+            }
+
+            if (skill.NameOnly)
+            {
+                writer.WriteBoolean("nameOnly", true);
+            }
+
+            if (skill.Patterns is { Count: > 0 } patterns)
+            {
+                writer.WriteStartArray("patterns");
+                foreach (var pattern in patterns)
+                {
+                    writer.WriteStringValue(pattern);
+                }
+
+                writer.WriteEndArray();
+            }
+
+            writer.WriteEndObject();
+        }
+
+        writer.WriteEndArray();
+        writer.WriteStartArray("notListed");
+        foreach (var skill in resolution.NotListed)
+        {
+            rules.TryAdd(skill.Rule.Id, skill.Rule);
+            writer.WriteStartObject();
+            writer.WriteString("name", skill.Name);
+            WritePath(writer, skill.Path, show);
+            writer.WriteString("rule", skill.Rule.Id);
+            writer.WriteEndObject();
+        }
+
+        writer.WriteEndArray();
+        if (resolution.Listing is { } listing)
+        {
+            rules.TryAdd(listing.Rule.Id, listing.Rule);
+            writer.WriteStartObject("listing");
+            writer.WriteNumber("size", listing.Size);
+            writer.WriteNumber("budget", listing.Budget);
+            writer.WriteString("unit", listing.Unit);
+            writer.WriteBoolean("overBudget", listing.OverBudget);
+            writer.WriteString("assumption", listing.Assumption);
+            writer.WriteString("rule", listing.Rule.Id);
+            writer.WriteEndObject();
+        }
+    }
+
+    // Each hook at each moment for the file, running or not, with the rule that decides it.
+    private static void WriteHooks(Utf8JsonWriter writer, Resolution resolution, Dictionary<string, HarnessRule> rules, Func<string, string> show)
+    {
+        writer.WriteStartArray("hooks");
+        foreach (var item in resolution.Hooks)
+        {
+            rules.TryAdd(item.Rule.Id, item.Rule);
+            rules.TryAdd(item.Hook.Source.Id, item.Hook.Source);
+            writer.WriteStartObject();
+            writer.WriteString("moment", item.Moment switch
+            {
+                HookMoment.SessionStart => "session-start",
+                HookMoment.BeforeEdit => "before-edit",
+                _ => "after-edit",
+            });
+            writer.WriteString("path", show(item.Hook.Path));
+            writer.WriteString("event", item.Hook.Event);
+            if (item.Hook.Matcher is { } matcher)
+            {
+                writer.WriteString("matcher", matcher);
+            }
+
+            writer.WriteString("handler", item.Hook.Handler);
+            if (item.Hook.Condition is { } condition)
+            {
+                writer.WriteString("if", condition);
+            }
+
+            writer.WriteString("input", item.Input);
+            writer.WriteBoolean("runs", item.Runs);
+            writer.WriteString("rule", item.Rule.Id);
+            if (item.Hook.Trust is { } trust)
+            {
+                writer.WriteString("trust", trust);
+            }
+
+            if (item.Hook.Hash is { } hash)
+            {
+                writer.WriteString("hash", hash);
+            }
+
+            writer.WriteEndObject();
+        }
+
+        writer.WriteEndArray();
+    }
+
+    private static void WritePath(Utf8JsonWriter writer, string? path, Func<string, string> show)
+    {
+        if (path is null)
+        {
+            writer.WriteNull("path");
+        }
+        else
+        {
+            writer.WriteString("path", show(path));
+        }
     }
 
     private static void WriteImportedFrom(Utf8JsonWriter writer, ImportSite? via, Func<string, string> show)

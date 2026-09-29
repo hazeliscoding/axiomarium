@@ -4,6 +4,10 @@ This file records the user-visible changes to `axm` and the vault's schemas. The
 
 ## [Unreleased]
 
+### Added
+
+- `axm explain` shows, for each harness, the skills it lists for the model and the hooks that run for the file. A skill is available, never loaded: each row says whether it's listed at launch or joins when the file is read or edited, and the rule that lists it. A skill the harness finds but doesn't list says why, and the listing's size is shown against its budget, with what the budget assumes. Hooks show at session start, before an edit and after one, each RUNS or NOT RUN with the reason, such as an `if` that doesn't match or a Codex hook that isn't trusted. `--diff` also shows the skills only one harness lists, and `--json` gains `skills`, `notListed`, `listing` and `hooks` for each harness, still `schemaVersion` 1. The models cover Claude Code's managed, personal, project, nested, path-scoped, plugin and synced skills and its settings and plugin hooks, and Codex's skill roots, policies and hook trust, confirmed against Claude Code 2.1.284 and Codex 0.156.1.
+
 ### Fixed
 
 - A Claude Code rule's `paths` match the way `.gitignore` lines do, as in Claude Code: a pattern without a slash, such as `*.cs`, matches at any depth, and `api/**` matches an `api` folder anywhere. `axm explain` said such rules don't load when they do, and `rule-matches-nothing` could report them.

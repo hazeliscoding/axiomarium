@@ -7,11 +7,16 @@ namespace Axiomarium.Tests.Cli;
 // CI points AXM_BINARY at the binary it just published. The binary reads the real machine, so these
 // tests use commands that read no harness files: validate renders the same vault checks as doctor, and
 // explain runs as Codex only, because Claude Code's walk from the filesystem root would leave the test folder.
+// Codex's system folder moves with ProgramData on Windows, but is always /etc/codex elsewhere, so explain
+// doesn't run on a machine that has one.
 public class NativeBinaryTests
 {
     private const string NoBinary = "Set AXM_BINARY to a published axm binary to run this test.";
+    private const string NoCodexExplain = "Set AXM_BINARY to a published axm binary, on a machine without /etc/codex, to run this test.";
 
     public static bool HasBinary => Binary.Length > 0;
+
+    public static bool CanExplainCodex => HasBinary && (OperatingSystem.IsWindows() || !Directory.Exists("/etc/codex"));
 
     private static string Binary => Environment.GetEnvironmentVariable("AXM_BINARY") ?? "";
 
@@ -105,7 +110,7 @@ public class NativeBinaryTests
         Assert.StartsWith("src/billing/résumé.txt is outside this task's scope", context);
     }
 
-    [Fact(Skip = NoBinary, SkipUnless = nameof(HasBinary))]
+    [Fact(Skip = NoCodexExplain, SkipUnless = nameof(CanExplainCodex))]
     public async Task Explain_reads_the_codex_config()
     {
         using var vault = new TempVault()
@@ -119,6 +124,7 @@ public class NativeBinaryTests
             ["USERPROFILE"] = home,
             ["CODEX_HOME"] = Path.Combine(home, ".codex"),
             ["CLAUDE_CONFIG_DIR"] = Path.Combine(home, ".claude"),
+            ["ProgramData"] = Path.Combine(vault.Root, "programdata"),
         };
 
         // Codex only: Claude Code would walk up past the test folder into the real machine.
