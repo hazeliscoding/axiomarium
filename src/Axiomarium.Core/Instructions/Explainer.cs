@@ -67,6 +67,23 @@ public static class Explainer
         return new Explanation(file, repoRoot, launch, [.. resolutions]);
     }
 
+    /// <summary>
+    /// The skills only one of two resolutions lists, compared by name, each in its listing order. Skills built
+    /// into a harness are left out, because they say nothing about the repo.
+    /// </summary>
+    /// <returns>What only <paramref name="first"/> lists, and what only <paramref name="second"/> lists.</returns>
+    public static (IReadOnlyList<AvailableSkill> OnlyFirst, IReadOnlyList<AvailableSkill> OnlySecond) DiffSkills(Resolution first, Resolution second)
+    {
+        var firstNames = first.Skills.Select(skill => skill.Name).ToHashSet(StringComparer.Ordinal);
+        var secondNames = second.Skills.Select(skill => skill.Name).ToHashSet(StringComparer.Ordinal);
+        return (
+            [.. first.Skills.Where(skill => !IsBuiltIn(skill) && !secondNames.Contains(skill.Name))],
+            [.. second.Skills.Where(skill => !IsBuiltIn(skill) && !firstNames.Contains(skill.Name))]);
+    }
+
+    /// <summary>Whether a skill comes with the harness itself: Claude Code's built-in skills, or Codex's bundled ones.</summary>
+    public static bool IsBuiltIn(AvailableSkill skill) => skill.Rule == ClaudeCodeSkillRules.BuiltIn || skill.Rule == CodexSkillRules.BundledSkill;
+
     /// <summary>The files only one of two resolutions loads, compared by path.</summary>
     /// <returns>What only <paramref name="first"/> loads, and what only <paramref name="second"/> loads, each in its context order.</returns>
     public static (IReadOnlyList<LoadedInstruction> OnlyFirst, IReadOnlyList<LoadedInstruction> OnlySecond) Diff(Resolution first, Resolution second)

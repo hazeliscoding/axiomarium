@@ -42,10 +42,19 @@ public class ExplainCommandTests
               --  AGENTS.md                  DROPPED     a CLAUDE file exists and doesn't import it
               --  src/api/AGENTS.md          DROPPED     a CLAUDE file exists and doesn't import it
 
+              CLAUDE CODE SKILLS // 13 listed · 6,230 of 8,000 characters, assuming a 200k-token context window
+              01  13 built-in skills      built in   at launch
+
+              CLAUDE CODE HOOKS // none at session start or around an edit
+
               CODEX // launched at the repo root
               01  ~/.codex/AGENTS.md         global              at launch
               02  AGENTS.md                  project             at launch
               --  src/api/AGENTS.md          NOT LOADED  below the launch directory
+
+              CODEX SKILLS // none listed
+
+              CODEX HOOKS // none at session start or around an edit
 
             WARNING  agents-md-hidden
                      Claude Code skips AGENTS.md, because CLAUDE.md exists and doesn't import it, so instructions written there for every agent never reach Claude Code.
@@ -59,7 +68,7 @@ public class ExplainCommandTests
                      Claude Code skips src/api/AGENTS.md, because CLAUDE.md exists and doesn't import it, so instructions written there for every agent never reach Claude Code.
                      Fix: Add a CLAUDE.md next to it that says @AGENTS.md.
 
-            2 harnesses · 5 loaded · 4 not loaded · 3 warnings
+            2 harnesses · 5 loaded · 4 not loaded · 13 skills listed · 0 hooks run · 3 warnings
 
             """,
             output);
@@ -81,7 +90,11 @@ public class ExplainCommandTests
               02  AGENTS.md            project   at launch
               03  src/api/AGENTS.md    project   at launch
 
-            1 harness · 3 loaded · 0 not loaded
+              CODEX SKILLS // none listed
+
+              CODEX HOOKS // none at session start or around an edit
+
+            1 harness · 3 loaded · 0 not loaded · 0 skills listed · 0 hooks run
 
             """,
             output);
@@ -107,10 +120,119 @@ public class ExplainCommandTests
               01  ~/.codex/AGENTS.md         global              at launch
               02  AGENTS.md                  project             at launch
 
-            3 only in Claude Code · 2 only in Codex
+            3 files only in Claude Code · 2 only in Codex · 0 skills only in Claude Code · 0 only in Codex
 
             """,
             output);
+    }
+
+    // The skills-and-hooks scenario in miniature: a skill each harness lists, a path skill, a hidden one, and
+    // hooks that do and don't run for the file.
+    private static TempVault Tools() => new TempVault()
+        .Folder("repo/.git")
+        .Folder("home/.codex")
+        .Write("repo/src/app.ts", "export const a = 1;\n")
+        .Write("repo/.claude/skills/deploy/SKILL.md", "---\ndescription: Deploys the shop.\n---\nSteps.\n")
+        .Write("repo/.claude/skills/typescript/SKILL.md", "---\ndescription: TypeScript.\npaths: \"src/**/*.ts\"\n---\nSteps.\n")
+        .Write("repo/.claude/skills/docs/SKILL.md", "---\ndescription: The docs.\npaths: \"docs/**\"\n---\nSteps.\n")
+        .Write("repo/.agents/skills/ship/SKILL.md", "---\ndescription: Ships the shop.\n---\nSteps.\n")
+        .Write("repo/.claude/settings.json", """
+            { "hooks": {
+              "SessionStart": [ { "hooks": [ { "type": "command", "command": "axm hook session-doctor" } ] } ],
+              "PostToolUse": [
+                { "matcher": "Edit|Write", "hooks": [ { "type": "command", "command": "axm hook scope-sheriff", "if": "Edit(src/**)" } ] },
+                { "matcher": "Edit|Write", "hooks": [ { "type": "command", "command": "lint-docs", "if": "Edit(docs/**)" } ] } ] } }
+            """)
+        .Write("home/.codex/hooks.json", """{ "hooks": { "PostToolUse": [ { "matcher": "apply_patch", "hooks": [ { "type": "command", "command": "axm hook scope-sheriff" } ] } ] } }""");
+
+    [Fact]
+    public void Shows_the_skills_each_harness_lists_and_the_hooks_that_run_for_the_file()
+    {
+        using var vault = Tools();
+
+        var (_, output, _) = Explain(vault, "src/app.ts");
+
+        Assert.Contains(
+            """
+              CLAUDE CODE SKILLS // 15 listed · 6,258 of 8,000 characters, assuming a 200k-token context window
+              01  deploy               .claude/skills/deploy/SKILL.md       project              at launch
+              02  13 built-in skills                                        built in             at launch
+              03  typescript           .claude/skills/typescript/SKILL.md   paths: src/**/*.ts   when the file is read or edited
+              --  docs                 .claude/skills/docs/SKILL.md         NOT LISTED  paths don't match
+
+              CLAUDE CODE HOOKS // at session start and around an edit of the file, in a trusted workspace
+              01  session start   .claude/settings.json   axm hook session-doctor   RUNS     project
+              02  after edit      .claude/settings.json   axm hook scope-sheriff    RUNS     project, if Edit(src/**)
+              --  after edit      .claude/settings.json   lint-docs                 NOT RUN  if Edit(docs/**) doesn't match
+
+            """,
+            output);
+        // A Codex entry's size depends on the absolute path of its skill, so only the rows are pinned.
+        Assert.Contains("  CODEX SKILLS // 1 listed · ", output);
+        Assert.Contains(
+            """
+              01  ship   .agents/skills/ship/SKILL.md   repo   at launch
+
+              CODEX HOOKS // at session start and around an edit of the file
+              --  after edit   ~/.codex/hooks.json   axm hook scope-sheriff   NOT RUN  not trusted
+
+            """,
+            output);
+        Assert.EndsWith("2 harnesses · 0 loaded · 0 not loaded · 16 skills listed · 2 hooks run\n", output);
+    }
+
+    [Fact]
+    public void Diff_shows_the_skills_only_one_harness_lists_leaving_out_built_in_ones()
+    {
+        using var vault = Tools();
+
+        var (_, output, _) = Explain(vault, "src/app.ts", "--diff");
+
+        Assert.Contains(
+            """
+              ONLY CLAUDE CODE SKILLS
+              01  deploy       .claude/skills/deploy/SKILL.md       project              at launch
+              02  typescript   .claude/skills/typescript/SKILL.md   paths: src/**/*.ts   when the file is read or edited
+
+            """,
+            output);
+        Assert.Contains("  ONLY CODEX SKILLS\n  01  ship   .agents/skills/ship/SKILL.md   repo   at launch\n", output);
+        Assert.Contains("0 files only in Claude Code · 0 only in Codex · 2 skills only in Claude Code · 1 only in Codex", output);
+    }
+
+    [Fact]
+    public void Json_lists_skills_the_listing_and_hooks_for_each_harness()
+    {
+        using var vault = Tools();
+
+        var (_, output, _) = Explain(vault, "src/app.ts", "--json");
+
+        var json = JsonNode.Parse(output)!;
+        var claude = json["harnesses"]![0]!;
+        Assert.Equal(
+            """{"name":"deploy","path":".claude/skills/deploy/SKILL.md","timing":"at-launch","rule":"claude-code/project-skill","chars":27}""",
+            claude["skills"]![0]!.ToJsonString());
+        Assert.Equal(
+            """{"name":"dataviz","path":null,"timing":"at-launch","rule":"claude-code/built-in-skill","chars":1447}""",
+            claude["skills"]![1]!.ToJsonString());
+        Assert.Equal(
+            """{"name":"typescript","path":".claude/skills/typescript/SKILL.md","timing":"when-read","rule":"claude-code/paths-skill","chars":25,"patterns":["src/**/*.ts"]}""",
+            claude["skills"]![14]!.ToJsonString());
+        Assert.Equal(
+            """[{"name":"docs","path":".claude/skills/docs/SKILL.md","rule":"claude-code/paths-skill-no-match"}]""",
+            claude["notListed"]!.ToJsonString());
+        Assert.Equal(
+            """{"size":6258,"budget":8000,"unit":"characters","overBudget":false,"assumption":"a 200k-token context window","rule":"claude-code/skill-listing-budget"}""",
+            claude["listing"]!.ToJsonString());
+        Assert.Equal(
+            """{"moment":"after-edit","path":".claude/settings.json","event":"PostToolUse","matcher":"Edit|Write","handler":"lint-docs","if":"Edit(docs/**)","input":"Edit","runs":false,"rule":"claude-code/hook-if-no-match"}""",
+            claude["hooks"]![2]!.ToJsonString());
+
+        var codexHook = json["harnesses"]![1]!["hooks"]![0]!;
+        Assert.Equal(("untrusted", false, "codex/hook-untrusted"), (codexHook["trust"]!.GetValue<string>(), codexHook["runs"]!.GetValue<bool>(), codexHook["rule"]!.GetValue<string>()));
+        Assert.StartsWith("sha256:", codexHook["hash"]!.GetValue<string>());
+        Assert.NotNull(json["rules"]!["claude-code/paths-skill"]);
+        Assert.Equal("if doesn't match", json["rules"]!["claude-code/hook-if-no-match"]!["label"]!.GetValue<string>());
     }
 
     [Fact]
