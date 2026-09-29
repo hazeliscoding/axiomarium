@@ -9,7 +9,7 @@ Set FontFamily "JetBrains Mono"
 Set FontSize 14
 Set LineHeight 1.2
 Set Width 1560
-Set Height 760
+Set Height 880
 Set Padding 28
 Set TypingSpeed 40ms
 Set Theme { "name": "KAIRO", "black": "#101418", "red": "#ff5f6d", "green": "#8fd18f", "yellow": "#ffb454", "blue": "#6cb6ff", "magenta": "#f0569b", "cyan": "#5fd7d7", "white": "#e9e7e1", "brightBlack": "#6b7280", "brightRed": "#ff7a85", "brightGreen": "#a6e3a1", "brightYellow": "#ffd28a", "brightBlue": "#8cc8ff", "brightMagenta": "#ff7ab8", "brightCyan": "#87e7e7", "brightWhite": "#ffffff", "background": "#101418", "foreground": "#e9e7e1", "selection": "#2a2f36", "cursor": "#f0569b" }
@@ -24,7 +24,7 @@ Show
 Type "axm explain src/api/orders.cs"
 Sleep 500ms
 Enter
-Sleep 8s
+Sleep 10s
 
 Hide
 Type "clear"
