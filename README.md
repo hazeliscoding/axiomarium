@@ -11,7 +11,7 @@
 
 Axiomarium is my lab for engineering reliable AI coding environments. It holds the agents, skills, hooks, policies, workflows and evals I use, and `axm`, a local CLI that inspects, validates, tests and debugs them. It treats agent configuration as real software infrastructure: kept in git, inspectable, testable, portable, and able to learn from its failures. It's built for my own setup first, and it's public in case it's useful to you too.
 
-> **Status:** early development. v0.2 shows what Claude Code and Codex actually load for a file with `axm explain`, and `axm doctor` checks the instruction files of any repo. v0.1's vault checks stay: `axm list`, `axm validate` and `axm doctor` in a vault. Skills and hooks follow in v0.3, and trigger testing in v0.4. See [ROADMAP.md](ROADMAP.md).
+> **Status:** early development. `axm explain` shows what Claude Code and Codex actually load for a file, and since v0.3 which skills each lists for the model and which hooks run. `axm doctor` checks the instruction files, skills and hooks of any repo, and `axm triggers` finds skills whose descriptions overlap. v0.1's vault checks stay: `axm list`, `axm validate` and `axm doctor` in a vault. Trigger testing follows in v0.4. See [ROADMAP.md](ROADMAP.md).
 
 ## The problem
 
@@ -57,7 +57,7 @@ The vault provides the knowledge and behavior. `axm` provides the infrastructure
 
 ## What it looks like
 
-`axm doctor` and `axm explain` work today. In a terminal the output is in color, with a kaomoji for the outcome. Piped, in CI or read by an agent, it's plain text.
+`axm doctor`, `axm explain` and `axm triggers` work today. In a terminal the output is in color, with a kaomoji for the outcome. Piped, in CI or read by an agent, it's plain text.
 
 ![A terminal runs axm list, which shows the five starter assets. A one-line edit then raises the determinism auditor's maturity to tested, and axm doctor reports that the claim lacks its evidence.](docs/demo/doctor.gif)
 
@@ -85,7 +85,7 @@ ERROR  agents/scope-reviewer/asset.yaml:5
 
 In a repo without a vault, `axm doctor` checks only the instruction files. Their findings are warnings, so they never fail it. List paths that are broken on purpose, such as test fixtures, under `doctor.ignore` in `axiomarium.yaml`, and the doctor leaves them out and says how many.
 
-`axm explain` shows what each harness loads for a file, and what it silently drops:
+`axm explain` shows what each harness loads for a file, what it silently drops, and which skills and hooks reach the agent:
 
 ![A terminal runs axm explain on a demo shop. Claude Code loads CLAUDE.md and a path rule but skips both AGENTS.md files and a missing import, Codex loads AGENTS.md, and with --diff the two agents share no instructions.](docs/demo/explain.gif)
 
@@ -102,10 +102,27 @@ AXM EXPLAIN // src/api/orders.cs
   --  AGENTS.md              DROPPED     a CLAUDE file exists and doesn't import it
   --  src/api/AGENTS.md      DROPPED     a CLAUDE file exists and doesn't import it
 
+  CLAUDE CODE SKILLS // 14 listed · 6,374 of 8,000 characters, assuming a 200k-token context window
+  01  release              .claude/skills/release/SKILL.md   project    at launch
+  02  13 built-in skills                                     built in   at launch
+
+  CLAUDE CODE HOOKS // at session start and around an edit of the file, in a trusted workspace
+  01  after edit   .claude/settings.json   echo MARKER repo/.claude/settings.json test-api   RUNS     project, if Edit(src/api/**)
+
   CODEX // launched at the repo root
   01  ~/.codex/AGENTS.md     global              at launch
   02  AGENTS.md              project             at launch
   --  src/api/AGENTS.md      NOT LOADED  below the launch directory
+
+  CODEX SKILLS // 1 listed · 52 of 5,440 tokens, assuming 2% of a 272k-token context window, that of Codex's default models
+  01  db-migration   .agents/skills/db-migration/SKILL.md   repo   at launch
+
+  CODEX HOOKS // at session start and around an edit of the file
+  --  after edit   .codex/hooks.json   echo MARKER repo/.codex/hooks.json test-api   NOT RUN  the project isn't trusted
+
+WARNING  codex-hook-untrusted
+         Codex doesn't load .codex/hooks.json, because the project isn't trusted, so its 1 hook never runs.
+         Fix: Trust the project in Codex, which sets trust_level = "trusted" for it in ~/.codex/config.toml.
 
 WARNING  agents-md-hidden
          Claude Code skips AGENTS.md, because CLAUDE.md exists and doesn't import it, so instructions written there for every agent never reach Claude Code.
@@ -119,10 +136,10 @@ WARNING  agents-md-hidden
          Claude Code skips src/api/AGENTS.md, because CLAUDE.md exists and doesn't import it, so instructions written there for every agent never reach Claude Code.
          Fix: Add a CLAUDE.md next to it that says @AGENTS.md.
 
-2 harnesses · 5 loaded · 4 not loaded · 3 warnings  (・_・;)
+2 harnesses · 5 loaded · 4 not loaded · 15 skills listed · 1 hook runs · 4 warnings  (・_・;)
 ```
 
-This is the demo in [`scenarios/demo`](scenarios/demo), and both harnesses were recorded loading exactly these files. [What your agent actually reads](docs/what-your-agent-reads.md) walks through it, and through what else the recordings found.
+This is the demo in [`scenarios/demo`](scenarios/demo), and both harnesses were recorded loading exactly these files and listing these skills, with only Claude Code running its hook. [What your agent actually reads](docs/what-your-agent-reads.md) and [Which skills your agent can see](docs/which-skills-your-agent-can-see.md) walk through it, and through what else the recordings found.
 
 ## Install
 
@@ -134,8 +151,9 @@ This is the demo in [`scenarios/demo`](scenarios/demo), and both harnesses were 
 Then, in any repo:
 
 ```text
-axm doctor                     every instruction file, which harness loads it, and what's wrong
-axm explain src/app/main.cs    what Claude Code and Codex load for that file, and what they drop
+axm doctor                     every instruction file, skill and hook the harnesses find, and what's wrong
+axm explain src/app/main.cs    what Claude Code and Codex load for that file, what they drop, and its skills and hooks
+axm triggers                   skills whose descriptions overlap, and the words they share
 ```
 
 In a vault such as this repo, `axm list` and `axm validate` check the assets too, and `axm doctor` adds them to its report.
