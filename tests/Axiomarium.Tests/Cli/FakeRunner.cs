@@ -82,7 +82,15 @@ internal sealed class FakeRunner : IHarnessRunner
         var command = skills.Length == 0 ? "rg --files" : string.Join(" && ", skills.Select(skill => $"cat .agents/skills/{skill}/SKILL.md"));
         JsonObject Item(string type) =>
             new() { ["type"] = type, ["item"] = new JsonObject { ["id"] = "item_1", ["type"] = "command_execution", ["command"] = command, ["status"] = "completed" } };
-        return new(true, [new JsonObject { ["type"] = "thread.started" }.ToJsonString(), Item("item.started").ToJsonString(), Item("item.completed").ToJsonString()], null, "");
+        // Reading a skill doesn't end the loads, so the turn's end does, as it would once Codex answered.
+        return new(
+            true,
+            [
+                new JsonObject { ["type"] = "thread.started" }.ToJsonString(), Item("item.started").ToJsonString(), Item("item.completed").ToJsonString(),
+                new JsonObject { ["type"] = "turn.completed" }.ToJsonString(),
+            ],
+            null,
+            "");
     }
 
     /// <summary>What each harness prints for <c>--version</c>.</summary>

@@ -19,10 +19,14 @@ public static partial class CodexStream
     /// <param name="lines">The lines Codex printed. Lines that aren't JSON events, such as log output, are skipped.</param>
     /// <param name="workingDirectory">Where Codex ran, which relative paths in its commands start from.</param>
     /// <param name="home">The home folder, which <c>~/</c> in its commands stands for.</param>
-    /// <returns>The skills its first command read. A later command never counts, because the first action is the pick.</returns>
+    /// <returns>
+    /// The skills it read before its first other action: every skill read by its leading commands that only read
+    /// skills, and by the first command that does anything else. Commands after that never count.
+    /// </returns>
     public static CodexSession Read(IEnumerable<string> lines, string workingDirectory, string home)
     {
-        string? command = null, message = null, error = null;
+        string? message = null, error = null;
+        var commands = new List<(string Id, string Command)>();
         foreach (var line in lines)
         {
             if (JsonEvents.Parse(line) is not { } e)
@@ -31,9 +35,14 @@ public static partial class CodexStream
             }
 
             var item = JsonEvents.Child(e, "item");
-            if (command is null && JsonEvents.Text(item, "type") == "command_execution")
+            if (JsonEvents.Text(item, "type") == "command_execution")
             {
-                command = JsonEvents.Text(item, "command") ?? "";
+                // Each command is reported when it starts and again when it completes.
+                var id = JsonEvents.Text(item, "id") ?? $"#{commands.Count}";
+                if (commands.All(command => command.Id != id))
+                {
+                    commands.Add((id, JsonEvents.Text(item, "command") ?? ""));
+                }
             }
             else if (message is null && JsonEvents.Text(item, "type") == "agent_message")
             {
@@ -45,19 +54,37 @@ public static partial class CodexStream
             }
         }
 
-        var reads = command is null ? [] : SkillFiles(command, workingDirectory, home);
+        var reads = new List<string>();
+        foreach (var (_, command) in commands)
+        {
+            reads.AddRange(SkillFiles(command, workingDirectory, home));
+            if (!ReadsOnlySkills(command))
+            {
+                break;
+            }
+        }
+
         return new CodexSession(reads, [.. reads.Select(Folder)], message, error);
     }
 
     /// <summary>
-    /// Whether <paramref name="line"/> ends the skills a session loads: its first command finishing, or the
-    /// turn ending. The runner stops a trigger test's session there.
+    /// Whether <paramref name="line"/> ends the skills a session loads: a finished command that does more than
+    /// read skills, or the turn ending. The runner stops a trigger test's session there.
     /// </summary>
     /// <param name="line">One line Codex printed.</param>
-    /// <returns><see langword="true"/> for a completed command or the end of the turn.</returns>
+    /// <returns><see langword="true"/> for a completed command that isn't only skill reads, or the end of the turn.</returns>
     public static bool EndsPick(string line) =>
         JsonEvents.Parse(line) is { } e && (JsonEvents.Text(e, "type") is "turn.completed" or "turn.failed" or "error"
-            || (JsonEvents.Text(e, "type") == "item.completed" && JsonEvents.Text(JsonEvents.Child(e, "item"), "type") == "command_execution"));
+            || (JsonEvents.Text(e, "type") == "item.completed" && JsonEvents.Child(e, "item") is { } item
+                && JsonEvents.Text(item, "type") == "command_execution" && !ReadsOnlySkills(JsonEvents.Text(item, "command") ?? "")));
+
+    // A command that only reads skills names a SKILL.md in each of its steps, whether it runs them through
+    // PowerShell, as on Windows, or bash.
+    private static bool ReadsOnlySkills(string command)
+    {
+        var steps = Steps().Split(command).Where(step => step.Trim().Trim('"', '\\').Length > 0).ToList();
+        return steps.Count > 0 && steps.All(step => step.Contains("SKILL.md", StringComparison.Ordinal));
+    }
 
     // Paths ending in SKILL.md: single-quoted, double-quoted or bare, in the order they appear. PowerShell
     // commands on Windows carry doubled backslashes.
@@ -79,4 +106,7 @@ public static partial class CodexStream
 
     [GeneratedRegex(@"^[A-Za-z]:[\\/]", RegexOptions.CultureInvariant)]
     private static partial Regex WindowsDrive();
+
+    [GeneratedRegex(@";|&&|\|\||\n", RegexOptions.CultureInvariant)]
+    private static partial Regex Steps();
 }

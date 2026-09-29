@@ -65,6 +65,26 @@ public class TriggerScoringTests
             problems.Select(problem => (problem.Kind, problem.Prompt, problem.Expected, problem.Picked, problem.Count, problem.Runs)));
     }
 
+    // The first real run: Codex read using-superpowers first in many runs, but not all, so it wasn't background,
+    // and counting only the first load turned 14 good runs into misses. A run counts the skill if it loaded it at all.
+    [Fact]
+    public void A_skill_loaded_after_another_still_counts_and_a_collision_names_the_first_other_skill()
+    {
+        SessionResult[] runs =
+        [
+            Result(0, 1, "using-superpowers", "deploy"), Result(0, 2, "deploy"), Result(0, 3, "using-superpowers", "systematic-debugging"),
+            Result(2, 1), Result(2, 2, "tables", "deploy"),
+        ];
+
+        var results = TriggerScoring.Score(runs, Prompts);
+
+        Assert.Empty(results.Background);
+        Assert.Equal((2, 1, 1), (results.Scores[0].TruePositives, results.Scores[0].FalsePositives, results.Scores[0].FalseNegatives));
+        Assert.Equal(
+            [(ProblemKind.Collision, "using-superpowers"), (ProblemKind.FalseTrigger, "deploy")],
+            results.Problems.Select(problem => (problem.Kind, problem.Picked)));
+    }
+
     [Fact]
     public void A_session_with_a_problem_is_left_out_and_reported()
     {

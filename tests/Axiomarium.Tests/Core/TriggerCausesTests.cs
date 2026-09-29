@@ -36,15 +36,34 @@ public class TriggerCausesTests
     }
 
     [Fact]
-    public void A_cut_or_name_only_entry_or_a_listing_over_budget_comes_before_the_wording()
+    public void A_cut_or_name_only_entry_comes_before_the_wording()
     {
         const string prompt = "Cut a release of the shop.";
 
         Assert.Equal("deploy's description is cut short in the listing", Cause(Listing([Listed("deploy", "Deploys.", cut: true), Ship]), ProblemKind.Collision, prompt, "deploy", "ship"));
         Assert.Equal("deploy is listed by name only, as skillOverrides sets it", Cause(Listing([Listed("deploy", "Deploys.", nameOnly: true), Ship]), ProblemKind.Collision, prompt, "deploy", "ship"));
+    }
+
+    // The first real run gave every Codex problem the same over-budget cause, which hid the wording. The budget
+    // is a fact about the whole listing, so it's said once, for the harness.
+    [Fact]
+    public void A_listing_over_budget_is_a_note_for_the_harness_and_each_problem_keeps_its_wording()
+    {
+        var listing = Listing([Deploy, Ship, Tables], overBudget: true);
+        var codex = new Resolution([], [])
+        {
+            Skills = [Deploy],
+            Listing = new SkillListing(8470, 5440, "tokens", "2% of a 272k-token context window", CodexSkillRules.ListingBudget),
+        };
+
+        Assert.Equal("the prompt shares cut and release with ship, and shop with deploy", Cause(listing, ProblemKind.Collision, "Cut a release of the shop.", "deploy", "ship"));
         Assert.Equal(
-            "the listing is over its budget, assuming a 200k-token context window, so deploy may be listed by name only",
-            Cause(Listing([Deploy, Ship], overBudget: true), ProblemKind.Collision, prompt, "deploy", "ship"));
+            "its skill listing is over budget, 9,000 of 8,000 characters assuming a 200k-token context window, so some skills are listed by name only",
+            TriggerCauses.BudgetNote(listing));
+        Assert.Equal(
+            "its skill listing is over budget, about 8,470 of 5,440 tokens assuming 2% of a 272k-token context window, so descriptions are shortened and skills dropped from the end",
+            TriggerCauses.BudgetNote(codex));
+        Assert.Null(TriggerCauses.BudgetNote(Listing([Deploy])));
     }
 
     // Terms weigh more the rarer they are in the listing, as axm triggers weighs them.

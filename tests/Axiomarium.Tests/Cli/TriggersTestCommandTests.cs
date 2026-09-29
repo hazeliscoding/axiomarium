@@ -82,6 +82,17 @@ public class TriggersTestCommandTests
     }
 
     [Fact]
+    public void A_listing_over_budget_is_noted_once_under_its_harness()
+    {
+        using var vault = Shop().Write("home/.claude/settings.json", """{ "skillListingBudgetFraction": 0.0001 }""");
+
+        var (_, output, _) = Test(vault, new FakeRunner(Respond) { FolderRoot = vault.Root }, "--harness", "claude-code");
+
+        Assert.Contains("  CLAUDE CODE 2.1.284 // picks by claude-opus-5-5\n  note: its skill listing is over budget, ", output);
+        Assert.Contains(" of 80 characters assuming a 200k-token context window, so some skills are listed by name only\n  01  deploy", output);
+    }
+
+    [Fact]
     public void A_harness_that_is_not_installed_is_skipped_and_the_other_still_runs()
     {
         using var vault = Shop();

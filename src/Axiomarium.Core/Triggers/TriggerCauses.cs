@@ -15,8 +15,8 @@ public static class TriggerCauses
     /// <param name="listings">What each harness listed in the test's copy of the repo.</param>
     /// <returns>
     /// The problems, each with its cause: the expected skill isn't listed, with its rule; its description is cut;
-    /// it's listed by name only; the listing is over its budget, with the assumption stated; or else the words the
-    /// prompt shares with each skill, the rarest in the listing first. When none applies, it says no cause was found.
+    /// it's listed by name only; or else the words the prompt shares with each skill, the rarest in the listing
+    /// first. When none applies, it says no cause was found. A listing over its budget is <see cref="BudgetNote"/>.
     /// </returns>
     public static IReadOnlyList<ProblemRuns> Explain(IReadOnlyList<ProblemRuns> problems, IReadOnlyDictionary<Harness, Resolution> listings) =>
         [.. problems.Select(problem => problem with { Cause = listings.TryGetValue(problem.Harness, out var listing) ? Cause(problem, listing) : "no cause found in the listing" })];
@@ -41,11 +41,6 @@ public static class TriggerCauses
             {
                 return $"{expected} is listed by name only, as skillOverrides sets it";
             }
-
-            if (listing.Listing is { OverBudget: true } budget)
-            {
-                return $"the listing is over its budget, assuming {budget.Assumption}, so {expected} may be listed by name only";
-            }
         }
 
         var weights = Weights(listing);
@@ -65,6 +60,25 @@ public static class TriggerCauses
             _ => "no cause found in the listing",
         };
     }
+
+    /// <summary>
+    /// What a listing over its budget does to every skill in it, said once for the harness rather than as each
+    /// problem's cause, since it applies to them all and would hide their wording.
+    /// </summary>
+    /// <param name="listing">What the harness listed.</param>
+    /// <returns>
+    /// The note, with the size, the budget and what the budget assumes, or <see langword="null"/> when the listing
+    /// fits. Claude Code lists some skills by name only; Codex, which counts tokens, shortens descriptions and then
+    /// drops skills from the end.
+    /// </returns>
+    public static string? BudgetNote(Resolution listing) => listing.Listing switch
+    {
+        { OverBudget: true, Unit: "tokens" } budget =>
+            $"its skill listing is over budget, about {budget.Size:N0} of {budget.Budget:N0} tokens assuming {budget.Assumption}, so descriptions are shortened and skills dropped from the end",
+        { OverBudget: true } budget =>
+            $"its skill listing is over budget, {budget.Size:N0} of {budget.Budget:N0} {budget.Unit} assuming {budget.Assumption}, so some skills are listed by name only",
+        _ => null,
+    };
 
     // How rare each stem is among the listed skills' text: the same smoothed IDF axm triggers weighs overlap with.
     private static Dictionary<string, double> Weights(Resolution listing)
