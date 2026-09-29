@@ -152,6 +152,16 @@ Axiomarium is my lab for building, testing and debugging AI coding environments 
 - **`axm triggers` finds overlap, not collisions.** For each harness it compares every skill listed from the repo root, plus the vault's skills as they'd be listed after sync (their description and `use_when`), on the text the model sees. A term weighs more the rarer it is in that listing, and each pair above a fixed threshold is shown with the terms it shares. It exits 0 whenever it ran and isn't a doctor finding, because only `triggers test` in v0.4 can call a pair a collision.
 - **How `axm triggers` scores overlap (2026-09-28).** Each skill's text is its name, without a namespace such as a plugin's, and the entry the harness shows; a vault skill's is its `description` and `use_when`, not cut. Words are lowercased, common words dropped and forms of a word joined by a small stemmer. A pair's score is the cosine of TF-IDF weights, with IDF smoothed as ln(1 + N/df) so two skills of two can still overlap, and pairs from 0.15 are shown. The threshold was set on a real setup of 80 Claude Code and 60 Codex skills: from 0.15 the pairs share what they're for, such as two document converters or two skills for one tool, and below it pairs increasingly share only incidental words. A name listed twice is compared once, since `skill-name-clash` reports the copy, and built-in skills are left out because their text isn't recorded.
 
+### Trigger testing (v0.4)
+
+- **Trigger tests run against the real setup (2026-09-28).** `axm triggers test` copies the repo to a throwaway folder outside the home folder (`C:\axm-triggers\<run>` on Windows, `/tmp/axm-triggers/<run>` elsewhere), writes the vault's skills into it as each harness's skill files, the way sync will in v0.9, and launches the harness there with the user's real home. Every skill the agent actually sees competes, and the user's hooks and plugins run, as in real use. The repo is never written to, and the copy is deleted afterwards. A sealed home is repeatable but blind to the collisions that matter, so it waits in Later.
+- **Both harnesses, with the pick read from the harness.** Claude Code runs `claude -p --output-format stream-json`, and its first `Skill` tool call names the skill it picked. Codex runs `codex exec --json` in a read-only sandbox, and its first read of a listed skill's `SKILL.md` is the pick, since that's what Codex's source counts as use. Each session stops at the model's first action, and "no skill" is a result. A spike confirms both streams before anything is built on them.
+- **Prompts are generated through the harness and kept in the vault.** `axm triggers generate <skill>` asks `claude -p` for about 20 prompts in one turn with tools off: positive, paraphrased, negative, adversarial and, when the skill has rivals, ambiguous ones aimed at the skills `axm triggers` finds overlapping. It shows them and writes `skills/<name>/evals/trigger/prompts.yaml` only after approval in the same run (`--yes` without a terminal), labeled with the harness, model and date that wrote them. It never edits `asset.yaml`: setting `evals.trigger: true` is the owner's claim. The harness is the only way `axm` reaches a model, so there's no API key and no HTTP client.
+- **The harness's own model picks, three runs per prompt.** Tests use the model each harness is set to, because that's what picks skills in real sessions, and run each prompt three times, so results are rates. `--model` and `--runs` override both. The output names the model, the harness and its version.
+- **Scores count runs, and causes come from the listing.** Precision and recall for each skill and harness count runs over the skill's own prompts, shown with their counts and no pass or fail threshold. A problem run is a collision (another skill fired), a false trigger or a miss. Each gets the first deterministic cause that applies: the expected skill isn't listed, with its rule; its description is cut; the listing is over its budget, with the stated assumption; or else the terms the prompt shares with each skill, weighted as `axm triggers` weights them. When none applies, it says no cause was found in the listing. The model is never asked why, because models make up reasons after the fact.
+- **The CLI starts the harnesses.** The Core holds the prompt schema, the brief, the parsers for the generated answer and each harness's event stream, the scoring and the causes, all pure. The CLI starts the processes behind a runner interface, and tests swap in one that replays captured streams, trimmed and with placeholder paths. `axm triggers test` exits 0 whenever it ran, and 2 when nothing could run.
+- **Docs stay in `docs/` (2026-09-28).** A synced GitHub wiki was considered and dropped: it's a separate git repo without PR review or CI, and links into `findings/` and `scenarios/` break there. `docs/README.md` is the home and the reading order. Reference pages sit next to the write-ups and link to what exists instead of repeating it, and tests check that links resolve and that every command and finding id is documented. The repo's GitHub Wiki tab goes off, so there's one place to look. A generated site can come from the same files near v1.0.
+
 ### Brand
 
 - **Brand follows the KAIRO design system.** KAIRO has no drawn logo: the name, set in Saira Condensed 600, is the mark.
@@ -312,11 +322,20 @@ Which skills each harness offers the model for a file, and which hooks run.
 
 ## M4: v0.4, trigger testing
 
-- [ ] `axm triggers generate <skill>`: positive, negative, ambiguous, paraphrased and adversarial prompts.
-- [ ] `axm triggers test`: precision and recall for each skill over the generated prompts, and each collision with its prompt, the skill selected and the skill expected.
-- [ ] Emit the prompts as fixtures that existing skill-eval tools can run.
+Whether the model picks the right skill for a prompt, measured on the real harnesses.
 
-**Done when:** `axm triggers test` on the vault's skills reports precision and recall for each one, and names every collision with a likely cause.
+- [ ] Spike: one `claude -p` and one `codex exec --json` session on the demo scenario, to settle how a pick shows in each stream, how to stop a session right after it, and how to get a one-turn text answer with tools off. The results go in the decisions, and the trimmed streams become parser fixtures.
+- [ ] Prompt files: `schemas/trigger-prompts.schema.json`, and `axm doctor` validating `skills/<name>/evals/trigger/prompts.yaml`.
+- [ ] `axm triggers generate <skill>`: the brief with the skill's rivals, one-turn generation with a schema check and one retry, the preview and approval, `--yes` and `--replace`.
+- [ ] The runner: the throwaway copy with the vault's skills written in, four sessions at a time, each stopped at its first action, and a parser for each harness's stream.
+- [ ] `axm triggers test`: the plan line, precision and recall for each skill and harness, and each collision, false trigger and miss with its cause.
+- [ ] `axm triggers export <skill> --format skill-creator|promptfoo`, printed, with CI running `promptfoo validate` on the export.
+- [ ] Prompts for `agent-asset-authoring`: generated, reviewed by the owner, committed, and `evals.trigger: true` set.
+- [ ] Docs in `docs/`: `docs/README.md` as the home and reading order, `docs/cli.md` for every command, option, exit code and output contract, and `docs/findings.md` linking each finding, with tests that relative links resolve and that every command and finding id is documented.
+- [ ] Write-up, "Does your agent pick the right skill?", on a real run.
+- [ ] Release v0.4.0.
+
+**Done when:** `axm triggers test` on the vault's skills reports precision and recall for each one on both harnesses, and names every collision, false trigger and miss with a cause from the listing; the vault skill's prompts were written by `generate` after approval; the promptfoo export validates in CI; the docs tests pass; and v0.4.0 installs from GitHub Releases and NuGet on fresh runners.
 
 **For planning (research, 2026-09-28).** Every trigger tester found drives the real harness headless: Anthropic's skill-creator runs `claude -p` and counts a first `Skill` call, `claude plugin eval` grades `tool_used: Skill`, and promptfoo asserts `skill-used` over the Claude Agent SDK and the Codex SDK. None calls a model API with a rebuilt listing, and Claude Code's listing text isn't published. `claude plugin eval` runs in a sealed home, so it can't see the other skills a prompt competes with. `codex exec --json` has no skill event; Codex's own source counts a read of `SKILL.md` as use. The formats worth emitting are the skill-creator's `{query, should_trigger}` set and a `promptfooconfig.yaml`.
 
@@ -392,6 +411,8 @@ Axiomarium reaches 1.0 when someone can clone it, then run `axm init`, `axm doct
 - Assets for my stack: `dotnet`, `angular`, `postgres` and `terraform` skills, `architecture-critic` and `scope-reviewer` agents, and workflows to investigate a bug, plan a feature, review a change and turn research into an ADR.
 - A "why did you ignore my rule?" skill that runs `axm explain` and says whether the rule loaded at all.
 - A local dashboard, `axm ui`, much later and only after the CLI: instruction graphs, activation heatmaps, token use, evidence history and failure timelines.
+- `axm triggers test` for any skill in the listing, not only the vault's, and a `--sealed` home for a clean baseline.
+- A generated docs site from `docs/`, near v1.0, with pages for wiring hooks and for how the ground truth works.
 - winget and Homebrew.
 - A short launch video.
 
@@ -402,6 +423,7 @@ Axiomarium reaches 1.0 when someone can clone it, then run `axm init`, `axm doct
 - An LLM gateway or a model router.
 - An observability service, or anything hosted: no accounts and no telemetry.
 - Silently rewriting instruction files. `axm` recommends, and writes only when asked.
+- Asking the model why it picked a skill. Causes come from the listing.
 
 ## How we'll know it works
 
