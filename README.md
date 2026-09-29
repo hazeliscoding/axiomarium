@@ -114,7 +114,7 @@ AXM EXPLAIN // src/api/orders.cs
   02  AGENTS.md              project             at launch
   --  src/api/AGENTS.md      NOT LOADED  below the launch directory
 
-  CODEX SKILLS // 1 listed · 52 of 5,440 tokens, assuming 2% of a 272k-token context window, that of Codex's default models
+  CODEX SKILLS // 1 listed · 48 of 5,440 tokens, assuming 2% of a 272k-token context window, that of Codex's default models
   01  db-migration   .agents/skills/db-migration/SKILL.md   repo   at launch
 
   CODEX HOOKS // at session start and around an edit of the file
