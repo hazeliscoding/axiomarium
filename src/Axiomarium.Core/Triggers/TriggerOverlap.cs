@@ -8,7 +8,8 @@ namespace Axiomarium.Core.Triggers;
 /// <param name="Name">The name the listing shows, or a vault skill's asset name, which sync would list it by.</param>
 /// <param name="Path">Its absolute <c>SKILL.md</c> or command file, or a vault skill's <c>asset.yaml</c>.</param>
 /// <param name="FromVault">Whether it's a vault skill, compared on its <c>description</c> and <c>skill.use_when</c> as sync would list it.</param>
-public sealed record ComparedSkill(string Name, string Path, bool FromVault);
+/// <param name="Text">What its listing entry shows after the name, or a vault skill's description and <c>use_when</c>. Empty for a skill listed by name only.</param>
+public sealed record ComparedSkill(string Name, string Path, bool FromVault, string Text);
 
 /// <summary>Two skills in one listing whose text shares terms that are rare in that listing.</summary>
 /// <param name="First">The skill listed first.</param>
@@ -86,11 +87,12 @@ public static class TriggerOverlap
 
             // A name listed twice is a clash the doctor reports; comparing each copy would repeat every pair.
             var texts = listed.DistinctBy(skill => skill.Name, StringComparer.Ordinal)
-                .Select(skill => (Skill: new ComparedSkill(skill.Name, skill.Path!, false), Text: skill.Text ?? "")).ToList();
+                .Select(skill => (Skill: new ComparedSkill(skill.Name, skill.Path!, false, skill.Text ?? ""), Text: skill.Text ?? "")).ToList();
             var repeats = listed.Count - texts.Count;
             foreach (var asset in vaultSkills.Where(asset => asset.Manifest!.Supports.ContainsKey(harness.Harness.Name())))
             {
-                var synced = (Skill: new ComparedSkill(asset.Name, Path.GetFullPath(Path.Combine(vaultRoot!, asset.ManifestFile!)), true), Text: $"{asset.Manifest!.Description} - {asset.Manifest.UseWhen}");
+                var text = $"{asset.Manifest!.Description} - {asset.Manifest.UseWhen}";
+                var synced = (Skill: new ComparedSkill(asset.Name, Path.GetFullPath(Path.Combine(vaultRoot!, asset.ManifestFile!)), true, text), Text: text);
                 var at = texts.FindIndex(text => text.Skill.Name == asset.Name);
                 texts.RemoveAll(text => text.Skill.Name == asset.Name);
                 texts.Insert(at < 0 ? texts.Count : at, synced);
@@ -101,6 +103,29 @@ public static class TriggerOverlap
 
         return new TriggerResult(new TriggerReport(repoRoot, vault is null ? null : vaultRoot, overlaps), null);
     }
+
+    /// <summary>
+    /// The skills a vault skill overlaps most, across every harness's listing: the ones an ambiguous trigger
+    /// prompt should sit between.
+    /// </summary>
+    /// <param name="report">A report that compared the vault's skills.</param>
+    /// <param name="skill">The vault skill's name.</param>
+    /// <param name="count">How many rivals to return at most.</param>
+    /// <returns>
+    /// Each rival once, by the name its listing shows, with the text the model sees, highest score first.
+    /// Empty when <paramref name="skill"/> isn't a vault skill or overlaps nothing.
+    /// </returns>
+    public static IReadOnlyList<(string Name, string Text)> Rivals(TriggerReport report, string skill, int count = 3) =>
+        [.. report.Harnesses
+            .SelectMany(harness => harness.Pairs)
+            .Select(pair => pair.First is { FromVault: true } first && first.Name == skill ? (Other: pair.Second, pair.Score)
+                : pair.Second is { FromVault: true } second && second.Name == skill ? (Other: pair.First, pair.Score)
+                : (Other: null, pair.Score))
+            .Where(rival => rival.Other is not null)
+            .OrderByDescending(rival => rival.Score)
+            .DistinctBy(rival => rival.Other!.Name, StringComparer.Ordinal)
+            .Take(count)
+            .Select(rival => (rival.Other!.Name, rival.Other.Text))];
 
     // TF-IDF cosine: a term's weight grows slowly with its count in the text, and with how few texts in the
     // listing use it. The IDF is smoothed, so a term two skills of two share still counts. A name counts
