@@ -88,14 +88,14 @@ public static partial class CodexStream
 
     // Paths ending in SKILL.md: single-quoted, double-quoted or bare, in the order they appear. PowerShell
     // commands on Windows carry doubled backslashes.
-    private static List<string> SkillFiles(string command, string workingDirectory, string home) =>
+    internal static List<string> SkillFiles(string command, string workingDirectory, string home) =>
         [.. SkillPath().Matches(command)
             .Select(match => match.Groups.Values.Skip(1).First(group => group.Success).Value.Replace(@"\\", @"\", StringComparison.Ordinal))
             .Select(path => path.StartsWith("~/", StringComparison.Ordinal) || path.StartsWith(@"~\", StringComparison.Ordinal) ? Path.Combine(home, path[2..])
                 : Path.IsPathRooted(path) || WindowsDrive().IsMatch(path) ? path
                 : Path.Combine(workingDirectory, path))];
 
-    private static string Folder(string path)
+    internal static string Folder(string path)
     {
         var parts = path.Split('/', '\\');
         return parts.Length > 1 ? parts[^2] : path;

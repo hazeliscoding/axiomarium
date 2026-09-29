@@ -1,4 +1,3 @@
-using System.Text;
 using System.Text.RegularExpressions;
 using Axiomarium.Core.Paths;
 
@@ -24,8 +23,6 @@ public sealed record CheckResult(EvalCheck Check, bool Passed, string Observed);
 /// <summary>Decides an eval case's checks for one run, from what the session did and what it left in the copy.</summary>
 public static partial class EvalChecks
 {
-    private static readonly string[] Launchers = [".exe", ".cmd", ".bat", ".com"];
-
     /// <summary>Decides each of <paramref name="checks"/> for one run.</summary>
     /// <param name="checks">The case's checks.</param>
     /// <param name="session">What the session did.</param>
@@ -55,16 +52,16 @@ public static partial class EvalChecks
     /// <returns>Whether a step starts with those words. Always <see langword="false"/> for a blank prefix.</returns>
     public static bool Ran(string command, string prefix)
     {
-        var wanted = Words(prefix);
+        var wanted = CommandLine.Words(prefix);
         if (wanted.Count == 0)
         {
             return false;
         }
 
-        wanted[0] = Program(wanted[0]);
+        wanted[0] = CommandLine.Program(wanted[0]);
         foreach (var step in Steps().Split(command))
         {
-            var words = Words(step);
+            var words = CommandLine.Words(step);
             if (words.Count > 0 && words[0] == "&")
             {
                 words.RemoveAt(0);
@@ -75,7 +72,7 @@ public static partial class EvalChecks
                 continue;
             }
 
-            words[0] = Program(words[0]);
+            words[0] = CommandLine.Program(words[0]);
             if (wanted.Select((word, i) => string.Equals(word, words[i], StringComparison.OrdinalIgnoreCase)).All(same => same))
             {
                 return true;
@@ -163,62 +160,6 @@ public static partial class EvalChecks
         1 => names[0],
         _ => $"{string.Join(", ", names.Take(names.Count - 1))} and {names[^1]}",
     };
-
-    // Splits a step into words at whitespace outside quotes, and drops the quotes.
-    private static List<string> Words(string text)
-    {
-        var words = new List<string>();
-        var word = new StringBuilder();
-        var inWord = false;
-        char? quote = null;
-        foreach (var character in text)
-        {
-            if (quote is not null)
-            {
-                if (character == quote)
-                {
-                    quote = null;
-                }
-                else
-                {
-                    word.Append(character);
-                }
-            }
-            else if (character is '"' or '\'')
-            {
-                quote = character;
-                inWord = true;
-            }
-            else if (char.IsWhiteSpace(character))
-            {
-                if (inWord)
-                {
-                    words.Add(word.ToString());
-                    word.Clear();
-                    inWord = false;
-                }
-            }
-            else
-            {
-                word.Append(character);
-                inWord = true;
-            }
-        }
-
-        if (inWord)
-        {
-            words.Add(word.ToString());
-        }
-
-        return words;
-    }
-
-    private static string Program(string word)
-    {
-        var name = word[(word.LastIndexOfAny(['/', '\\']) + 1)..];
-        var launcher = Launchers.FirstOrDefault(extension => name.EndsWith(extension, StringComparison.OrdinalIgnoreCase));
-        return launcher is null ? name : name[..^launcher.Length];
-    }
 
     [GeneratedRegex(@"&&|\|\||;|\||\r?\n")]
     private static partial Regex Steps();
