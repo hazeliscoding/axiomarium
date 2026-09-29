@@ -300,6 +300,7 @@ public static partial class AxmCli
         command.Options.Add(folder);
         command.Subcommands.Add(GenerateCommand(session));
         command.Subcommands.Add(TestCommand(session));
+        command.Subcommands.Add(ExportCommand(session));
         command.SetAction(result =>
         {
             var start = Path.GetFullPath(result.GetValue(folder)!, session.CurrentDirectory);
