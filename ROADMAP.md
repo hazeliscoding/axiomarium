@@ -340,9 +340,15 @@ Whether the model picks the right skill for a prompt, measured on the real harne
 - [x] Prompts for `agent-asset-authoring`: generated, reviewed by the owner, committed, and `evals.trigger: true` set.
 - [x] Docs in `docs/`: `docs/README.md` as the home and reading order, `docs/cli.md` for every command, option, exit code and output contract, and `docs/findings.md` linking each finding, with tests that relative links resolve and that every command and finding id is documented.
 - [x] Write-up, "Does your agent pick the right skill?", on a real run.
-- [ ] Release v0.4.0.
+- [x] Release v0.4.0.
 
 **Done when:** `axm triggers test` on the vault's skills reports precision and recall for each one on both harnesses, and names every collision, false trigger and miss with a cause from the listing; the vault skill's prompts were written by `generate` after approval; the promptfoo export validates in CI; the docs tests pass; and v0.4.0 installs from GitHub Releases and NuGet on fresh runners.
+
+**Done (2026-09-29).** v0.4.0 is out on [GitHub Releases](https://github.com/hazeliscoding/axiomarium/releases/tag/v0.4.0) and on [NuGet](https://www.nuget.org/packages/Axiomarium).
+- `axm triggers test` on `agent-asset-authoring`, the vault's skill, reported precision and recall on both harnesses, 3 runs of each of its 17 prompts: Claude Code 2.1.284 on claude-opus-5-5 picked it in 27 of 27 runs that should have and none that shouldn't; Codex 0.156.1 on gpt-6-astra had precision 1.00 and recall 0.78 over the 32 of 51 sessions that ran before the plan's usage limit, and on gpt-6-sol precision 1.00 and recall 0.22 over all 51. Every collision, false trigger and miss was listed with a cause from the listing, or said that the listing shows none.
+- The 17 prompts were written by `axm triggers generate`, reviewed by the owner before they were committed, and `evals.trigger: true` set.
+- CI validates the promptfoo export on every push, with a broken export as the positive control ([run](https://github.com/hazeliscoding/axiomarium/actions/runs/36605474626)), and the docs tests pass.
+- The release run installed the binary and the dotnet tool on fresh Linux, Windows and macOS runners and ran them, all on the first attempt ([run](https://github.com/hazeliscoding/axiomarium/actions/runs/36605498989)).
 
 **For planning (research, 2026-09-28).** Every trigger tester found drives the real harness headless: Anthropic's skill-creator runs `claude -p` and counts a first `Skill` call, `claude plugin eval` grades `tool_used: Skill`, and promptfoo asserts `skill-used` over the Claude Agent SDK and the Codex SDK. None calls a model API with a rebuilt listing, and Claude Code's listing text isn't published. `claude plugin eval` runs in a sealed home, so it can't see the other skills a prompt competes with. `codex exec --json` has no skill event; Codex's own source counts a read of `SKILL.md` as use. The formats worth emitting are the skill-creator's `{query, should_trigger}` set and a `promptfooconfig.yaml`.
 
