@@ -4,6 +4,10 @@ This file records the user-visible changes to `axm` and the vault's schemas. The
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-09-29
+
+Trigger testing: whether the agent picks the right skill for a prompt, measured on the real Claude Code and Codex.
+
 ### Added
 
 - The `agent-asset-authoring` skill has trigger prompts in `evals/trigger/prompts.yaml`, 17 of them, written by `axm triggers generate` and reviewed, and sets `evals.trigger: true`.
@@ -70,7 +74,8 @@ The asset model: agent configuration can be inspected and validated like softwar
   - the `deterministic-boundaries` policy: nine rules for which decisions belong to code instead of the model, eight of them enforced by the determinism auditor;
   - the `prompt-fossil` experiment: the method for finding instructions that cost tokens but no longer change behavior. Designed, not run yet.
 
-[Unreleased]: https://github.com/hazeliscoding/axiomarium/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/hazeliscoding/axiomarium/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/hazeliscoding/axiomarium/releases/tag/v0.4.0
 [0.3.0]: https://github.com/hazeliscoding/axiomarium/releases/tag/v0.3.0
 [0.2.0]: https://github.com/hazeliscoding/axiomarium/releases/tag/v0.2.0
 [0.1.0]: https://github.com/hazeliscoding/axiomarium/releases/tag/v0.1.0
