@@ -150,6 +150,7 @@ Axiomarium is my lab for building, testing and debugging AI coding environments 
 - **`explain --json` stays shape 1.** Each harness gains `skills`, `notListed`, `listing` and `hooks`. No existing field changes, so `schemaVersion` stays 1.
 - **Skill and hook findings are for what the user can fix (2026-09-28).** They leave out plugin, synced, bundled and managed skills and hooks. A copied skills folder clashes a skill at a time, so `skill-name-clash` makes one finding for the clashes between the same folders, naming up to three skills: on a real home with about 150 skills, 21 near-identical warnings became one, which matters because `session-doctor` hands every warning to the model. `skill-paths-match-nothing` checks only the repo's own skills, since a personal skill may match in another repo, and the skill's own files count as matches, because Claude Code lists the skill when the agent reads them.
 - **`axm triggers` finds overlap, not collisions.** For each harness it compares every skill listed from the repo root, plus the vault's skills as they'd be listed after sync (their description and `use_when`), on the text the model sees. A term weighs more the rarer it is in that listing, and each pair above a fixed threshold is shown with the terms it shares. It exits 0 whenever it ran and isn't a doctor finding, because only `triggers test` in v0.4 can call a pair a collision.
+- **How `axm triggers` scores overlap (2026-09-28).** Each skill's text is its name, without a namespace such as a plugin's, and the entry the harness shows; a vault skill's is its `description` and `use_when`, not cut. Words are lowercased, common words dropped and forms of a word joined by a small stemmer. A pair's score is the cosine of TF-IDF weights, with IDF smoothed as ln(1 + N/df) so two skills of two can still overlap, and pairs from 0.15 are shown. The threshold was set on a real setup of 80 Claude Code and 60 Codex skills: from 0.15 the pairs share what they're for, such as two document converters or two skills for one tool, and below it pairs increasingly share only incidental words. A name listed twice is compared once, since `skill-name-clash` reports the copy, and built-in skills are left out because their text isn't recorded.
 
 ### Brand
 
@@ -296,7 +297,7 @@ Which skills each harness offers the model for a file, and which hooks run.
 | `hook-never-runs` | warning | A hook's matcher isn't a valid regex, it sets `if` on an event that isn't a tool event, or Codex skips its handler type |
 | `codex-hook-untrusted` | warning | A Codex hook was never trusted, changed since it was, or sits in a project that isn't trusted, so it never runs |
 
-- [ ] `axm triggers`: overlapping descriptions in each harness's listing and the vault's skills, with the terms they share.
+- [x] `axm triggers`: overlapping descriptions in each harness's listing and the vault's skills, with the terms they share.
 - [ ] Write-up, "Which skills your agent can see", on the demo scenario with skills and a hook added, and `docs/demo/explain.tape` updated to show them.
 - [ ] Release v0.3.0, then render the tape with the release.
 
