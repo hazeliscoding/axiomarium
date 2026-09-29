@@ -119,7 +119,7 @@ internal static class ClaudeCodeSkills
     }
 
     // Each enabled plugin that's on disk, by its name and folder.
-    private static IEnumerable<(string Plugin, string Root)> Plugins(Machine machine, ClaudeSettings settings)
+    internal static IEnumerable<(string Plugin, string Root)> Plugins(Machine machine, ClaudeSettings settings)
     {
         var folder = Path.Combine(machine.ClaudeConfig, "plugins");
         var installed = ClaudeSettings.Read(Path.Combine(folder, "installed_plugins.json"))?["plugins"] as JsonObject;
@@ -166,7 +166,7 @@ internal static class ClaudeCodeSkills
         ManifestPaths(root, "commands") is { Count: > 0 } folders ? folders : [Path.Combine(root, "commands")];
 
     // A manifest path is one string or a list of them, relative to the plugin's folder.
-    private static List<string> ManifestPaths(string root, string key)
+    internal static List<string> ManifestPaths(string root, string key)
     {
         var value = ClaudeSettings.Read(Path.Combine(root, ".claude-plugin", "plugin.json"))?[key];
         IEnumerable<string?> paths = value is JsonArray list ? list.Select(Text) : [Text(value)];

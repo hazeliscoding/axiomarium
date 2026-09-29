@@ -131,6 +131,81 @@ public class ScenarioReplayTests
             resolution.Skills.Select(skill => (skill.Name, TestMachine.Relative(run.Root, skill.Path!), skill.Cut ? "cut" : "whole")));
     }
 
+    // The recording holds the hooks that ran: session start always, and around the edit when the agent
+    // edited. Hooks on a read aren't modeled.
+    [Theory]
+    [MemberData(nameof(Scenarios))]
+    public void The_claude_code_hooks_that_ran_match_the_recording(string name)
+    {
+        using var run = Copy(name);
+        var scenario = Axiomarium.GroundTruth.Scenario.Load(Path.Combine(ScenariosFolder, name));
+        var recording = JsonNode.Parse(File.ReadAllText(Path.Combine(ScenariosFolder, name, "expected.json")))!["claude-code"]!["hooks"]!.AsArray();
+        var modeled = scenario.Action == Axiomarium.GroundTruth.Scenario.Edit ? new[] { "SessionStart", "PreToolUse", "PostToolUse" } : ["SessionStart"];
+
+        var resolution = ClaudeCodeModel.Resolve(
+            Path.Combine(run.Root, "repo", scenario.Launch),
+            Path.Combine(run.Root, "repo", scenario.Target),
+            TestMachine.For(run.Root));
+
+        static bool Modeled(string hook) =>
+            hook.StartsWith("SessionStart:", StringComparison.Ordinal) || hook.EndsWith(":Edit", StringComparison.Ordinal) || hook.EndsWith(":Write", StringComparison.Ordinal);
+        Assert.Equal(
+            recording
+                .Select(entry => (File: entry!["file"]!.GetValue<string>(), Label: entry["label"]!.GetValue<string>(), Hook: entry["hook"]!.GetValue<string>()))
+                .Where(entry => modeled.Contains(entry.Hook.Split(':')[0]) && Modeled(entry.Hook)),
+            resolution.Hooks
+                .Where(hook => hook.Runs && modeled.Contains(hook.Hook.Event))
+                .Select(hook => (Label(run.Root, hook.Hook), Hook: $"{hook.Hook.Event}:{hook.Input}"))
+                .Select(entry => (entry.Item1.File, entry.Item1.Label, entry.Hook))
+                .OrderBy(entry => Array.IndexOf(["SessionStart", "PreToolUse", "PostToolUse"], entry.Hook.Split(':')[0]))
+                .ThenBy(entry => entry.Hook, StringComparer.Ordinal)
+                .ThenBy(entry => entry.File, StringComparer.Ordinal)
+                .ThenBy(entry => entry.Label, StringComparer.Ordinal));
+    }
+
+    // hooks/list shows what Codex loads: not a project's hooks while it's untrusted, and not handlers it skips.
+    [Theory]
+    [MemberData(nameof(Scenarios))]
+    public void The_codex_hooks_match_the_recording(string name)
+    {
+        using var run = Copy(name);
+        var scenario = Axiomarium.GroundTruth.Scenario.Load(Path.Combine(ScenariosFolder, name));
+        var recording = JsonNode.Parse(File.ReadAllText(Path.Combine(ScenariosFolder, name, "expected.json")))!["codex"]!["hooks"]!.AsArray();
+
+        var resolution = CodexModel.Resolve(
+            Path.Combine(run.Root, "repo", scenario.Launch),
+            Path.Combine(run.Root, "repo", scenario.Target),
+            TestMachine.For(run.Root));
+
+        HarnessRule[] notLoaded = [CodexHookRules.ProjectUntrusted, CodexHookRules.HandlerSkipped, CodexHookRules.MatcherInvalid];
+        Assert.Equal(
+            recording.Select(entry => (
+                entry!["file"]!.GetValue<string>(),
+                entry["label"]!.GetValue<string>(),
+                entry["event"]!.GetValue<string>(),
+                entry["matcher"]?.GetValue<string>(),
+                entry["trust"]!.GetValue<string>(),
+                entry["hash"]!.GetValue<string>(),
+                entry["enabled"]?.GetValue<bool>() ?? true)),
+            resolution.ConfiguredHooks
+                .Where(hook => !notLoaded.Contains(hook.Blocked))
+                .Select(hook => (
+                    Label(run.Root, hook).File,
+                    Label(run.Root, hook).Label,
+                    char.ToLowerInvariant(hook.Event[0]) + hook.Event[1..],
+                    hook.Matcher,
+                    hook.Trust!,
+                    hook.Hash!,
+                    hook.Blocked != CodexHookRules.Disabled)));
+    }
+
+    // A scenario hook's command is "echo MARKER <file> <label>".
+    private static (string File, string Label) Label(string root, ConfiguredHook hook)
+    {
+        var parts = hook.Handler.Split(' ', 4);
+        return parts is ["echo", "MARKER", var file, var label] ? (file, label) : (TestMachine.Relative(root, hook.Path), hook.Handler);
+    }
+
     // A copy with the .git marker the recorder's `git init` gives each run, which a scenario can't hold.
     private static TempVault Copy(string name)
     {

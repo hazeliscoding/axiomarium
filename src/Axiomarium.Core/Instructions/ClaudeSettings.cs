@@ -21,6 +21,19 @@ internal enum InstructionFiles
     ManagedOnly,
 }
 
+/// <summary>Which hooks <c>disableAllHooks</c> turns off.</summary>
+internal enum HooksOff
+{
+    /// <summary>None.</summary>
+    None,
+
+    /// <summary>Every hook but the managed ones, when a settings file other than managed settings sets it.</summary>
+    AllButManaged,
+
+    /// <summary>Every hook, when managed settings set it.</summary>
+    All,
+}
+
 /// <summary>The Claude Code settings that decide which instruction files load.</summary>
 /// <param name="Mode">The Project instructions setting, read from managed and user settings only.</param>
 /// <param name="Excludes"><c>claudeMdExcludes</c> from every layer, matched against absolute paths.</param>
@@ -43,6 +56,15 @@ internal sealed record ClaudeSettings(InstructionFiles Mode, IReadOnlyList<Glob>
 
     /// <summary>The plugins <c>enabledPlugins</c> turns on, merged across the layers, by id such as <c>tools@market</c>, in id order.</summary>
     public IReadOnlyList<string> EnabledPlugins { get; init; } = [];
+
+    /// <summary>Which hooks <c>disableAllHooks</c> turns off: none, every hook but the managed ones, or all of them when managed settings set it.</summary>
+    public HooksOff HooksOff { get; init; }
+
+    /// <summary>Whether managed settings set <c>allowManagedHooksOnly</c>, so only managed hooks run.</summary>
+    public bool ManagedHooksOnly { get; init; }
+
+    /// <summary>Whether managed settings' <c>strictPluginOnlyCustomization</c> lists hooks, so settings files' hooks don't run.</summary>
+    public bool PluginHooksOnly { get; init; }
 
     public static ClaudeSettings Load(Machine machine, string launch)
     {
@@ -98,6 +120,14 @@ internal sealed record ClaudeSettings(InstructionFiles Mode, IReadOnlyList<Glob>
             SyncOff = new[] { managed, local, user }.Any(layer => layer?["syncClaudeAiSkills"]?.GetValueKind() == JsonValueKind.False),
             ListingBudgetFraction = First("skillListingBudgetFraction", JsonValueKind.Number) is { } fraction && fraction.TryGetValue<double>(out var share) ? share : 0.01,
             ListingMaxDescChars = First("skillListingMaxDescChars", JsonValueKind.Number) is { } cap && cap.TryGetValue<int>(out var chars) ? chars : 1536,
+
+            // disableAllHooks takes the value left after precedence, and reaches managed hooks only from managed settings.
+            HooksOff = Array.FindIndex(byPrecedence, layer => layer?["disableAllHooks"]?.GetValueKind() is JsonValueKind.True or JsonValueKind.False) is var at and >= 0
+                && byPrecedence[at]!["disableAllHooks"]!.GetValueKind() == JsonValueKind.True
+                    ? at == 0 ? HooksOff.All : HooksOff.AllButManaged
+                    : HooksOff.None,
+            ManagedHooksOnly = managed?["allowManagedHooksOnly"]?.GetValueKind() == JsonValueKind.True,
+            PluginHooksOnly = (managed?["strictPluginOnlyCustomization"] as JsonArray ?? []).Any(item => item?.GetValueKind() == JsonValueKind.String && item.GetValue<string>() == "hooks"),
         };
     }
 
