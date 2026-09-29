@@ -1,5 +1,5 @@
 {
-  "recorded": "2026-09-28",
+  "recorded": "2026-09-29",
   "claude-code": {
     "version": "2.1.284",
     "launch": [
@@ -157,6 +157,11 @@
       {
         "name": "skill-installer",
         "bundled": true,
+        "entry": "whole"
+      },
+      {
+        "name": "db-migration",
+        "file": "repo/.agents/skills/db-migration/SKILL.md",
         "entry": "whole"
       }
     ],
