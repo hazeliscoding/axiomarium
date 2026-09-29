@@ -1,0 +1,3 @@
+{"type":"system","subtype":"init","cwd":"C:\\axm-triggers\\run","session_id":"s1","tools":["mcp__docs__search"],"skills":["release"],"model":"claude-opus-5-5","permissionMode":"default","claude_code_version":"2.1.284","uuid":"u-init"}
+{"type":"assistant","message":{"id":"m-u-text","role":"assistant","model":"claude-opus-5-5","content":[{"type":"text","text":"{\"prompts\": [{\"prompt\": \"hello\", \"kind\": \"positive\", \"should_trigger\": true}]}"}]},"session_id":"s1","uuid":"u-text"}
+{"type":"result","subtype":"success","is_error":false,"num_turns":1,"result":"{\"prompts\": [{\"prompt\": \"hello\", \"kind\": \"positive\", \"should_trigger\": true}]}","session_id":"s1","uuid":"u-end"}

@@ -1,0 +1,6 @@
+{"type":"system","subtype":"hook_started","hook_id":"h1","hook_name":"SessionStart:startup","hook_event":"SessionStart","session_id":"s1","uuid":"u-hook"}
+{"type":"system","subtype":"init","cwd":"C:\\axm-triggers\\run","session_id":"s1","tools":["Bash","Read","Skill"],"skills":["release","code-review","init"],"model":"claude-opus-5-5","permissionMode":"default","claude_code_version":"2.1.284","uuid":"u-init"}
+{"type":"assistant","message":{"id":"m-u-skill","role":"assistant","model":"claude-opus-5-5","content":[{"type":"tool_use","id":"t-skill","name":"Skill","input":{"skill":"release"},"caller":{"type":"direct"}}]},"session_id":"s1","uuid":"u-skill"}
+{"type":"rate_limit_event","session_id":"s1","uuid":"u-rate"}
+{"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"t-skill","content":"Launching skill: release"}]},"session_id":"s1","uuid":"u-result"}
+{"type":"assistant","message":{"id":"m-u-bash","role":"assistant","model":"claude-opus-5-5","content":[{"type":"tool_use","id":"t-bash","name":"Bash","input":{"command":"git ls-files","description":"List the tracked files"},"caller":{"type":"direct"}}]},"session_id":"s1","uuid":"u-bash"}
