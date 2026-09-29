@@ -87,7 +87,7 @@ In a repo without a vault, `axm doctor` checks only the instruction files. Their
 
 `axm explain` shows what each harness loads for a file, what it silently drops, and which skills and hooks reach the agent:
 
-![A terminal runs axm explain on a demo shop. Claude Code loads CLAUDE.md and a path rule but skips both AGENTS.md files and a missing import, Codex loads AGENTS.md, and with --diff the two agents share no instructions.](docs/demo/explain.gif)
+![A terminal runs axm explain on a demo shop. Claude Code loads CLAUDE.md and a path rule but skips both AGENTS.md files and a missing import, lists a release skill and runs its after-edit hook. Codex loads AGENTS.md and lists a migration skill, but doesn't run its hook, because the project isn't trusted. With --diff, the two agents share no instructions and no skills.](docs/demo/explain.gif)
 
 ```text
 $ axm explain src/api/orders.cs
