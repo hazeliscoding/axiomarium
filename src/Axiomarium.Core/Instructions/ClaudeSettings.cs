@@ -54,6 +54,9 @@ internal sealed record ClaudeSettings(InstructionFiles Mode, IReadOnlyList<Glob>
     /// <summary><c>skillListingMaxDescChars</c>: where one entry's text is cut.</summary>
     public int ListingMaxDescChars { get; init; } = 1536;
 
+    /// <summary>The <c>model</c> setting, such as <c>opus[1m]</c>, or <see langword="null"/> when no layer sets it.</summary>
+    public string? Model { get; init; }
+
     /// <summary>The plugins <c>enabledPlugins</c> turns on, merged across the layers, by id such as <c>tools@market</c>, in id order.</summary>
     public IReadOnlyList<string> EnabledPlugins { get; init; } = [];
 
@@ -111,6 +114,7 @@ internal sealed record ClaudeSettings(InstructionFiles Mode, IReadOnlyList<Glob>
         return new ClaudeSettings(mode, excludes)
         {
             SkillOverrides = overrides,
+            Model = First("model", JsonValueKind.String)?.GetValue<string>(),
             EnabledPlugins = [.. plugins.Where(plugin => plugin.Value).Select(plugin => plugin.Key).Order(StringComparer.Ordinal)],
             BuiltInsOff = byPrecedence
                 .Select(layer => layer?["disableBundledSkills"]?.GetValueKind())

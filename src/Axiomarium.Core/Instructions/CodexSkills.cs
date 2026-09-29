@@ -69,10 +69,10 @@ internal static class CodexSkills
             foreach (var file in SkillFiles(folder))
             {
                 var directory = Path.GetDirectoryName(file)!;
-                var (valid, name, description) = ReadSkill(File.ReadAllText(file), Path.GetFileName(directory));
-                if (!valid)
+                var (problem, name, description) = ReadSkill(File.ReadAllText(file), Path.GetFileName(directory));
+                if (problem is not null)
                 {
-                    notListed.Add(new UnlistedSkill(name, file, CodexSkillRules.Invalid));
+                    notListed.Add(new UnlistedSkill(name, file, CodexSkillRules.Invalid, problem));
                     continue;
                 }
 
@@ -156,14 +156,15 @@ internal static class CodexSkills
         return files.Order(StringComparer.Ordinal);
     }
 
-    // Codex reads name and description, folds each onto one line, and needs a description.
-    private static (bool Valid, string Name, string? Description) ReadSkill(string content, string folder)
+    // Codex reads name and description, folds each onto one line, and needs a description. The problem says
+    // why it skips the skill, or is null when it doesn't.
+    private static (string? Problem, string Name, string? Description) ReadSkill(string content, string folder)
     {
         var lines = content.Replace("\r\n", "\n", StringComparison.Ordinal).Split('\n');
         var end = Array.FindIndex(lines, 1, line => line.Trim() == "---");
         if (lines[0].Trim() != "---" || end <= 1)
         {
-            return (false, folder, null);
+            return ("it has no frontmatter", folder, null);
         }
 
         var yaml = string.Join('\n', lines[1..end]);
@@ -175,13 +176,16 @@ internal static class CodexSkills
 
         if (parsed.Problem is not null || parsed.Root is not JsonObject root)
         {
-            return (false, folder, null);
+            return ("its frontmatter doesn't parse", folder, null);
         }
 
         string? Text(string field) => root[field] is JsonValue value ? string.Join(' ', value.ToString().Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries)) : null;
         var name = Text("name") is { Length: > 0 } given ? given : folder;
         var description = Text("description");
-        return (description is { Length: > 0 } && name.Length <= MaxNameChars, name, description);
+        var problem = description is not { Length: > 0 } ? "it has no description"
+            : name.Length > MaxNameChars ? $"its name is over {MaxNameChars} characters"
+            : null;
+        return (problem, name, description);
     }
 
     // When the YAML doesn't parse, Codex single-quotes a value that holds ": ", or that starts with a bracket,

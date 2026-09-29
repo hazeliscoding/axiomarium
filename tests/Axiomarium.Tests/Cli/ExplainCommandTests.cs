@@ -235,6 +235,38 @@ public class ExplainCommandTests
         Assert.Equal("if doesn't match", json["rules"]!["claude-code/hook-if-no-match"]!["label"]!.GetValue<string>());
     }
 
+    private static TempVault Bare() => new TempVault()
+        .Folder("repo/.git")
+        .Folder("home/.codex")
+        .Write("repo/src/app.ts", "export const a = 1;\n")
+        .Write("repo/.claude/skills/bare/SKILL.md", "---\nname: bare\n---\nFirst line.\n")
+        .Write("repo/.agents/skills/bare/SKILL.md", "---\nname: bare\n---\nFirst line.\n");
+
+    [Fact]
+    public void Says_why_a_skill_has_no_description()
+    {
+        using var vault = Bare();
+
+        var (_, output, _) = Explain(vault, "src/app.ts");
+
+        Assert.Contains("   at launch, first line as description\n", output);
+        Assert.Contains("NOT LISTED  SKILL.md can't be read: it has no description\n", output);
+    }
+
+    [Fact]
+    public void Json_says_why_a_skill_has_no_description()
+    {
+        using var vault = Bare();
+
+        var (_, output, _) = Explain(vault, "src/app.ts", "--json");
+
+        var json = JsonNode.Parse(output)!;
+        var claude = json["harnesses"]![0]!["skills"]!.AsArray().Single(skill => skill!["name"]!.GetValue<string>() == "bare")!;
+        var codex = json["harnesses"]![1]!["notListed"]![0]!;
+        Assert.Equal("it has no description", claude["fallback"]!.GetValue<string>());
+        Assert.Equal(("codex/skill-invalid", "it has no description"), (codex["rule"]!.GetValue<string>(), codex["detail"]!.GetValue<string>()));
+    }
+
     [Fact]
     public void Diff_needs_both_harnesses()
     {

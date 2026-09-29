@@ -274,4 +274,17 @@ public class ClaudeCodeSkillsTests
         Assert.Equal(16000, resolution.Listing!.Budget);
         Assert.Equal("- long: ".Length + 100, resolution.Skills.Single().Chars);
     }
+
+    [Theory]
+    [InlineData("opus[1m]", 40_000, "a 1M-token context window, from the model setting")]
+    [InlineData("claude-sonnet-5", 40_000, "a 1M-token context window, from the model setting")]
+    [InlineData("haiku", 8_000, "a 200k-token context window")]
+    public void A_model_with_a_1M_window_raises_the_budget_and_says_so(string model, int budget, string assumption)
+    {
+        using var vault = Repo().Write("repo/.claude/settings.json", $$"""{ "model": "{{model}}" }""");
+
+        var listing = Resolve(vault).Listing!;
+
+        Assert.Equal((budget, assumption), (listing.Budget, listing.Assumption));
+    }
 }
