@@ -206,14 +206,15 @@ public class ScenarioReplayTests
         return parts is ["echo", "MARKER", var file, var label] ? (file, label) : (TestMachine.Relative(root, hook.Path), hook.Handler);
     }
 
-    // A copy with the .git marker the recorder's `git init` gives each run, which a scenario can't hold.
+    // A copy with the .git marker the recorder's `git init` gives each run, which a scenario can't hold, and
+    // with {run} filled in, as the recorder does.
     private static TempVault Copy(string name)
     {
         var run = new TempVault();
         var source = Path.Combine(ScenariosFolder, name);
         foreach (var file in Directory.EnumerateFiles(source, "*", SearchOption.AllDirectories))
         {
-            run.Write(Path.GetRelativePath(source, file).Replace('\\', '/'), File.ReadAllText(file));
+            run.Write(Path.GetRelativePath(source, file).Replace('\\', '/'), File.ReadAllText(file).Replace("{run}", run.Root.Replace('\\', '/'), StringComparison.Ordinal));
         }
 
         return run.Folder("repo/.git").Folder("home/.codex");

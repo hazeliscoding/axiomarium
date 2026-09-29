@@ -53,11 +53,22 @@ public class CodexHookListTests
 
         Assert.Equal(
             [
-                new CodexHook("home/.codex/hooks.json", "after-edit", "postToolUse", "apply_patch", "untrusted", "sha256:abc"),
-                new CodexHook("repo/.codex/hooks.json", "start", "sessionStart", null, "trusted", "sha256:abc"),
+                new CodexHook("home/.codex/hooks.json", "after-edit", "postToolUse", "apply_patch", "untrusted", "sha256:abc", Enabled: true),
+                new CodexHook("repo/.codex/hooks.json", "start", "sessionStart", null, "trusted", "sha256:abc", Enabled: true),
             ],
             hooks);
         Assert.Empty(warnings);
+    }
+
+    [Fact]
+    public void A_hook_the_user_turned_off_says_so()
+    {
+        var hook = Hook("home/.codex/hooks.json", "off", "sessionStart", null, "trusted");
+        hook["enabled"] = false;
+
+        var (hooks, _) = CodexHookList.Parse(Response(new JsonArray { hook }), Run);
+
+        Assert.False(Assert.Single(hooks).Enabled);
     }
 
     [Fact]
