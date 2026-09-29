@@ -24,7 +24,7 @@ public static class SchemaValidator
     public static IReadOnlySet<string> SupportedKeywords { get; } = new HashSet<string>(StringComparer.Ordinal)
     {
         "$schema", "$id", "title", "description", "$defs", "$ref", "type", "properties", "required",
-        "additionalProperties", "minProperties", "items", "enum", "pattern", "minLength",
+        "additionalProperties", "minProperties", "items", "minItems", "enum", "pattern", "minLength",
     };
 
     /// <summary>Validates <paramref name="instance"/> against <paramref name="schema"/>.</summary>
@@ -95,10 +95,19 @@ public static class SchemaValidator
             case JsonObject obj:
                 CheckObject(obj, schema, root, path, errors);
                 break;
-            case JsonArray array when schema["items"] is JsonObject items:
-                for (var i = 0; i < array.Count; i++)
+            case JsonArray array:
+                if (schema["minItems"] is JsonValue minimum && array.Count < minimum.GetValue<int>())
                 {
-                    Check(array[i], items, root, $"{path}[{i}]", errors);
+                    var count = minimum.GetValue<int>();
+                    errors.Add(new SchemaError(path, $"{Subject(path)} needs at least {count} {(count == 1 ? "item" : "items")}", []));
+                }
+
+                if (schema["items"] is JsonObject items)
+                {
+                    for (var i = 0; i < array.Count; i++)
+                    {
+                        Check(array[i], items, root, $"{path}[{i}]", errors);
+                    }
                 }
 
                 break;
