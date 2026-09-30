@@ -151,6 +151,25 @@ public class EvalRunCommandTests
     }
 
     [Fact]
+    public void A_rubric_s_verdict_is_shown_as_model_judgment_apart_from_the_checks()
+    {
+        using var vault = Vault().Write(
+            "repo/skills/agent-asset-authoring/evals/behavioral/new-hook/eval.yaml", Case + "judge:\n  rubric: The hook warns and never blocks.\n");
+        HarnessOutput Judging(HarnessCall call) => call.Command == "claude" && call.Arguments.Contains("--tools")
+            ? FakeRunner.ClaudeAnswer("""{"passed": false, "reason": "It blocks the edit."}""")
+            : Respond(call);
+
+        var (exitCode, output, _) = Eval(vault, Judging, "--harness", "claude-code");
+
+        Assert.Equal(AxmCli.Passed, exitCode);
+        var text = output.ReplaceLineEndings("\n");
+        Assert.Contains("  Rubrics are graded by Claude Code's model: model judgment, counted apart from the checks.\n", text, StringComparison.Ordinal);
+        Assert.Contains("passed in 1 of 1 run", text, StringComparison.Ordinal);
+        Assert.Contains("      judge   passed 0 of 1 judged run · model judgment\n", text, StringComparison.Ordinal);
+        Assert.Contains("      --  run 1, in the judge's words: It blocks the edit.\n", text, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void A_harness_that_isn_t_installed_is_skipped_and_said_so()
     {
         using var vault = Vault();

@@ -35,7 +35,11 @@ internal sealed record EvalReport(
     IReadOnlyList<string> Notes,
     IReadOnlyList<EvalSessionResult> Results,
     IReadOnlyDictionary<string, string> AssetHashes,
-    IReadOnlyDictionary<string, string> CaseHashes);
+    IReadOnlyDictionary<string, string> CaseHashes)
+{
+    /// <summary>The harness whose model graded the rubrics, or <see langword="null"/> when none was graded.</summary>
+    public Harness? Judge { get; init; }
+}
 
 /// <summary>
 /// The JSON <c>axm eval run --json</c> prints, and the history it saves in <c>.axm/evals/</c>. Its shape is a contract,
@@ -65,6 +69,7 @@ internal static class EvalJson
             writer.WriteString("axm", report.Axm);
             writer.WriteString("date", report.Date.UtcDateTime.ToString("yyyy-MM-dd'T'HH:mm:ss'Z'", CultureInfo.InvariantCulture));
             writer.WriteString("home", "sealed");
+            writer.WriteString("judge", report.Judge?.Name());
             writer.WriteStartArray("harnesses");
             foreach (var harness in report.Harnesses)
             {
@@ -154,6 +159,18 @@ internal static class EvalJson
         {
             writer.WriteNull("slowestCall");
         }
+
+        if (summary.Judge is { } judged)
+        {
+            writer.WriteStartObject("judge");
+            writer.WriteNumber("passed", judged.Passed);
+            writer.WriteNumber("judged", judged.Judged);
+            writer.WriteEndObject();
+        }
+        else
+        {
+            writer.WriteNull("judge");
+        }
         writer.WriteStartArray("sessions");
         foreach (var run in runs.OrderBy(run => run.Spec.Run))
         {
@@ -206,6 +223,19 @@ internal static class EvalJson
         WriteStrings(writer, "commands", record?.Activity.Commands ?? []);
         writer.WriteString("reply", record?.Activity.Reply);
         WriteStrings(writer, "outside", run.Outside);
+        if (run.Judged is { } verdict)
+        {
+            writer.WriteStartObject("judge");
+            writer.WriteBoolean("passed", verdict.Passed);
+            writer.WriteString("reason", verdict.Reason);
+            writer.WriteEndObject();
+        }
+        else
+        {
+            writer.WriteNull("judge");
+        }
+
+        writer.WriteString("judgeProblem", run.JudgeProblem);
         writer.WriteStartArray("calls");
         foreach (var call in record?.Calls ?? [])
         {

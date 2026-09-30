@@ -18,7 +18,20 @@ public sealed record EvalSessionResult(EvalSessionSpec Spec, SessionRecord? Reco
 
     /// <summary>The absolute paths outside the session's copy that its commands named, in the order they first appear.</summary>
     public IReadOnlyList<string> Outside { get; init; } = [];
+
+    /// <summary>The judge's verdict against the case's rubric, or <see langword="null"/> when there's no rubric, no judge or no answer. Model judgment.</summary>
+    public Judging.RubricVerdict? Judged { get; init; }
+
+    /// <summary>Why the judge gave no verdict, such as an answer it couldn't read, or <see langword="null"/>.</summary>
+    public string? JudgeProblem { get; init; }
 }
+
+/// <summary>A case's runs as the judge saw them. Model judgment, counted apart from the checks.</summary>
+/// <param name="Passed">How many runs the judge passed.</param>
+/// <param name="Judged">How many runs it gave a verdict on.</param>
+/// <param name="Failed">Each run it failed, and why, in its words.</param>
+/// <param name="Problems">Each run it gave no verdict on, and why.</param>
+public sealed record JudgeCount(int Passed, int Judged, IReadOnlyList<(int Run, string Reason)> Failed, IReadOnlyList<(int Run, string Problem)> Problems);
 
 /// <summary>The median and range of a measure over a case's runs.</summary>
 /// <param name="Median">The median: the middle value, or the mean of the two middle ones.</param>
@@ -68,6 +81,9 @@ public sealed record CaseSummary(
 
     /// <summary>Each run whose commands named paths outside its copy, with the paths.</summary>
     public IReadOnlyList<(int Run, IReadOnlyList<string> Paths)> Outside { get; init; } = [];
+
+    /// <summary>The judge's verdicts over the runs, or <see langword="null"/> when no run was judged or asked to be.</summary>
+    public JudgeCount? Judge { get; init; }
 }
 
 /// <summary>Counts an eval run's results by case and harness, with no verdict: counts, medians and ranges only.</summary>
@@ -114,6 +130,13 @@ public static class EvalSummaries
                 .Select(item => ((int, TimedCall)?)item)
                 .FirstOrDefault(),
             Outside = [.. runs.Where(run => run.Outside.Count > 0).Select(run => (run.Spec.Run, run.Outside))],
+            Judge = runs.Any(run => run.Judged is not null || run.JudgeProblem is not null)
+                ? new JudgeCount(
+                    runs.Count(run => run.Judged?.Passed == true),
+                    runs.Count(run => run.Judged is not null),
+                    [.. runs.Where(run => run.Judged?.Passed == false).Select(run => (run.Spec.Run, run.Judged!.Reason))],
+                    [.. runs.Where(run => run.JudgeProblem is not null).Select(run => (run.Spec.Run, run.JudgeProblem!))])
+                : null,
         };
     }
 
