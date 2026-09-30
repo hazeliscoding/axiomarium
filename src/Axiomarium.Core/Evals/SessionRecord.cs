@@ -71,7 +71,8 @@ public static partial class ClaudeCodeSessions
         var toolCalls = 0;
         var denials = 0;
         var loads = new List<string>();
-        var commands = new List<string>();
+        var commands = new List<(string? Id, string Command)>();
+        var denied = new HashSet<string>(StringComparer.Ordinal);
         foreach (var line in lines)
         {
             if (JsonEvents.Parse(line) is not { } e)
@@ -81,6 +82,9 @@ public static partial class ClaudeCodeSessions
 
             switch (JsonEvents.Text(e, "type"))
             {
+                case "system" when JsonEvents.Text(e, "subtype") == "permission_denied" && JsonEvents.Text(e, "tool_use_id") is { } refused:
+                    denied.Add(refused);
+                    break;
                 case "system" when JsonEvents.Text(e, "subtype") == "init":
                     initModel = JsonEvents.Text(e, "model");
                     version = JsonEvents.Text(e, "claude_code_version");
@@ -104,7 +108,7 @@ public static partial class ClaudeCodeSessions
 
                         if (JsonEvents.Text(call, "name") is "Bash" or "PowerShell" && JsonEvents.Text(input, "command") is { } command)
                         {
-                            commands.Add(command);
+                            commands.Add((JsonEvents.Text(call, "id"), command));
                         }
                     }
 
@@ -119,13 +123,15 @@ public static partial class ClaudeCodeSessions
                     turns = Number(e, "num_turns") is { } count ? (int)count : null;
                     cost = Number(e, "total_cost_usd");
                     denials = JsonEvents.Items(JsonEvents.Child(e, "permission_denials")).Count();
+                    denied.UnionWith(JsonEvents.Items(JsonEvents.Child(e, "permission_denials")).Select(item => JsonEvents.Text(item, "tool_use_id")).OfType<string>());
                     (tokens, model) = Usage(e, initModel);
                     break;
             }
         }
 
         return new SessionRecord(
-            new SessionActivity([.. loads.Distinct(StringComparer.Ordinal)], commands, reply),
+            // A command the harness denied never ran, so it's not what the session did.
+            new SessionActivity([.. loads.Distinct(StringComparer.Ordinal)], [.. commands.Where(item => item.Id is null || !denied.Contains(item.Id)).Select(item => item.Command)], reply),
             tokens,
             toolCalls,
             turns,
