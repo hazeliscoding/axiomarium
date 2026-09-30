@@ -97,14 +97,10 @@ public sealed class ProcessHarnessRunner(string? scratchRoot = null) : IHarnessR
                 continue;
             }
 
-            try
+            // A folder something still holds a file in is left for the next run to try again.
+            if (ScratchFolders.Delete(folder))
             {
-                Directory.Delete(folder, recursive: true);
                 removed.Add(Path.GetFileName(folder));
-            }
-            catch (Exception problem) when (problem is IOException or UnauthorizedAccessException)
-            {
-                // Something still holds a file. The next run tries again.
             }
         }
 

@@ -320,7 +320,7 @@ internal static class EvalSessions
     {
         for (var attempt = 1; attempt <= 5 && Directory.Exists(folder); attempt++)
         {
-            if (!TryDelete(() => Directory.Delete(folder, recursive: true)))
+            if (!ScratchFolders.Delete(folder))
             {
                 await Task.Delay(TimeSpan.FromSeconds(1));
             }
