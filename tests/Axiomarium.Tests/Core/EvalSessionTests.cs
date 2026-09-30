@@ -90,6 +90,19 @@ public class EvalSessionTests
         Assert.Equal(2, session.ToolCalls);
     }
 
+    // A stopped Codex can still hold its rollout open for writing, as a real timeout showed.
+    [Fact]
+    public void A_rollout_codex_still_holds_open_is_read_all_the_same()
+    {
+        using var home = Rollouts("codex-agent-parent-rollout.jsonl", "codex-agent-child-rollout.jsonl");
+        var child = Directory.EnumerateFiles(Path.Combine(home.Root, "sessions"), "*child*", SearchOption.AllDirectories).Single();
+        using var writer = new FileStream(child, FileMode.Open, FileAccess.ReadWrite, FileShare.ReadWrite);
+
+        var session = CodexSessions.Read(Fixture("codex-agent.jsonl"), Copy, @"C:\Users\dev", Path.Combine(home.Root, "sessions"));
+
+        Assert.Equal(["determinism-auditor"], session.Activity.Loads);
+    }
+
     [Fact]
     public void A_codex_session_that_fails_or_stops_early_says_why()
     {

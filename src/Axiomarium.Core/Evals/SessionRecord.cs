@@ -312,7 +312,12 @@ public static class CodexSessions
         var rollouts = new List<(string, string?, string?, TokenCount?)>();
         foreach (var file in Directory.EnumerateFiles(sessionsFolder, "rollout-*.jsonl", SearchOption.AllDirectories).Order(StringComparer.Ordinal))
         {
-            var events = File.ReadLines(file).Select(JsonEvents.Parse).OfType<JsonElement>().ToList();
+            if (ReadShared(file) is not { } lines)
+            {
+                continue;
+            }
+
+            var events = lines.Select(JsonEvents.Parse).OfType<JsonElement>().ToList();
             var meta = events.FirstOrDefault(e => JsonEvents.Text(e, "type") == "session_meta");
             var payload = JsonEvents.Child(meta, "payload");
             if (JsonEvents.Text(payload, "id") is not { } id)
@@ -326,6 +331,28 @@ public static class CodexSessions
         }
 
         return rollouts;
+    }
+
+    // A stopped Codex can still hold its rollout open for writing, so the file is shared, and one that can't be
+    // read at all is left out rather than losing the whole session.
+    private static List<string>? ReadShared(string file)
+    {
+        try
+        {
+            using var stream = new FileStream(file, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+            using var reader = new StreamReader(stream);
+            var lines = new List<string>();
+            while (reader.ReadLine() is { } line)
+            {
+                lines.Add(line);
+            }
+
+            return lines;
+        }
+        catch (Exception problem) when (problem is IOException or UnauthorizedAccessException)
+        {
+            return null;
+        }
     }
 
     private static IEnumerable<(string Id, string? Parent, string? Agent, TokenCount? Tokens)> Descendants(
