@@ -137,6 +137,8 @@ public class TriggerSessionsTests
 
         public Task<HarnessOutput> RunAsync(HarnessCall call, CancellationToken cancellation = default) => respond(call);
 
-        public string CreateFolder() => Directory.CreateDirectory(Path.Combine(FolderRoot!, $"slow-{Interlocked.Increment(ref _folders)}")).FullName;
+        public IReadOnlyList<string> RemoveLeftovers(string purpose) => [];
+
+        public string CreateFolder(string purpose) => Directory.CreateDirectory(Path.Combine(FolderRoot!, $"slow-{Interlocked.Increment(ref _folders)}")).FullName;
     }
 }

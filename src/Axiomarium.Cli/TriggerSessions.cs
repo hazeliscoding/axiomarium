@@ -28,7 +28,7 @@ internal static class TriggerSessions
     public static async Task<IReadOnlyList<SessionResult>> RunAsync(
         IHarnessRunner runner, WorkspacePlan plan, string repoRoot, IReadOnlyList<TriggerSession> sessions, string? model, string home, Action<string>? built = null)
     {
-        var folder = runner.CreateFolder();
+        var folder = runner.CreateFolder("triggers");
         try
         {
             Build(plan, repoRoot, folder);
