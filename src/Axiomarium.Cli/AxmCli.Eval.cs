@@ -12,6 +12,7 @@ public static partial class AxmCli
     {
         var command = new Command("eval", "Run the vault's behavioral and regression evals on the real harnesses, in a sealed home.");
         command.Subcommands.Add(EvalRunCommand(session));
+        command.Subcommands.Add(EvalCompareCommand(session));
         return command;
     }
 
@@ -146,7 +147,7 @@ public static partial class AxmCli
 
     // Each asset's slice of the run, as --json prints it, in .axm/evals/<asset folder>/<time>.json at the repo root.
     // It's the only thing eval writes in the repo.
-    private static List<string> SaveHistory(string repoRoot, EvalReport report)
+    private static List<string> SaveHistory(string repoRoot, EvalReport report, string suffix = "")
     {
         var saved = new List<string>();
         foreach (var asset in report.Results.Select(result => result.Spec.Asset.Folder).Distinct())
@@ -154,10 +155,10 @@ public static partial class AxmCli
             var folder = Path.Combine(repoRoot, ".axm", "evals", asset.Replace('/', Path.DirectorySeparatorChar));
             Directory.CreateDirectory(folder);
             var name = report.Date.UtcDateTime.ToString("yyyyMMdd-HHmmss", System.Globalization.CultureInfo.InvariantCulture);
-            var path = Path.Combine(folder, $"{name}.json");
+            var path = Path.Combine(folder, $"{name}{suffix}.json");
             for (var copy = 2; File.Exists(path); copy++)
             {
-                path = Path.Combine(folder, $"{name}-{copy}.json");
+                path = Path.Combine(folder, $"{name}-{copy}{suffix}.json");
             }
 
             using (var writer = new StreamWriter(path, append: false, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false)))

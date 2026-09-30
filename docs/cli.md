@@ -16,7 +16,7 @@
 
 - In a terminal, output has color and one kaomoji per summary line. Piped, in CI or read by an agent, it's plain text, and so is any run with `AXM_PLAIN` set. `NO_COLOR` or `TERM=dumb` turns color off. Terminal output is always the plain output plus color and kaomoji.
 - Paths are relative to the repo root with forward slashes. Paths in your home folder start with `~`.
-- `axm explain --json` and `axm eval run --json` print JSON whose shape is a contract, versioned by `schemaVersion`, which is 1 for each. New fields may appear, but existing ones don't change without a new version.
+- `axm explain --json`, `axm eval run --json` and `axm eval compare --json` print JSON whose shape is a contract, versioned by `schemaVersion`, which is 1 for each. New fields may appear, but existing ones don't change without a new version.
 - `axm triggers export` prints a file for another tool, with no header and no color.
 
 ## Where axm looks
@@ -118,6 +118,23 @@ Claude Code sessions can't run on macOS yet, because Claude Code keeps its login
 - `--model <model>`: the model each harness runs. Defaults to the one you chose for it.
 - `--json`: the result as JSON, shape 1, the same as the saved history.
 - `--judge-with <claude-code|codex>`: the harness whose model grades the rubrics. Defaults to Claude Code.
+
+### `axm eval compare <asset>`
+
+Runs an asset's eval cases on two versions of it and shows them side by side. The baseline is the asset's files at a git ref, `HEAD` unless `--baseline` says otherwise, or no asset at all with `--baseline none`. The candidate is the working tree. Both versions run the working tree's cases, and the output says so when the cases changed since the ref too. Baseline and candidate sessions alternate in one sealed home, as `axm eval run` runs them, so a rate limit or a slow hour falls on both.
+
+For each case on each harness, it shows how many runs of each version passed, the median of each measure with its range when the runs differ, and the change from baseline to candidate. It draws no conclusion, because a few runs a side is a small sample and each run is the model at work. It exits 2 when the asset is unchanged since the ref, and 0 whenever it ran.
+
+Each version's runs are saved in `.axm/evals/<asset folder>/`, as `<time>-baseline.json` and `<time>-candidate.json`, in the shape `axm eval run --json` prints. When a saved baseline still describes the same asset and cases, on the same harness versions and models, with as many runs, the compare reuses it, says which, and runs only the candidate. An agent can't be compared on Codex yet, because both versions would share the one Codex home.
+
+- `--baseline <ref|none>`: the version to compare with. Defaults to `HEAD`.
+- `--root <dir>`: where to start. The vault is here or at the repo root above it.
+- `--harness <all|claude-code|codex>`: only this harness. Defaults to both.
+- `--runs <n>`: how many times each case runs on each harness, for each version. Defaults to 3.
+- `--model <model>`: the model each harness runs. Defaults to the one you chose for it.
+- `--judge-with <claude-code|codex>`: the harness whose model grades the rubrics. Defaults to Claude Code.
+- `--fresh`: run the baseline again, even when a saved run still describes it.
+- `--json`: the result as JSON, shape 1, with both sides of each case.
 
 ### `axm hook scope-sheriff`
 
