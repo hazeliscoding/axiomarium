@@ -10,7 +10,20 @@ namespace Axiomarium.Core.Evals;
 /// <param name="CaseFolder">The case's folder, absolute, whose <c>repo/</c> the session starts in when it has one.</param>
 /// <param name="Harness">The harness.</param>
 /// <param name="Run">Which run of the case on this harness, from 1.</param>
-public sealed record EvalSessionSpec(DiscoveredAsset Asset, EvalCase Case, string CaseFolder, Harness Harness, int Run);
+public sealed record EvalSessionSpec(DiscoveredAsset Asset, EvalCase Case, string CaseFolder, Harness Harness, int Run)
+{
+    /// <summary>
+    /// For <c>axm eval compare</c>, which version of the asset this session installs, or <see langword="null"/> for the
+    /// asset as it is in the vault.
+    /// </summary>
+    public EvalVariant? Variant { get; init; }
+}
+
+/// <summary>A version of an asset that <c>axm eval compare</c> runs: the baseline or the candidate.</summary>
+/// <param name="Name">Which one: <c>baseline</c> or <c>candidate</c>.</param>
+/// <param name="Asset">The asset as that version's manifest says, or <see langword="null"/> for a baseline without the asset.</param>
+/// <param name="VaultRoot">The folder that version's asset folder is in, or <see langword="null"/> when there's no asset.</param>
+public sealed record EvalVariant(string Name, DiscoveredAsset? Asset, string? VaultRoot);
 
 /// <summary>What <c>axm eval run</c> runs.</summary>
 /// <param name="RepoRoot">The repo the vault is in, whose <c>.axm/evals/</c> keeps the run's history.</param>

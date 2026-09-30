@@ -163,6 +163,50 @@ public class EvalSessionsTests
         Assert.Equal(("it ran past the 10-minute timeout", false), (result.Stopped, result.Passed));
     }
 
+    // A compare runs each session with one version of the asset: the baseline's files, or none at all.
+    [Fact]
+    public async Task A_session_installs_the_version_it_names_or_none()
+    {
+        using var vault = Vault()
+            .Write("baseline/skills/agent-asset-authoring/asset.yaml", TempVault.Manifest("skill", "agent-asset-authoring"))
+            .Write("baseline/skills/agent-asset-authoring/skill.md", "# The old body\n");
+        var installed = new List<string?>();
+        var runner = new FakeRunner(call =>
+        {
+            if (call.Command == "claude")
+            {
+                var skill = Path.Combine(call.Folder!, ".claude", "skills", "agent-asset-authoring", "SKILL.md");
+                lock (installed)
+                {
+                    installed.Add(File.Exists(skill) ? File.ReadAllText(skill)[(File.ReadAllText(skill).IndexOf("---\n#", StringComparison.Ordinal) + 4)..] : null);
+                }
+
+                return new HarnessOutput(true, Fixture("claude-code-task.jsonl"), 0, "");
+            }
+
+            return new HarnessOutput(true, [], 0, "");
+        })
+        { FolderRoot = Path.Combine(vault.Root, "scratch") };
+        var plan = EvalRuns.Plan(Path.Combine(vault.Root, "repo"), [], [Harness.ClaudeCode], 1, TestMachine.For(vault.Root)).Plan!;
+        var session = plan.Sessions.Single();
+        var baselineRoot = Path.Combine(vault.Root, "baseline");
+        var baseline = Axiomarium.Core.Health.Doctor.Run(baselineRoot).Report!.Assets.Single();
+        EvalSessionSpec[] sessions =
+        [
+            session with { Variant = new EvalVariant("baseline", baseline, baselineRoot) },
+            session with { Run = 2, Variant = new EvalVariant("baseline", null, null) },
+            session with { Run = 3, Variant = new EvalVariant("candidate", session.Asset, plan.VaultRoot) },
+        ];
+
+        await EvalSessions.RunAsync(runner, sessions, plan.VaultRoot, TestMachine.For(vault.Root), Environment, Path.Combine(vault.Root, "bin", "axm.exe"), null, TimeProvider.System, OSPlatform.Linux);
+
+        // The sessions run in parallel, so their order isn't fixed.
+        Assert.Equal(3, installed.Count);
+        Assert.Contains("# The old body\n", installed);
+        Assert.Contains("# Authoring\n", installed);
+        Assert.Contains(null, installed);
+    }
+
     // The judge grades what the session did against the rubric, and its verdict never changes what the checks decided.
     [Fact]
     public async Task A_rubric_is_graded_in_the_sealed_home_from_the_copy_s_diff_apart_from_the_checks()
