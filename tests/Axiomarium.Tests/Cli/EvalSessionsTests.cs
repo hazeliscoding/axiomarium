@@ -162,6 +162,25 @@ public class EvalSessionsTests
         Assert.Equal(("it ran past the 10-minute timeout", false), (result.Stopped, result.Passed));
     }
 
+    // A real run lost its timeout this way: what fails after the harness ran mustn't hide why the session stopped.
+    [Fact]
+    public void A_failure_after_the_session_keeps_why_it_stopped()
+    {
+        using var vault = Vault();
+        var runner = new FakeRunner(call => call.Command switch
+        {
+            "claude" => new HarnessOutput(true, Fixture("claude-code-task.jsonl"), null, ""),
+            "git" => new HarnessOutput(true, [], 0, ""),
+            _ => throw new IOException("The process cannot access the file."),
+        })
+        { FolderRoot = Path.Combine(vault.Root, "scratch") };
+
+        var result = Run(vault, runner, harnesses: [Harness.ClaudeCode]).Results.Single();
+
+        Assert.Equal("it ran past the 10-minute timeout", result.Stopped);
+        Assert.NotNull(result.Record);
+    }
+
     [Fact]
     public void Without_a_login_nothing_runs_and_nothing_is_left()
     {
