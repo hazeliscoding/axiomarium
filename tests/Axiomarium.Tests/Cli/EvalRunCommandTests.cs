@@ -140,7 +140,7 @@ public class EvalRunCommandTests
         var (_, json, _) = Eval(vault, call => call.Command == "claude" && call.Arguments[0] != "--version" ? Written(call, roaming) : Respond(call), "--harness", "claude-code", "--json");
 
         Assert.Contains(
-            @"      --  run 1 read outside its copy: C:\ai\axiomarium\hooks\scope-sheriff\hook.md, /home/dev/notes.md",
+            @"      --  run 1 touched paths outside its copy: C:\ai\axiomarium\hooks\scope-sheriff\hook.md, /home/dev/notes.md",
             output.ReplaceLineEndings("\n"),
             StringComparison.Ordinal);
         using var document = JsonDocument.Parse(json);
