@@ -202,18 +202,27 @@ internal static class EvalSessions
                 return new EvalSessionResult(session, null, [], elapsed, $"couldn't start: {output.Error}");
             }
 
-            var record = claude
-                ? ClaudeCodeSessions.Read(output.Lines)
-                : CodexSessions.Read(output.Lines, copy, home, Path.Combine(home, ".codex", "sessions"));
-            var stopped = output.ExitCode is null ? $"it ran past the {Timeout.TotalMinutes:0}-minute timeout" : record.Stopped;
-
-            var runs = new Dictionary<string, RunOutcome>();
-            foreach (var command in session.Case.Checks.Where(check => check.Kind == CheckKind.Run).Select(check => check.Target).Distinct())
+            var timedOut = output.ExitCode is null ? $"it ran past the {Timeout.TotalMinutes:0}-minute timeout" : null;
+            SessionRecord? record = null;
+            try
             {
-                runs[command] = await Check(runner, command, copy, variables);
-            }
+                record = claude
+                    ? ClaudeCodeSessions.Read(output.Lines)
+                    : CodexSessions.Read(output.Lines, copy, home, Path.Combine(home, ".codex", "sessions"));
 
-            return new EvalSessionResult(session, record, EvalChecks.Evaluate(session.Case.Checks, record.Activity, copy, runs), elapsed, stopped);
+                var runs = new Dictionary<string, RunOutcome>();
+                foreach (var command in session.Case.Checks.Where(check => check.Kind == CheckKind.Run).Select(check => check.Target).Distinct())
+                {
+                    runs[command] = await Check(runner, command, copy, variables);
+                }
+
+                return new EvalSessionResult(session, record, EvalChecks.Evaluate(session.Case.Checks, record.Activity, copy, runs), elapsed, timedOut ?? record.Stopped);
+            }
+            catch (Exception failure) when (failure is not OperationCanceledException)
+            {
+                // A failure after the harness ran mustn't hide why the session stopped, or how long it took.
+                return new EvalSessionResult(session, record, [], elapsed, timedOut ?? record?.Stopped ?? $"its checks couldn't run: {failure.Message}");
+            }
         }
         finally
         {
@@ -245,6 +254,12 @@ internal static class EvalSessions
         }
 
         Write(copy, installation.Copy);
+        return await Commit(runner, copy, variables);
+    }
+
+    // Makes a folder a git repo with one commit of what it holds.
+    private static async Task<string?> Commit(IHarnessRunner runner, string folder, IReadOnlyDictionary<string, string?> variables)
+    {
         (string Name, string[] Arguments)[] steps =
         [
             ("init", ["init", "-q"]),
@@ -253,7 +268,7 @@ internal static class EvalSessions
         ];
         foreach (var (name, arguments) in steps)
         {
-            var git = await runner.RunAsync(new HarnessCall("git", arguments, "", copy, null, CheckTimeout, variables));
+            var git = await runner.RunAsync(new HarnessCall("git", arguments, "", folder, null, CheckTimeout, variables));
             if (!git.Started || git.ExitCode != 0)
             {
                 return $"couldn't make the copy a git repo: git {name} {(git.Started ? $"exited {git.ExitCode}: {git.Error.Trim()}" : git.Error)}";
