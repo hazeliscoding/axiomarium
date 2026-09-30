@@ -11,8 +11,8 @@ public static partial class AxmCli
     // Long enough for a slow first turn on a large model, short enough that a hung session doesn't hang axm.
     private static readonly TimeSpan GenerateTimeout = TimeSpan.FromMinutes(5);
 
-    // Tools off, MCP servers off and no saved session, as the M4 spike settled: one turn of text.
-    private static readonly string[] GenerateArguments =
+    /// <summary>Claude Code with tools off, MCP servers off and no saved session, as the M4 spike settled: one turn of text.</summary>
+    internal static readonly string[] JudgeArguments =
         ["-p", "--tools", "", "--strict-mcp-config", "--output-format", "stream-json", "--verbose", "--no-session-persistence"];
 
     private static Command GenerateCommand(Session session)
@@ -61,7 +61,7 @@ public static partial class AxmCli
         }
 
         var date = session.Clock.GetLocalNow().ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
-        string[] arguments = model is null ? GenerateArguments : [.. GenerateArguments, "--model", model];
+        string[] arguments = model is null ? JudgeArguments : [.. JudgeArguments, "--model", model];
         string? problem = null;
         TriggerPromptFile? file = null;
         ClaudeCodeSession? answered = null;
