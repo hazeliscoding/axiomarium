@@ -18,9 +18,8 @@ public class EvalSessionTests
         var session = ClaudeCodeSessions.Read(Fixture("claude-code-task.jsonl"));
 
         Assert.Equal(["agent-asset-authoring"], session.Activity.Loads);
-        Assert.Equal(
-            ["axm list; Get-ChildItem hooks -Recurse | Select-Object FullName", "axm list", "axm list", "ls -a; axm --help 2>&1 | head -40", "axm validate", "axm list"],
-            session.Activity.Commands);
+        // Three commands were denied, so they never ran.
+        Assert.Equal(["axm list", "axm validate", "axm list"], session.Activity.Commands);
         Assert.StartsWith("I added a hook asset called `migration-change-warning`.", session.Activity.Reply);
         Assert.Equal((12, 14, 3), (session.ToolCalls, session.Turns, session.Denials));
         Assert.Equal(0.1783676, session.Cost!.Value, 6);
