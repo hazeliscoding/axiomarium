@@ -4,6 +4,10 @@ This file records the user-visible changes to `axm` and the vault's schemas. The
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-09-30
+
+Evals: what an asset does once it's active, measured on the real Claude Code and Codex in a sealed home, and whether a change made it better.
+
 ### Added
 
 - `schemas/eval.schema.json`: an asset's eval cases, each a folder under `evals/behavioral/` or `evals/regression/` with an `eval.yaml` (the prompt, the commands the session may run, the checks and an optional judge's rubric) and a `repo/` for the files the session starts with. A check is one of `file`, `run`, `loaded`, `ran` or `reply`, and `not: true` turns it around. A regression case names the failure it guards in `guards`.
@@ -89,7 +93,8 @@ The asset model: agent configuration can be inspected and validated like softwar
   - the `deterministic-boundaries` policy: nine rules for which decisions belong to code instead of the model, eight of them enforced by the determinism auditor;
   - the `prompt-fossil` experiment: the method for finding instructions that cost tokens but no longer change behavior. Designed, not run yet.
 
-[Unreleased]: https://github.com/hazeliscoding/axiomarium/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/hazeliscoding/axiomarium/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/hazeliscoding/axiomarium/releases/tag/v0.5.0
 [0.4.0]: https://github.com/hazeliscoding/axiomarium/releases/tag/v0.4.0
 [0.3.0]: https://github.com/hazeliscoding/axiomarium/releases/tag/v0.3.0
 [0.2.0]: https://github.com/hazeliscoding/axiomarium/releases/tag/v0.2.0
