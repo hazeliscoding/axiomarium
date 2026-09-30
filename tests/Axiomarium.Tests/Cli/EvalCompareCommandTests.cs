@@ -60,7 +60,7 @@ public class EvalCompareCommandTests
     {
         var runner = new FakeRunner(respond) { FolderRoot = Path.Combine(vault.Root, "scratch") };
         var (exitCode, output, error) = CliRun.Run(
-            ["eval", "compare", "agent-asset-authoring", "--runs", "1", "--harness", "claude-code", .. flags],
+            ["eval", "compare", "agent-asset-authoring", .. flags.Contains("--runs") ? Array.Empty<string>() : ["--runs", "1"], "--harness", "claude-code", .. flags],
             machine: TestMachine.For(vault.Root),
             currentDirectory: Path.Combine(vault.Root, "repo"),
             runner: runner,
@@ -99,6 +99,24 @@ public class EvalCompareCommandTests
 
             """,
             output);
+    }
+
+    // A median with its range can be wider than a column, as a real compare showed, so columns fit their widest value.
+    [Fact]
+    public void Columns_fit_a_median_and_its_range()
+    {
+        using var vault = Vault();
+        var runs = 0;
+        var respond = Respond();
+        HarnessOutput Varied(HarnessCall call) =>
+            call.Command == "claude" && call.Arguments[0] != "--version" && Installed(call)?.Contains("Old", StringComparison.Ordinal) != true
+                ? new HarnessOutput(true, Fixture(Interlocked.Increment(ref runs) % 2 == 0 ? "claude-code-task.jsonl" : "claude-code-hooks.jsonl"), 0, "")
+                : respond(call);
+
+        var (_, output, _, _) = Compare(vault, Varied, "--runs", "2");
+
+        var row = output.Split('\n').Single(line => line.TrimStart().StartsWith("input tokens", StringComparison.Ordinal));
+        Assert.Matches(@"^      input tokens +\S+( \([^)]*\))? {2,}\S+ \([^)]*\) {2,}\S", row);
     }
 
     [Fact]
