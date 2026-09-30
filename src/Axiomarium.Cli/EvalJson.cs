@@ -12,7 +12,8 @@ namespace Axiomarium.Cli;
 /// <param name="Harness">The harness.</param>
 /// <param name="Version">What its <c>--version</c> printed.</param>
 /// <param name="Model">The model it ran, where known.</param>
-internal sealed record EvalHarness(Harness Harness, string Version, string? Model);
+/// <param name="Asked">The model <c>axm</c> asked it for: <c>--model</c>, or the one the user chose, or <see langword="null"/> for the harness's default.</param>
+internal sealed record EvalHarness(Harness Harness, string Version, string? Model, string? Asked);
 
 /// <summary>Everything <c>axm eval run</c> reports, which both output formats and the saved history render.</summary>
 /// <param name="Date">When the run finished.</param>
@@ -39,6 +40,15 @@ internal sealed record EvalReport(
 {
     /// <summary>The harness whose model graded the rubrics, or <see langword="null"/> when none was graded.</summary>
     public Harness? Judge { get; init; }
+
+    /// <summary>The command that ran: <c>eval run</c>, or <c>eval compare</c> for each version of a compare.</summary>
+    public string Command { get; init; } = "eval run";
+
+    /// <summary>For a compare, which version this is: <c>baseline</c> or <c>candidate</c>. Otherwise <see langword="null"/>.</summary>
+    public string? Variant { get; init; }
+
+    /// <summary>For a compare's baseline, the git ref it ran, or <c>none</c>. Otherwise <see langword="null"/>.</summary>
+    public string? Ref { get; init; }
 }
 
 /// <summary>
@@ -65,7 +75,13 @@ internal static class EvalJson
         {
             writer.WriteStartObject();
             writer.WriteNumber("schemaVersion", SchemaVersion);
-            writer.WriteString("command", "eval run");
+            writer.WriteString("command", report.Command);
+            if (report.Variant is not null)
+            {
+                writer.WriteString("variant", report.Variant);
+                writer.WriteString("ref", report.Ref);
+            }
+
             writer.WriteString("axm", report.Axm);
             writer.WriteString("date", report.Date.UtcDateTime.ToString("yyyy-MM-dd'T'HH:mm:ss'Z'", CultureInfo.InvariantCulture));
             writer.WriteString("home", "sealed");
@@ -77,6 +93,7 @@ internal static class EvalJson
                 writer.WriteString("harness", harness.Harness.Name());
                 writer.WriteString("version", harness.Version);
                 writer.WriteString("model", harness.Model);
+                writer.WriteString("asked", harness.Asked);
                 writer.WriteEndObject();
             }
 
