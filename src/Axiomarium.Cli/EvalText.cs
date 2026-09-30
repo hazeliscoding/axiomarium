@@ -77,7 +77,7 @@ internal static partial class EvalText
             {
                 index++;
                 var label = $"{summary.Asset.Name} // {summary.Case.Name}{(summary.Case.Type == EvalType.Regression ? " (regression)" : "")}";
-                ink.Write("  ").Write($"{index:00}", Palette.Dim).Write("  ").Write(label.PadRight(44), Palette.Bold)
+                ink.Write("  ").Write($"{index:00}", Palette.Dim).Write("  ").Write(label.PadRight(Math.Max(44, label.Length + 2)), Palette.Bold)
                     .Write($"passed in {summary.Passed} of {Count(summary.Runs, "run")}", summary.Passed == summary.Runs ? Palette.Ok : Palette.Warning).Line();
                 var tokens = summary.Input is null
                     ? "no token counts"
@@ -132,7 +132,7 @@ internal static partial class EvalText
                 foreach (var (run, paths) in summary.Outside)
                 {
                     var shown = string.Join(", ", paths.Take(3)) + (paths.Count > 3 ? $" and {paths.Count - 3} more" : "");
-                    ink.Write("      ").Write("--", Palette.Dim).Write("  ").Write($"run {run} read outside its copy: {shown}", Palette.Warning).Line();
+                    ink.Write("      ").Write("--", Palette.Dim).Write("  ").Write($"run {run} touched paths outside its copy: {shown}", Palette.Warning).Line();
                 }
             }
 
