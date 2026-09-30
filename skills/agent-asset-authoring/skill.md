@@ -6,7 +6,7 @@ You're adding or changing an asset in an Axiomarium vault. An asset is one folde
 
 Each of these questions can mean the asset shouldn't exist. Answer them first.
 
-- **Could tooling enforce it instead?** A test, a lint rule, a database constraint or a hook beats an instruction the model may ignore. Prefer the tooling.
+- **Could tooling enforce it instead?** A test, a lint rule, a database constraint, a pre-commit hook or a CI check beats an instruction the model may ignore. When one could, tell the user which one before you write anything, even if you write the asset too.
 - **Does an asset already cover it?** Run `axm list`, and extend the existing asset instead of adding a near-duplicate.
 - **For a skill:** when exactly should it activate? If you can't say it in one sentence, it will fire at the wrong time.
 - **For a hook:** should it block, warn or only gather evidence? Prefer warning. Block only destructive actions.
