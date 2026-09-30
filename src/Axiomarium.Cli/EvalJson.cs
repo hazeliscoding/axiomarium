@@ -142,6 +142,18 @@ internal static class EvalJson
         WriteSpread(writer, "turns", summary.Turns);
         WriteSpread(writer, "cost", summary.Cost);
         writer.WriteEndObject();
+        if (summary.Slowest is { } slowest)
+        {
+            writer.WriteStartObject("slowestCall");
+            writer.WriteNumber("run", slowest.Run);
+            writer.WriteString("what", slowest.Call.What);
+            writer.WriteNumber("seconds", Math.Round(slowest.Call.Seconds, 1));
+            writer.WriteEndObject();
+        }
+        else
+        {
+            writer.WriteNull("slowestCall");
+        }
         writer.WriteStartArray("sessions");
         foreach (var run in runs.OrderBy(run => run.Spec.Run))
         {
@@ -193,6 +205,17 @@ internal static class EvalJson
         WriteStrings(writer, "loads", record?.Activity.Loads ?? []);
         WriteStrings(writer, "commands", record?.Activity.Commands ?? []);
         writer.WriteString("reply", record?.Activity.Reply);
+        WriteStrings(writer, "outside", run.Outside);
+        writer.WriteStartArray("calls");
+        foreach (var call in record?.Calls ?? [])
+        {
+            writer.WriteStartObject();
+            writer.WriteString("what", call.What);
+            writer.WriteNumber("seconds", Math.Round(call.Seconds, 1));
+            writer.WriteEndObject();
+        }
+
+        writer.WriteEndArray();
         writer.WriteStartArray("checks");
         foreach (var check in run.Checks)
         {

@@ -90,6 +90,42 @@ public class EvalSessionTests
         Assert.Equal(2, session.ToolCalls);
     }
 
+    // Codex's code mode answers a slow command with "Script running with cell ID 1", and the model waits on the
+    // cell until it completes, so a command's time runs from its exec to the answer that completes its cell.
+    [Fact]
+    public void A_codex_command_s_time_runs_until_its_cell_completes()
+    {
+        using var home = Rollouts("codex-stalled-rollout.jsonl");
+        string[] stream = ["{\"type\":\"thread.started\",\"thread_id\":\"id1\"}", "{\"type\":\"turn.completed\",\"usage\":{\"input_tokens\":1}}"];
+
+        var session = CodexSessions.Read(stream, Copy, @"C:\Users\dev", Path.Combine(home.Root, "sessions"));
+
+        var call = Assert.Single(session.Calls);
+        Assert.Equal("git --version", call.What);
+        Assert.Equal(141.4, call.Seconds, 1);
+    }
+
+    [Fact]
+    public void A_code_mode_cell_is_named_by_the_commands_it_runs()
+    {
+        static string Line(string time, string payload) => $"{{\"timestamp\":\"2026-09-30T03:00:{time}Z\",\"type\":\"response_item\",\"payload\":{payload}}}";
+        using var home = new TempVault().Write("sessions/2026/09/30/rollout-1.jsonl", string.Join('\n',
+            "{\"timestamp\":\"2026-09-30T03:00:00.000Z\",\"type\":\"session_meta\",\"payload\":{\"id\":\"id1\"}}",
+            Line("01.000", """{"type":"custom_tool_call","name":"exec","call_id":"c1","input":"const r = await Promise.allSettled([tools.exec_command({cmd:\"axm list\"}), tools.exec_command({cmd:\"Get-Content \\\"a b.md\\\"\"})]);"}"""),
+            Line("03.500", """{"type":"custom_tool_call_output","call_id":"c1","output":[{"type":"input_text","text":"Script completed\nWall time 2.5 seconds\nOutput:\n"}]}"""),
+            Line("04.000", """{"type":"custom_tool_call","name":"exec","call_id":"c2","input":"text(await tools.apply_patch(\"*** Begin Patch\"));"}"""),
+            Line("05.000", """{"type":"custom_tool_call_output","call_id":"c2","output":"Script completed\nWall time 1.0 seconds\nOutput:\n"}"""),
+            Line("06.000", """{"type":"function_call","name":"exec_command","call_id":"c3","arguments":"{\"cmd\":\"git status\"}"}"""),
+            Line("09.000", """{"type":"function_call_output","call_id":"c3","output":"On branch main"}""")) + "\n");
+        string[] stream = ["{\"type\":\"thread.started\",\"thread_id\":\"id1\"}", "{\"type\":\"turn.completed\",\"usage\":{\"input_tokens\":1}}"];
+
+        var session = CodexSessions.Read(stream, Copy, @"C:\Users\dev", Path.Combine(home.Root, "sessions"));
+
+        Assert.Equal(
+            [("axm list · Get-Content \"a b.md\"", 2.5), ("apply_patch", 1.0), ("git status", 3.0)],
+            session.Calls.Select(call => (call.What, Math.Round(call.Seconds, 1))));
+    }
+
     // A stopped Codex can still hold its rollout open for writing, as a real timeout showed.
     [Fact]
     public void A_rollout_codex_still_holds_open_is_read_all_the_same()

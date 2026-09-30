@@ -115,6 +115,41 @@ public class EvalRunCommandTests
         Assert.Equal(output, history);
     }
 
+    // Codex's sandbox reads the whole disk on Windows, and a real run read this repo's own hooks for the answer.
+    [Fact]
+    public void A_run_that_read_outside_its_copy_is_named_with_the_paths()
+    {
+        using var vault = Vault();
+        var roaming = new HarnessOutput(
+            true,
+            [
+                """{"type":"system","subtype":"init","model":"claude-opus-5-5","claude_code_version":"2.1.285","skills":[]}""",
+                """{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Skill","input":{"skill":"agent-asset-authoring"}}]}}""",
+                """{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Bash","input":{"command":"cat C:\\ai\\axiomarium\\hooks\\scope-sheriff\\hook.md; cat /home/dev/notes.md"}}]}}""",
+                """{"type":"result","subtype":"success","is_error":false,"result":"Done.","num_turns":3,"total_cost_usd":0.01,"modelUsage":{}}""",
+            ],
+            0,
+            "");
+
+        var (_, output, _) = Eval(vault, call => call.Command == "claude" && call.Arguments[0] != "--version" ? Written(call, roaming) : Respond(call), "--harness", "claude-code");
+        var (_, json, _) = Eval(vault, call => call.Command == "claude" && call.Arguments[0] != "--version" ? Written(call, roaming) : Respond(call), "--harness", "claude-code", "--json");
+
+        Assert.Contains(
+            @"      --  run 1 read outside its copy: C:\ai\axiomarium\hooks\scope-sheriff\hook.md, /home/dev/notes.md",
+            output.ReplaceLineEndings("\n"),
+            StringComparison.Ordinal);
+        using var document = JsonDocument.Parse(json);
+        Assert.Equal(
+            [@"C:\ai\axiomarium\hooks\scope-sheriff\hook.md", "/home/dev/notes.md"],
+            document.RootElement.GetProperty("assets")[0].GetProperty("cases")[0].GetProperty("sessions")[0].GetProperty("outside").EnumerateArray().Select(path => path.GetString()));
+    }
+
+    private static HarnessOutput Written(HarnessCall call, HarnessOutput output)
+    {
+        Respond(call);
+        return output;
+    }
+
     [Fact]
     public void A_harness_that_isn_t_installed_is_skipped_and_said_so()
     {

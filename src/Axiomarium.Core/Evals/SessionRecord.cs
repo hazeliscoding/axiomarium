@@ -38,7 +38,16 @@ public sealed record SessionRecord(
     int Denials,
     string? Model,
     string? Version,
-    string? Stopped);
+    string? Stopped)
+{
+    /// <summary>Each tool call and how long it took, where the harness records it: Codex only, from its rollout.</summary>
+    public IReadOnlyList<TimedCall> Calls { get; init; } = [];
+}
+
+/// <summary>One tool call of a session and how long it took to answer.</summary>
+/// <param name="What">What it ran: its commands, joined with <c> · </c>, or the tool's name.</param>
+/// <param name="Seconds">From the call to the answer that finished it, waits included.</param>
+public sealed record TimedCall(string What, double Seconds);
 
 /// <summary>
 /// Reads a whole <c>claude -p --output-format stream-json --verbose</c> session, as the M5 spike confirmed on
@@ -174,7 +183,7 @@ public static partial class ClaudeCodeSessions
 /// Reads a whole <c>codex exec --json</c> session, and the rollouts Codex saves in its home for the custom agents
 /// the session spawned, as the M5 spike confirmed on Codex 0.156.1 (see <c>ROADMAP.md</c>).
 /// </summary>
-public static class CodexSessions
+public static partial class CodexSessions
 {
     private static readonly string[] ToolItems = ["command_execution", "file_change", "collab_tool_call", "mcp_tool_call", "web_search"];
 
@@ -244,9 +253,11 @@ public static class CodexSessions
             }
         }
 
+        IReadOnlyList<TimedCall> calls = [];
         if (thread is not null && sessionsFolder is not null && Directory.Exists(sessionsFolder))
         {
             var rollouts = Rollouts(sessionsFolder);
+            calls = rollouts.FirstOrDefault(rollout => rollout.Id == thread).Calls ?? [];
             foreach (var child in Descendants(rollouts, thread))
             {
                 if (child.Agent is not null)
@@ -273,7 +284,10 @@ public static class CodexSessions
             0,
             null,
             null,
-            stopped);
+            stopped)
+        {
+            Calls = calls,
+        };
     }
 
     /// <summary>
@@ -307,9 +321,9 @@ public static class CodexSessions
         JsonEvents.Child(element, name) is { ValueKind: JsonValueKind.Number } value && value.TryGetInt64(out var count) ? count : 0;
 
     // Each rollout starts with its thread's session_meta, which names its parent and the agent it runs as.
-    private static List<(string Id, string? Parent, string? Agent, TokenCount? Tokens)> Rollouts(string sessionsFolder)
+    private static List<(string Id, string? Parent, string? Agent, TokenCount? Tokens, IReadOnlyList<TimedCall> Calls)> Rollouts(string sessionsFolder)
     {
-        var rollouts = new List<(string, string?, string?, TokenCount?)>();
+        var rollouts = new List<(string, string?, string?, TokenCount?, IReadOnlyList<TimedCall>)>();
         foreach (var file in Directory.EnumerateFiles(sessionsFolder, "rollout-*.jsonl", SearchOption.AllDirectories).Order(StringComparer.Ordinal))
         {
             if (ReadShared(file) is not { } lines)
@@ -327,11 +341,85 @@ public static class CodexSessions
 
             var last = events.LastOrDefault(e => JsonEvents.Text(JsonEvents.Child(e, "payload"), "type") == "token_count");
             var usage = JsonEvents.Child(JsonEvents.Child(JsonEvents.Child(last, "payload"), "info"), "total_token_usage");
-            rollouts.Add((id, JsonEvents.Text(payload, "parent_thread_id"), JsonEvents.Text(payload, "agent_role"), Tokens(usage)));
+            rollouts.Add((id, JsonEvents.Text(payload, "parent_thread_id"), JsonEvents.Text(payload, "agent_role"), Tokens(usage), Timed(events)));
         }
 
         return rollouts;
     }
+
+    // Code mode answers a slow command with "Script running with cell ID n", and the model then waits on the cell
+    // until an answer completes it, so the command's time runs from its exec to that answer.
+    private static List<TimedCall> Timed(List<JsonElement> events)
+    {
+        var open = new Dictionary<string, (DateTimeOffset At, string? What, string? Cell)>();
+        var cells = new Dictionary<string, (DateTimeOffset At, string What)>();
+        var calls = new List<TimedCall>();
+        foreach (var e in events)
+        {
+            var payload = JsonEvents.Child(e, "payload");
+            var kind = JsonEvents.Text(payload, "type");
+            if (JsonEvents.Text(payload, "call_id") is not { } id
+                || !DateTimeOffset.TryParse(JsonEvents.Text(e, "timestamp"), CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var at))
+            {
+                continue;
+            }
+
+            var name = JsonEvents.Text(payload, "name") ?? "";
+            if (kind == "custom_tool_call")
+            {
+                open[id] = (at, name == "exec" ? Label(JsonEvents.Text(payload, "input") ?? "") : name, null);
+            }
+            else if (kind == "function_call")
+            {
+                var arguments = JsonEvents.Parse(JsonEvents.Text(payload, "arguments") ?? "");
+                open[id] = name == "wait" ? (at, null, JsonEvents.Text(arguments, "cell_id")) : (at, JsonEvents.Text(arguments, "cmd") ?? name, null);
+            }
+            else if (kind is "custom_tool_call_output" or "function_call_output" && open.Remove(id, out var call))
+            {
+                var running = Running().Match(OutputText(JsonEvents.Child(payload, "output")));
+                if (call.Cell is { } cell)
+                {
+                    if (!running.Success && cells.Remove(cell, out var started))
+                    {
+                        calls.Add(new TimedCall(started.What, (at - started.At).TotalSeconds));
+                    }
+                }
+                else if (running.Success)
+                {
+                    cells[running.Groups[1].Value] = (call.At, call.What!);
+                }
+                else
+                {
+                    calls.Add(new TimedCall(call.What!, (at - call.At).TotalSeconds));
+                }
+            }
+        }
+
+        return calls;
+    }
+
+    // A code-mode cell is named by the commands it runs, or else by the first tool it calls.
+    private static string Label(string code)
+    {
+        var commands = CellCommand().Matches(code).Select(match => match.Groups[1].Value.Replace("\\\"", "\"", StringComparison.Ordinal).Replace(@"\\", @"\", StringComparison.Ordinal)).ToList();
+        return commands.Count > 0 ? string.Join(" · ", commands) : CellTool().Match(code) is { Success: true } tool ? tool.Groups[1].Value : "exec";
+    }
+
+    private static string OutputText(JsonElement? output) => output switch
+    {
+        { ValueKind: JsonValueKind.String } text => text.GetString() ?? "",
+        { ValueKind: JsonValueKind.Array } parts => parts.EnumerateArray().Select(part => JsonEvents.Text(part, "text")).FirstOrDefault(text => text is not null) ?? "",
+        _ => "",
+    };
+
+    [GeneratedRegex(@"^Script running with cell ID (\S+)", RegexOptions.CultureInvariant)]
+    private static partial Regex Running();
+
+    [GeneratedRegex(@"cmd:""((?:[^""\\]|\\.)*)""", RegexOptions.CultureInvariant)]
+    private static partial Regex CellCommand();
+
+    [GeneratedRegex(@"tools\.(\w+)\(", RegexOptions.CultureInvariant)]
+    private static partial Regex CellTool();
 
     // A stopped Codex can still hold its rollout open for writing, so the file is shared, and one that can't be
     // read at all is left out rather than losing the whole session.
@@ -355,8 +443,8 @@ public static class CodexSessions
         }
     }
 
-    private static IEnumerable<(string Id, string? Parent, string? Agent, TokenCount? Tokens)> Descendants(
-        List<(string Id, string? Parent, string? Agent, TokenCount? Tokens)> rollouts, string thread)
+    private static IEnumerable<(string Id, string? Parent, string? Agent, TokenCount? Tokens, IReadOnlyList<TimedCall> Calls)> Descendants(
+        List<(string Id, string? Parent, string? Agent, TokenCount? Tokens, IReadOnlyList<TimedCall> Calls)> rollouts, string thread)
     {
         foreach (var child in rollouts.Where(rollout => rollout.Parent == thread))
         {

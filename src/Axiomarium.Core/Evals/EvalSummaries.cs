@@ -15,6 +15,9 @@ public sealed record EvalSessionResult(EvalSessionSpec Spec, SessionRecord? Reco
 {
     /// <summary>Whether the run passed: it finished, and every check held.</summary>
     public bool Passed => Stopped is null && Checks.All(check => check.Passed);
+
+    /// <summary>The absolute paths outside the session's copy that its commands named, in the order they first appear.</summary>
+    public IReadOnlyList<string> Outside { get; init; } = [];
 }
 
 /// <summary>The median and range of a measure over a case's runs.</summary>
@@ -58,7 +61,14 @@ public sealed record CaseSummary(
     Spread Seconds,
     Spread? ToolCalls,
     Spread? Turns,
-    Spread? Cost);
+    Spread? Cost)
+{
+    /// <summary>The slowest tool call over the runs, and its run, or <see langword="null"/> when no run timed its calls.</summary>
+    public (int Run, TimedCall Call)? Slowest { get; init; }
+
+    /// <summary>Each run whose commands named paths outside its copy, with the paths.</summary>
+    public IReadOnlyList<(int Run, IReadOnlyList<string> Paths)> Outside { get; init; } = [];
+}
 
 /// <summary>Counts an eval run's results by case and harness, with no verdict: counts, medians and ranges only.</summary>
 public static class EvalSummaries
@@ -96,7 +106,15 @@ public static class EvalSummaries
             Of(runs.Select(run => run.Elapsed.TotalSeconds))!,
             Of(runs.Where(run => run.Record is not null).Select(run => (double)run.Record!.ToolCalls)),
             Of(counted.Where(record => record.Turns is not null).Select(record => (double)record.Turns!.Value)),
-            Of(counted.Where(record => record.Cost is not null).Select(record => record.Cost!.Value)));
+            Of(counted.Where(record => record.Cost is not null).Select(record => record.Cost!.Value)))
+        {
+            Slowest = runs
+                .SelectMany(run => (run.Record?.Calls ?? []).Select(call => (run.Spec.Run, Call: call)))
+                .OrderByDescending(item => item.Call.Seconds)
+                .Select(item => ((int, TimedCall)?)item)
+                .FirstOrDefault(),
+            Outside = [.. runs.Where(run => run.Outside.Count > 0).Select(run => (run.Spec.Run, run.Outside))],
+        };
     }
 
     private static Spread? Of(IEnumerable<double> values)

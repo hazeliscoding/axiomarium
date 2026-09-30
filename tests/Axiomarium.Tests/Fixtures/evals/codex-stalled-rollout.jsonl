@@ -1,0 +1,13 @@
+{"timestamp":"2026-09-30T03:27:55.936Z","type":"session_meta","payload":{"id":"id1","timestamp":"2026-09-30T03:27:55.692Z","cwd":"C:\\axm-evals\\run\\copy-1","originator":"codex_exec","cli_version":"0.156.1","thread_source":"user"}}
+{"timestamp":"2026-09-30T03:27:59.377Z","type":"response_item","payload":{"type":"custom_tool_call","name":"exec","input":"const r = await tools.exec_command({cmd:\"git --version\",workdir:\"C:\\\\axm-evals\\\\run\\\\copy-1\"}); text(r.output);\n","call_id":"call1","status":"completed"}}
+{"timestamp":"2026-09-30T03:28:30.419Z","type":"response_item","payload":{"type":"custom_tool_call_output","call_id":"call1","output":"Script running with cell ID 1\nWall time 31.0 seconds\nOutput:\n"}}
+{"timestamp":"2026-09-30T03:28:32.643Z","type":"response_item","payload":{"type":"function_call","name":"wait","arguments":"{\"cell_id\":\"1\",\"yield_time_ms\":20000}","call_id":"call2"}}
+{"timestamp":"2026-09-30T03:28:53.659Z","type":"response_item","payload":{"type":"function_call_output","call_id":"call2","output":"Script running with cell ID 1\nWall time 21.0 seconds\nOutput:\n"}}
+{"timestamp":"2026-09-30T03:28:55.839Z","type":"response_item","payload":{"type":"function_call","name":"wait","arguments":"{\"cell_id\":\"1\",\"yield_time_ms\":20000}","call_id":"call3"}}
+{"timestamp":"2026-09-30T03:29:16.855Z","type":"response_item","payload":{"type":"function_call_output","call_id":"call3","output":"Script running with cell ID 1\nWall time 21.0 seconds\nOutput:\n"}}
+{"timestamp":"2026-09-30T03:29:20.300Z","type":"response_item","payload":{"type":"function_call","name":"wait","arguments":"{\"cell_id\":\"1\",\"yield_time_ms\":20000}","call_id":"call4"}}
+{"timestamp":"2026-09-30T03:29:41.463Z","type":"response_item","payload":{"type":"function_call_output","call_id":"call4","output":"Script running with cell ID 1\nWall time 21.0 seconds\nOutput:\n"}}
+{"timestamp":"2026-09-30T03:29:43.512Z","type":"response_item","payload":{"type":"function_call","name":"wait","arguments":"{\"cell_id\":\"1\",\"yield_time_ms\":20000}","call_id":"call5"}}
+{"timestamp":"2026-09-30T03:30:04.536Z","type":"response_item","payload":{"type":"function_call_output","call_id":"call5","output":"Script running with cell ID 1\nWall time 21.0 seconds\nOutput:\n"}}
+{"timestamp":"2026-09-30T03:30:06.690Z","type":"response_item","payload":{"type":"function_call","name":"wait","arguments":"{\"cell_id\":\"1\",\"yield_time_ms\":20000}","call_id":"call6"}}
+{"timestamp":"2026-09-30T03:30:20.821Z","type":"response_item","payload":{"type":"function_call_output","call_id":"call6","output":[{"type":"input_text","text":"Script completed\nWall time 14.1 seconds\nOutput:\n"},{"type":"input_text","text":"git version 2.55.0.windows.3\n"}]}}
