@@ -383,7 +383,7 @@ What an asset does once it's active, measured on the real harnesses, and whether
 - [x] Eval cases: `schemas/eval.schema.json`, `axm doctor` validating each case, and the five checks.
 - [x] `axm eval run`: the asset installed in the copy, the sealed home, the session limits, the report and the history.
 - [ ] `axm eval compare`: git-ref and `none` baselines, alternating sessions, the side-by-side report and reusing a saved baseline.
-- [ ] `axm conflicts <path> --judge` and the eval judge, through either harness, with quotes checked against the files. (Moved from v0.2.)
+- [x] `axm conflicts <path> --judge` and the eval judge, through either harness, with quotes checked against the files. (Moved from v0.2.)
 - [ ] Behavioral evals for `agent-asset-authoring` on both harnesses, and for `scope-sheriff`, `session-doctor` and `determinism-auditor`, reviewed by the owner and committed, with `evals.behavioral: true` set. A regression eval for any failure the runs turn up.
 - [ ] Docs: `docs/cli.md` for `eval` and `conflicts`, and a write-up on the done-when comparison.
 - [ ] Release v0.5.0.
