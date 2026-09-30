@@ -13,8 +13,9 @@ internal static partial class EvalText
     /// <param name="output">Where to write.</param>
     /// <param name="sessions">The sessions that will run, on the harnesses that are installed.</param>
     /// <param name="notes">Assets left out, and why.</param>
+    /// <param name="judge">The harness whose model grades the rubrics, or <see langword="null"/> when none will be graded.</param>
     /// <param name="style">Whether to color.</param>
-    public static void WritePlan(TextWriter output, IReadOnlyList<EvalSessionSpec> sessions, IReadOnlyList<string> notes, Style style)
+    public static void WritePlan(TextWriter output, IReadOnlyList<EvalSessionSpec> sessions, IReadOnlyList<string> notes, Harness? judge, Style style)
     {
         var ink = new Ink(output, style);
         var assets = sessions.Select(session => session.Asset.Folder).Distinct().Count();
@@ -24,6 +25,10 @@ internal static partial class EvalText
             .Write($"{Count(assets, "asset")} · {Count(cases, "case")} × {Count(sessions.Max(session => session.Run), "run")} · ")
             .Write($"{Count(harnesses, "harness", "harnesses")} · {Count(sessions.Count, "session")}, {EvalSessions.Parallel} at a time").Line();
         ink.Write("  Each session runs in a sealed home with your logins and model, and nothing else of your setup.", Palette.Dim).Line();
+        if (judge is { } judging)
+        {
+            ink.Write($"  Rubrics are graded by {ExplainText.Title(judging)}'s model: model judgment, counted apart from the checks.", Palette.Dim).Line();
+        }
         foreach (var note in notes)
         {
             ink.Write($"  note: {note}", Palette.Dim).Line();
@@ -108,6 +113,20 @@ internal static partial class EvalText
                 foreach (var (run, stop) in summary.Stops)
                 {
                     ink.Write("      ").Write("--", Palette.Dim).Write("  ").Write($"run {run} stopped: {stop}", Palette.Warning).Line();
+                }
+
+                if (summary.Judge is { } judged)
+                {
+                    ink.Write($"      judge   passed {judged.Passed} of {Count(judged.Judged, "judged run")} · model judgment", judged.Passed == judged.Judged ? Palette.Dim : Palette.Warning).Line();
+                    foreach (var (run, words) in judged.Failed)
+                    {
+                        ink.Write("      ").Write("--", Palette.Dim).Write("  ").Write($"run {run}, in the judge's words: {words}", Palette.Warning).Line();
+                    }
+
+                    foreach (var (run, problem) in judged.Problems)
+                    {
+                        ink.Write($"      run {run} wasn't judged: {problem}", Palette.Dim).Line();
+                    }
                 }
 
                 foreach (var (run, paths) in summary.Outside)

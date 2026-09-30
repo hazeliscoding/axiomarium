@@ -2,6 +2,7 @@ using System.Runtime.InteropServices;
 using Axiomarium.Cli;
 using Axiomarium.Core.Evals;
 using Axiomarium.Core.Instructions;
+using Axiomarium.Core.Judging;
 
 namespace Axiomarium.Tests.Cli;
 
@@ -160,6 +161,47 @@ public class EvalSessionsTests
         var result = Run(vault, runner, harnesses: [Harness.ClaudeCode]).Results.Single();
 
         Assert.Equal(("it ran past the 10-minute timeout", false), (result.Stopped, result.Passed));
+    }
+
+    // The judge grades what the session did against the rubric, and its verdict never changes what the checks decided.
+    [Fact]
+    public async Task A_rubric_is_graded_in_the_sealed_home_from_the_copy_s_diff_apart_from_the_checks()
+    {
+        using var vault = Vault().Write(
+            "repo/skills/agent-asset-authoring/evals/behavioral/new-hook/eval.yaml", Case + "judge:\n  rubric: The hook warns and never blocks.\n");
+        var judged = new List<HarnessCall>();
+        var runner = new FakeRunner(call =>
+        {
+            if (call.Command == "claude" && call.Arguments.Contains("--tools"))
+            {
+                lock (judged)
+                {
+                    judged.Add(call);
+                }
+
+                return FakeRunner.ClaudeAnswer("""{"passed": false, "reason": "It blocks the edit."}""");
+            }
+
+            return call switch
+            {
+                { Command: "claude" } => new HarnessOutput(true, Fixture("claude-code-task.jsonl"), 0, ""),
+                { Command: "codex" } => new HarnessOutput(true, Fixture("codex-task.jsonl"), 0, ""),
+                { Command: "git", Arguments: ["diff", ..] } => new HarnessOutput(true, ["+response: block"], 0, ""),
+                _ => new HarnessOutput(true, [], 0, ""),
+            };
+        })
+        { FolderRoot = Path.Combine(vault.Root, "scratch") };
+
+        var plan = EvalRuns.Plan(Path.Combine(vault.Root, "repo"), [], [Harness.Codex], 1, TestMachine.For(vault.Root)).Plan!;
+        var result = (await EvalSessions.RunAsync(
+            runner, plan.Sessions, plan.VaultRoot, TestMachine.For(vault.Root), Environment, Path.Combine(vault.Root, "bin", "axm.exe"), null, TimeProvider.System, OSPlatform.Linux, Harness.ClaudeCode))
+            .Results.Single();
+
+        Assert.Equal((new RubricVerdict(false, "It blocks the edit."), true), (result.Judged, result.Passed));
+        var brief = Assert.Single(judged);
+        Assert.Contains("The hook warns and never blocks.", brief.Input, StringComparison.Ordinal);
+        Assert.Contains("+response: block", brief.Input, StringComparison.Ordinal);
+        Assert.EndsWith(Path.Combine("home", ".claude"), brief.Environment!["CLAUDE_CONFIG_DIR"]);
     }
 
     // A real run lost its timeout this way: what fails after the harness ran mustn't hide why the session stopped.

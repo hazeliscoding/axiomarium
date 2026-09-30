@@ -3,6 +3,7 @@ using System.Text;
 using Axiomarium.Core.Assets;
 using Axiomarium.Core.Evals;
 using Axiomarium.Core.Instructions;
+using Axiomarium.Core.Judging;
 
 namespace Axiomarium.Cli;
 
@@ -52,6 +53,10 @@ internal static class EvalSessions
     /// <param name="model">The model to ask each harness for, or <see langword="null"/> for the one the user chose.</param>
     /// <param name="clock">Measures each session's wall time.</param>
     /// <param name="platform">The operating system, which decides the sealed home's logins and the Codex warm-up.</param>
+    /// <param name="judge">
+    /// The harness whose model grades each finished run of a case that has a rubric, in the sealed home, or
+    /// <see langword="null"/> to grade none. Its verdict is model judgment and never changes what the checks decided.
+    /// </param>
     /// <returns>The results, or why none could run.</returns>
     public static async Task<EvalSessionsRun> RunAsync(
         IHarnessRunner runner,
@@ -62,12 +67,15 @@ internal static class EvalSessions
         string axm,
         string? model,
         TimeProvider clock,
-        OSPlatform platform)
+        OSPlatform platform,
+        Harness? judge = null)
     {
         var leftovers = runner.RemoveLeftovers("evals");
         var folder = runner.CreateFolder("evals");
         var home = Path.Combine(folder, "home");
-        var harnesses = sessions.Select(session => session.Harness).Distinct().ToList();
+        // The judge runs in the sealed home too, so its harness needs a login there when any case has a rubric.
+        judge = sessions.Any(session => session.Case.Rubric is not null) ? judge : null;
+        var harnesses = sessions.Select(session => (Harness?)session.Harness).Append(judge).OfType<Harness>().Distinct().ToList();
         var sealedHome = SealedHomes.Plan(home, machine, harnesses, platform);
         try
         {
@@ -99,7 +107,7 @@ internal static class EvalSessions
                 await gate.WaitAsync();
                 try
                 {
-                    return await Run(runner, session, Path.Combine(folder, $"copy-{index + 1}"), vaultRoot, home, variables, axm, model, clock);
+                    return await Run(runner, session, Path.Combine(folder, $"copy-{index + 1}"), vaultRoot, home, variables, axm, model, clock, judge);
                 }
                 catch (Exception problem) when (problem is not OperationCanceledException)
                 {
@@ -182,7 +190,8 @@ internal static class EvalSessions
         IReadOnlyDictionary<string, string?> variables,
         string axm,
         string? model,
-        TimeProvider clock)
+        TimeProvider clock,
+        Harness? judge)
     {
         try
         {
@@ -216,10 +225,16 @@ internal static class EvalSessions
                     runs[command] = await Check(runner, command, copy, variables);
                 }
 
-                return new EvalSessionResult(session, record, EvalChecks.Evaluate(session.Case.Checks, record.Activity, copy, runs), elapsed, timedOut ?? record.Stopped)
+                var stopped = timedOut ?? record.Stopped;
+                var result = new EvalSessionResult(session, record, EvalChecks.Evaluate(session.Case.Checks, record.Activity, copy, runs), elapsed, stopped)
                 {
                     Outside = OutsidePaths.Of(record.Activity.Commands, copy, [Path.GetDirectoryName(axm)!]),
                 };
+
+                // A session that didn't finish has already failed, so it isn't worth a judge's call.
+                return session.Case.Rubric is { } rubric && judge is { } judgeHarness && stopped is null
+                    ? await Judge(runner, result, rubric, judgeHarness, copy, variables)
+                    : result;
             }
             catch (Exception failure) when (failure is not OperationCanceledException)
             {
@@ -231,6 +246,44 @@ internal static class EvalSessions
         {
             await Delete(copy);
         }
+    }
+
+    // The judge sees what the session was asked, what it ran, what it changed in the copy and what it said.
+    private static async Task<EvalSessionResult> Judge(
+        IHarnessRunner runner, EvalSessionResult result, string rubric, Harness judge, string copy, IReadOnlyDictionary<string, string?> variables)
+    {
+        var changes = await Changes(runner, copy, variables);
+        var activity = result.Record!.Activity;
+        string? problem = null;
+        for (var attempt = 0; attempt < 2; attempt++)
+        {
+            var brief = RubricJudge.Brief(rubric, result.Spec.Case.Prompt, activity.Reply, activity.Commands, changes, problem);
+            var asked = await JudgeCalls.AskAsync(runner, judge, brief, null, variables);
+            if (asked.Text is null)
+            {
+                return result with { JudgeProblem = asked.Problem };
+            }
+
+            var read = RubricJudge.Read(asked.Text);
+            if (read.Verdict is { } verdict)
+            {
+                return result with { Judged = verdict };
+            }
+
+            problem = read.Problem;
+        }
+
+        return result with { JudgeProblem = $"its answer couldn't be used, twice: {problem}" };
+    }
+
+    // What the session changed, as a git diff against the copy's one commit, cut short for a very large change.
+    private static async Task<string> Changes(IHarnessRunner runner, string copy, IReadOnlyDictionary<string, string?> variables)
+    {
+        const int Limit = 20_000;
+        await runner.RunAsync(new HarnessCall("git", ["add", "-A"], "", copy, null, CheckTimeout, variables));
+        var diff = await runner.RunAsync(new HarnessCall("git", ["diff", "--cached"], "", copy, null, CheckTimeout, variables));
+        var text = string.Join('\n', diff.Lines);
+        return text.Length <= Limit ? text : text[..Limit] + $"\n… the diff goes on past {Limit:N0} characters";
     }
 
     // The copy is the case's repo, with the asset installed, committed once, so the agent starts from a clean tree

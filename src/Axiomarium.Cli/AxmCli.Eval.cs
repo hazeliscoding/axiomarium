@@ -32,6 +32,12 @@ public static partial class AxmCli
         var runs = new Option<int>("--runs") { Description = "How many times each case runs on each harness.", DefaultValueFactory = _ => 3 };
         var model = new Option<string?>("--model") { Description = "The model each harness runs. Defaults to the one you chose for it." };
         var json = new Option<bool>("--json") { Description = "Print the result as JSON, shape 1." };
+        var judgeWith = new Option<string>("--judge-with")
+        {
+            Description = "The harness whose model grades each run against its case's rubric, as model judgment. Defaults to Claude Code.",
+            DefaultValueFactory = _ => Harness.ClaudeCode.Name(),
+        };
+        judgeWith.AcceptOnlyFromAmong(Harness.ClaudeCode.Name(), Harness.Codex.Name());
 
         var command = new Command("run", "Run each asset's eval cases on the real harnesses, and report how many runs passed and what they used.");
         command.Arguments.Add(assets);
@@ -40,6 +46,7 @@ public static partial class AxmCli
         command.Options.Add(runs);
         command.Options.Add(model);
         command.Options.Add(json);
+        command.Options.Add(judgeWith);
         command.SetAction(result =>
         {
             Harness[] harnesses = result.GetValue(harness) switch
@@ -50,12 +57,14 @@ public static partial class AxmCli
             };
             return result.GetValue(runs) < 1
                 ? CouldNotRunWith(session, "--runs must be 1 or more.", null)
-                : EvalRun(session, Path.GetFullPath(result.GetValue(folder)!, session.CurrentDirectory), result.GetValue(assets) ?? [], harnesses, result.GetValue(runs), result.GetValue(model), result.GetValue(json));
+                : EvalRun(
+                    session, Path.GetFullPath(result.GetValue(folder)!, session.CurrentDirectory), result.GetValue(assets) ?? [], harnesses, result.GetValue(runs),
+                    result.GetValue(model), result.GetValue(json), result.GetValue(judgeWith) == Harness.Codex.Name() ? Harness.Codex : Harness.ClaudeCode);
         });
         return command;
     }
 
-    private static int EvalRun(Session session, string start, string[] assets, Harness[] harnesses, int runs, string? model, bool json)
+    private static int EvalRun(Session session, string start, string[] assets, Harness[] harnesses, int runs, string? model, bool json, Harness judgeWith)
     {
         var machine = session.Machine ?? Machine.FromEnvironment(session.Environment, start);
         var setup = EvalRuns.Plan(start, assets, harnesses, runs, machine);
@@ -71,15 +80,31 @@ public static partial class AxmCli
             return CouldNotRunWith(session, $"No harness to run on. {string.Join(" ", missing.Values)}", "Install Claude Code or Codex and log in, then run this again.");
         }
 
+        // A rubric is graded only when the judge's harness can run. The checks still decide each run.
+        Harness? judge = null;
+        var notes = plan.Notes.ToList();
+        if (sessions.Any(item => item.Case.Rubric is not null))
+        {
+            var missingJudge = versions.ContainsKey(judgeWith) ? null : HarnessVersions(session, [judgeWith], plan.RepoRoot).Missing.GetValueOrDefault(judgeWith);
+            if (missingJudge is null)
+            {
+                judge = judgeWith;
+            }
+            else
+            {
+                notes.Add($"{ExplainText.Title(judgeWith)} judges the rubrics, and it can't run, so none was graded: {missingJudge}");
+            }
+        }
+
         if (!json)
         {
-            EvalText.WritePlan(session.Output, sessions, plan.Notes, session.OutputStyle);
+            EvalText.WritePlan(session.Output, sessions, notes, judge, session.OutputStyle);
             session.Output.Flush();
         }
 
         var platform = OperatingSystem.IsWindows() ? OSPlatform.Windows : OperatingSystem.IsMacOS() ? OSPlatform.OSX : OSPlatform.Linux;
         var ran = EvalSessions.RunAsync(
-            session.Runner, sessions, plan.VaultRoot, machine, session.Environment, Environment.ProcessPath ?? "axm", model, session.Clock, platform)
+            session.Runner, sessions, plan.VaultRoot, machine, session.Environment, Environment.ProcessPath ?? "axm", model, session.Clock, platform, judge)
             .GetAwaiter().GetResult();
         if (ran.Problem is not null)
         {
@@ -96,11 +121,14 @@ public static partial class AxmCli
             missing,
             ran.Warmup,
             ran.Leftovers,
-            plan.Notes,
+            notes,
             ran.Results,
             sessions.Select(item => item.Asset).DistinctBy(asset => asset.Folder)
                 .ToDictionary(asset => asset.Folder, asset => EvalHashes.Asset(Path.Combine(plan.VaultRoot, asset.Folder))),
-            sessions.Select(item => item.CaseFolder).Distinct().ToDictionary(caseFolder => caseFolder, EvalHashes.Case));
+            sessions.Select(item => item.CaseFolder).Distinct().ToDictionary(caseFolder => caseFolder, EvalHashes.Case))
+        {
+            Judge = judge,
+        };
         var saved = SaveHistory(plan.RepoRoot, report);
         if (json)
         {
