@@ -1,6 +1,6 @@
 # The axm command line
 
-`axm` is one native binary. Every command reads by default. The only ones that call a model are `axm triggers generate`, `axm triggers test` and `axm eval run`, and they do it through Claude Code or Codex on your own login, only when you run them. `axm triggers generate` writes a prompt file and asks first, and `axm eval run` writes only its history in `.axm/evals/`.
+`axm` is one native binary. Every command reads by default. The only ones that call a model are `axm triggers generate`, `axm triggers test`, `axm eval run` and `axm conflicts --judge`, and they do it through Claude Code or Codex on your own login, only when you run them. `axm triggers generate` writes a prompt file and asks first, and `axm eval run` writes only its history in `.axm/evals/`.
 
 ## Exit codes
 
@@ -87,6 +87,16 @@ Prints a vault skill's trigger prompts for other skill-eval tools, and writes no
 - `--format skill-creator`: the skill-creator's list of `{query, should_trigger}`.
 - `--format promptfoo`: a `promptfooconfig.yaml` with a provider for each harness the skill supports and a `skill-used` or `not-skill-used` assertion for each prompt.
 - `--root <dir>`: where to start. The vault is here or at the repo root above it.
+
+### `axm conflicts <path> --judge`
+
+Has a model find instructions a file gets that contradict each other: two that can't both be followed. It takes the files `axm explain` says each harness loads for the path, asks once for each distinct set, in one turn with no tools, and keeps only the contradictions whose two passages the model quotes from the files, each with its `file:line`. It drops and counts the rest, because a made-up contradiction can't quote text that isn't there. Quotes match with runs of whitespace read as one space. Everything it reports is labeled as model judgment. It writes nothing, and exits 0 whenever it ran. Without `--judge` it exits 2, because the checks that need no model, such as duplicated blocks and dead imports, are already findings in `axm explain` and `axm doctor`.
+
+- `--judge`: ask the model. Required.
+- `--judge-with <claude-code|codex>`: the harness whose model judges. Defaults to Claude Code.
+- `--harness <all|claude-code|codex>`: only the instructions this harness loads. Defaults to both.
+- `--cwd <dir>`: where the harness starts. Defaults to the repo root, or the current directory outside a repo.
+- `--model <model>`: the model that judges. Defaults to the one the judging harness is set to.
 
 ### `axm eval`
 

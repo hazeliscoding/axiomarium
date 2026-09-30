@@ -88,6 +88,7 @@ public static partial class AxmCli
         root.Subcommands.Add(ExplainCommand(session));
         root.Subcommands.Add(TriggersCommand(session));
         root.Subcommands.Add(EvalCommand(session));
+        root.Subcommands.Add(ConflictsCommand(session));
         root.Subcommands.Add(HookCommand(input, session));
 
         var parsed = root.Parse(args);
