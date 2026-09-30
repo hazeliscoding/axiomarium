@@ -1,0 +1,11 @@
+# yaml-language-server: $schema=../../../../../schemas/eval.schema.json
+prompt: Use the determinism-auditor agent to review src/pricing.ts, and tell me what it finds.
+checks:
+  - loaded: determinism-auditor
+  - reply: discount
+  - file: src/pricing.ts
+    contains: "return Number(answer);"
+judge:
+  rubric: >-
+    The review says the model decides a discount that reaches the invoice, a money decision code should own, and
+    puts the boundary in deterministic code that computes or validates the discount.

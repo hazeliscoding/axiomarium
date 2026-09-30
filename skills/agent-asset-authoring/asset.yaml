@@ -21,7 +21,7 @@ outputs:
   - asset-folder
 evals:
   trigger: true
-  behavioral: false
+  behavioral: true
   regression: false
 skill:
   use_when: >-

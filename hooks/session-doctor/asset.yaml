@@ -21,7 +21,7 @@ outputs:
   - session-notice
 evals:
   trigger: false
-  behavioral: false
+  behavioral: true
   regression: false
 hook:
   event: session-start

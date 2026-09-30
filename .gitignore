@@ -14,8 +14,9 @@ TestResults/
 # Local tool output
 .playwright-mcp/
 
-# axm's local state: the task scope and caches
+# axm's local state: the task scope and caches, except the scopes eval cases start with
 .axm/
+!*/*/evals/*/*/repo/.axm/
 
 # OS files
 .DS_Store

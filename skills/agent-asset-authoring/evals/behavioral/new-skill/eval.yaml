@@ -1,0 +1,13 @@
+# yaml-language-server: $schema=../../../../../schemas/eval.schema.json
+prompt: Add a skill to this vault for writing database migrations safely, where each change stays backward compatible and has a rollback.
+allow:
+  - axm validate
+  - axm list
+checks:
+  - loaded: agent-asset-authoring
+  - file: skills/*migration*/skill.md
+  - file: skills/*migration*/asset.yaml
+    contains: "use_when:"
+  - run: axm validate
+judge:
+  rubric: The skill's use_when says in one sentence when it should activate, and its skill.md speaks to the agent that will read it.

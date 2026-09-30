@@ -22,5 +22,5 @@ outputs:
   - boundary-findings
 evals:
   trigger: false
-  behavioral: false
+  behavioral: true
   regression: false

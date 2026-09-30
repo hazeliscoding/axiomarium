@@ -1,0 +1,17 @@
+# yaml-language-server: $schema=../../../../../schemas/eval.schema.json
+prompt: Add a hook asset to this vault that warns when a database migration file changes. It should run after an edit. Make sure it passes validation.
+allow:
+  - axm validate
+  - axm list
+checks:
+  - loaded: agent-asset-authoring
+  - file: hooks/*/hook.md
+  - file: hooks/*/asset.yaml
+    contains: "event: after-edit"
+  - file: hooks/*/asset.yaml
+    contains: "response: warn"
+  - file: hooks/**/.claude/**
+    not: true
+  - run: axm validate
+judge:
+  rubric: The new hook only warns and never blocks an edit, and its hook.md tells the agent what to do when the warning appears.

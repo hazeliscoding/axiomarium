@@ -1,0 +1,26 @@
+# yaml-language-server: $schema=../../schemas/asset.schema.json
+name: release-notes
+kind: skill
+version: 0.1.0
+description: >-
+  Writes release notes from merged pull requests, grouped by user-visible change.
+maturity: experimental
+supports:
+  claude-code: experimental
+  generic: full
+permissions:
+  filesystem: read
+  shell: read-only
+  network: none
+side_effects: none
+inputs:
+  - merged-pull-requests
+outputs:
+  - release-notes
+evals:
+  trigger: false
+  behavioral: false
+  regression: false
+skill:
+  use_when: >-
+    Preparing a release, or asked to summarize what changed since the last tag.
