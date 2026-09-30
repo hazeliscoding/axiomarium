@@ -107,10 +107,13 @@ internal sealed class FakeRunner : IHarnessRunner
         new(true, File.ReadAllLines(Path.Combine(RepoRoot.Path, "tests", "Axiomarium.Tests", "Fixtures", "triggers", name)), null, "");
 }
 
-/// <summary>A clock stopped at noon UTC on 2026-09-28, in UTC.</summary>
+/// <summary>A clock stopped at noon UTC on 2026-09-28, in UTC, whose timestamps never move, so every elapsed time is zero.</summary>
 internal sealed class FixedClock : TimeProvider
 {
     public override DateTimeOffset GetUtcNow() => new(2026, 9, 28, 12, 0, 0, TimeSpan.Zero);
+
+    // A wall time measured on a busy machine would round to a second now and then, and flake the reports' tests.
+    public override long GetTimestamp() => 0;
 
     public override TimeZoneInfo LocalTimeZone => TimeZoneInfo.Utc;
 }
