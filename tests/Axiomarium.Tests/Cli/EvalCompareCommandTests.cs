@@ -119,6 +119,31 @@ public class EvalCompareCommandTests
         Assert.Matches(@"^      input tokens +\S+( \([^)]*\))? {2,}\S+ \([^)]*\) {2,}\S", row);
     }
 
+    // A compare says what eval run says about each version: the paths a run touched outside its copy.
+    [Fact]
+    public void Each_version_s_runs_that_left_their_copy_are_named()
+    {
+        using var vault = Vault();
+        var respond = Respond();
+        var roaming = new HarnessOutput(
+            true,
+            [
+                """{"type":"system","subtype":"init","model":"claude-opus-5-5","claude_code_version":"2.1.285","skills":[]}""",
+                """{"type":"assistant","message":{"content":[{"type":"tool_use","id":"t1","name":"Skill","input":{"skill":"agent-asset-authoring"}}]}}""",
+                """{"type":"assistant","message":{"content":[{"type":"tool_use","id":"t2","name":"Bash","input":{"command":"cat /home/dev/notes.md"}}]}}""",
+                """{"type":"result","subtype":"success","is_error":false,"result":"Done.","num_turns":3,"total_cost_usd":0.01,"modelUsage":{}}""",
+            ],
+            0,
+            "");
+        HarnessOutput Roaming(HarnessCall call) =>
+            call.Command == "claude" && call.Arguments[0] != "--version" && Installed(call)?.Contains("Old", StringComparison.Ordinal) != true ? roaming : respond(call);
+
+        var (_, output, _, _) = Compare(vault, Roaming);
+
+        Assert.Contains("      --  candidate run 1 touched paths outside its copy: /home/dev/notes.md\n", output, StringComparison.Ordinal);
+        Assert.DoesNotContain("baseline run 1 touched", output, StringComparison.Ordinal);
+    }
+
     [Fact]
     public void An_asset_unchanged_since_the_ref_has_nothing_to_compare()
     {

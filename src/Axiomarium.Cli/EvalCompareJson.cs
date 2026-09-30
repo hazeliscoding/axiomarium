@@ -78,8 +78,8 @@ internal static class EvalCompareJson
                 writer.WriteString("case", compared.Case.Name);
                 writer.WriteString("type", EvalCases.Folder(compared.Case.Type));
                 writer.WriteString("harness", compared.Harness.Name());
-                WriteSide(writer, "baseline", compared.Baseline);
-                WriteSide(writer, "candidate", compared.Candidate);
+                WriteSide(writer, "baseline", compared.Baseline, compared.BaselineRuns);
+                WriteSide(writer, "candidate", compared.Candidate, compared.CandidateRuns);
                 writer.WriteEndObject();
             }
 
@@ -91,7 +91,7 @@ internal static class EvalCompareJson
         output.Write('\n');
     }
 
-    private static void WriteSide(Utf8JsonWriter writer, string name, CaseSide side)
+    private static void WriteSide(Utf8JsonWriter writer, string name, CaseSide side, CaseSummary? runs)
     {
         writer.WriteStartObject(name);
         writer.WriteNumber("passed", side.Passed);
@@ -117,6 +117,35 @@ internal static class EvalCompareJson
             writer.WriteNull("judge");
         }
 
+        if (runs?.Slowest is { } slowest)
+        {
+            writer.WriteStartObject("slowestCall");
+            writer.WriteNumber("run", slowest.Run);
+            writer.WriteString("what", slowest.Call.What);
+            writer.WriteNumber("seconds", Math.Round(slowest.Call.Seconds, 1));
+            writer.WriteEndObject();
+        }
+        else
+        {
+            writer.WriteNull("slowestCall");
+        }
+
+        writer.WriteStartArray("outside");
+        foreach (var (run, paths) in runs?.Outside ?? [])
+        {
+            writer.WriteStartObject();
+            writer.WriteNumber("run", run);
+            writer.WriteStartArray("paths");
+            foreach (var path in paths)
+            {
+                writer.WriteStringValue(path);
+            }
+
+            writer.WriteEndArray();
+            writer.WriteEndObject();
+        }
+
+        writer.WriteEndArray();
         writer.WriteEndObject();
     }
 
