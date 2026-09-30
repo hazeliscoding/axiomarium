@@ -95,6 +95,10 @@ internal static partial class EvalText
                 }
 
                 ink.Write($"      work    {string.Join(" · ", work)}", Palette.Dim).Line();
+                if (summary.Slowest is { } slowest)
+                {
+                    ink.Write($"      slowest {Time(slowest.Call.Seconds)} in run {slowest.Run}: {Shortened(slowest.Call.What)}", Palette.Dim).Line();
+                }
                 foreach (var failure in summary.Failures)
                 {
                     ink.Write("      ").Write("--", Palette.Dim).Write("  ").Write(EvalChecks.Describe(failure.Check))
@@ -104,6 +108,12 @@ internal static partial class EvalText
                 foreach (var (run, stop) in summary.Stops)
                 {
                     ink.Write("      ").Write("--", Palette.Dim).Write("  ").Write($"run {run} stopped: {stop}", Palette.Warning).Line();
+                }
+
+                foreach (var (run, paths) in summary.Outside)
+                {
+                    var shown = string.Join(", ", paths.Take(3)) + (paths.Count > 3 ? $" and {paths.Count - 3} more" : "");
+                    ink.Write("      ").Write("--", Palette.Dim).Write("  ").Write($"run {run} read outside its copy: {shown}", Palette.Warning).Line();
                 }
             }
 
@@ -124,6 +134,8 @@ internal static partial class EvalText
     // The median, and the range when the runs differ.
     private static string Measure(Spread spread, Func<double, string> format) =>
         spread.Min == spread.Max ? format(spread.Median) : $"{format(spread.Median)} ({format(spread.Min)}–{format(spread.Max)})";
+
+    private static string Shortened(string text) => text.Length <= 90 ? text : text[..89] + "…";
 
     private static string Number(double value) => Math.Round(value).ToString("N0", CultureInfo.InvariantCulture);
 

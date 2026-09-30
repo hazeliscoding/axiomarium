@@ -216,7 +216,10 @@ internal static class EvalSessions
                     runs[command] = await Check(runner, command, copy, variables);
                 }
 
-                return new EvalSessionResult(session, record, EvalChecks.Evaluate(session.Case.Checks, record.Activity, copy, runs), elapsed, timedOut ?? record.Stopped);
+                return new EvalSessionResult(session, record, EvalChecks.Evaluate(session.Case.Checks, record.Activity, copy, runs), elapsed, timedOut ?? record.Stopped)
+                {
+                    Outside = OutsidePaths.Of(record.Activity.Commands, copy, [Path.GetDirectoryName(axm)!]),
+                };
             }
             catch (Exception failure) when (failure is not OperationCanceledException)
             {

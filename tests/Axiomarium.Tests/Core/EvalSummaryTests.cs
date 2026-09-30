@@ -72,6 +72,27 @@ public class EvalSummaryTests
     }
 
     [Fact]
+    public void The_slowest_call_and_each_run_that_left_its_copy_are_named()
+    {
+        var slow = Result(Harness.Codex, 1, true, 1000, 300) with { Outside = [@"C:\ai\axiomarium\README.md"] };
+        slow = slow with { Record = slow.Record! with { Calls = [new TimedCall("git --version", 141.4), new TimedCall("axm validate", 2)] } };
+        var quick = Result(Harness.Codex, 2, true, 1000, 30);
+        quick = quick with { Record = quick.Record! with { Calls = [new TimedCall("pwd", 1)] } };
+
+        var summary = Assert.Single(EvalSummaries.Summarize([slow, quick]));
+
+        Assert.Equal((1, new TimedCall("git --version", 141.4)), summary.Slowest);
+        Assert.Equal([(1, (IReadOnlyList<string>)[@"C:\ai\axiomarium\README.md"])], summary.Outside.Select(item => (item.Run, item.Paths)).ToList(), new OutsideComparer());
+    }
+
+    private sealed class OutsideComparer : IEqualityComparer<(int Run, IReadOnlyList<string> Paths)>
+    {
+        public bool Equals((int Run, IReadOnlyList<string> Paths) x, (int Run, IReadOnlyList<string> Paths) y) => x.Run == y.Run && x.Paths.SequenceEqual(y.Paths);
+
+        public int GetHashCode((int Run, IReadOnlyList<string> Paths) item) => item.Run;
+    }
+
+    [Fact]
     public void A_hash_changes_with_the_content_and_not_with_line_ends_or_the_evals_folder()
     {
         using var vault = new TempVault()
