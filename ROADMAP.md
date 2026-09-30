@@ -386,9 +386,16 @@ What an asset does once it's active, measured on the real harnesses, and whether
 - [x] `axm conflicts <path> --judge` and the eval judge, through either harness, with quotes checked against the files. (Moved from v0.2.)
 - [x] Behavioral evals for `agent-asset-authoring` on both harnesses, and for `scope-sheriff`, `session-doctor` and `determinism-auditor`, reviewed by the owner and committed, with `evals.behavioral: true` set. A regression eval for any failure the runs turn up.
 - [x] Docs: `docs/cli.md` for `eval` and `conflicts`, and a write-up on the done-when comparison.
-- [ ] Release v0.5.0.
+- [x] Release v0.5.0.
 
 **Done when:** `axm eval compare agent-asset-authoring`, before and after a real change to its `skill.md`, reports behavior, tokens and latency for both versions on Claude Code and Codex; both harnesses refuse the containment control; the docs tests pass; and v0.5.0 installs from GitHub Releases and NuGet on fresh runners.
+
+**Done (2026-09-30).** v0.5.0 is out on [GitHub Releases](https://github.com/hazeliscoding/axiomarium/releases/tag/v0.5.0) and on [NuGet](https://www.nuget.org/packages/Axiomarium).
+- `axm eval compare agent-asset-authoring`, before and after a real change to its `skill.md` (0.1.0 to 0.2.0: name the tool that should enforce a rule, first), reported passed runs, the judge, tokens, time and tool calls for both versions, three runs a side, on Claude Code 2.1.285 with claude-opus-5-5 and on Codex 0.156.1 with gpt-6-sol, plus turns and cost on Claude Code. The checks held on both versions, 9 of 9 on Claude Code and 8 of 9 on Codex, and on Codex the judge passed `prefers-tooling` in 2 of 3 runs, up from 0 of 3. [Did the change make the skill better?](docs/did-the-change-make-the-skill-better.md) has the runs.
+- Behavioral evals for the four starter assets were reviewed by the owner and committed, with `evals.behavioral: true` set. No regression evals: no real failure turned up.
+- Both harnesses refused the containment control in the spike: a write outside the copy, a command outside `allow`, and the network.
+- CI ran the tests on Linux, Windows and macOS. Its first run caught eval tests that read the real operating system, which now comes from the caller ([run](https://github.com/hazeliscoding/axiomarium/actions/runs/36674491957)).
+- The release run installed the binary and the dotnet tool on fresh Linux, Windows and macOS runners and ran them ([run](https://github.com/hazeliscoding/axiomarium/actions/runs/36674510757)).
 
 ## M6: v0.6, evidence
 
