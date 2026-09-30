@@ -248,6 +248,43 @@ public class EvalSessionsTests
         Assert.EndsWith(Path.Combine("home", ".claude"), brief.Environment!["CLAUDE_CONFIG_DIR"]);
     }
 
+    // Codex reads its own built-in skills from its home, which is the harness at work, not the agent leaving its copy.
+    [Fact]
+    public async Task Codex_reading_its_own_skills_in_the_sealed_home_isn_t_outside_the_copy()
+    {
+        using var vault = Vault();
+        var runner = new FakeRunner(call =>
+        {
+            if (call.Command != "codex")
+            {
+                return new HarnessOutput(true, [], 0, "");
+            }
+
+            var home = call.Environment!["CODEX_HOME"]!;
+            var command = $"Get-Content {Path.Combine(home, "skills", ".system", "skill-creator", "SKILL.md")}; Get-ChildItem {Path.GetDirectoryName(Path.GetDirectoryName(home))}";
+            return new HarnessOutput(
+                true,
+                [
+                    """{"type":"thread.started","thread_id":"t1"}""",
+                    new System.Text.Json.Nodes.JsonObject { ["type"] = "item.completed", ["item"] = new System.Text.Json.Nodes.JsonObject { ["type"] = "command_execution", ["command"] = command } }.ToJsonString(),
+                    """{"type":"turn.completed","usage":{"input_tokens":1}}""",
+                ],
+                0,
+                "");
+        })
+        { FolderRoot = Path.Combine(vault.Root, "scratch") };
+        var plan = EvalRuns.Plan(Path.Combine(vault.Root, "repo"), [], [Harness.Codex], 1, TestMachine.For(vault.Root)).Plan!;
+
+        var result = (await EvalSessions.RunAsync(
+            runner, plan.Sessions, plan.VaultRoot, TestMachine.For(vault.Root), Environment, Path.Combine(vault.Root, "bin", "axm.exe"), null, TimeProvider.System, OSPlatform.Linux))
+            .Results.Single();
+
+        // The run's own folder, which holds the other sessions' copies, still counts.
+        var outside = Assert.Single(result.Outside);
+        Assert.StartsWith(Path.Combine(vault.Root, "scratch"), outside, StringComparison.Ordinal);
+        Assert.DoesNotContain("skill-creator", outside, StringComparison.Ordinal);
+    }
+
     // A real run lost its timeout this way: what fails after the harness ran mustn't hide why the session stopped.
     [Fact]
     public void A_failure_after_the_session_keeps_why_it_stopped()
