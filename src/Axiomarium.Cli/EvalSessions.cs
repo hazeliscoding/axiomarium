@@ -91,9 +91,15 @@ internal static class EvalSessions
             }
 
             // Custom agents live in the Codex home, which every Codex session shares, so they're written once, first.
-            foreach (var session in sessions.Where(session => session.Harness == Harness.Codex).DistinctBy(session => session.Asset.Folder))
+            // A compare never runs an agent on Codex, since both versions would share this one home.
+            var codexAssets = sessions
+                .Where(session => session.Harness == Harness.Codex)
+                .Select(session => (Asset: session.Variant is { } variant ? variant.Asset : session.Asset, Root: session.Variant?.VaultRoot ?? vaultRoot))
+                .Where(item => item.Asset is not null)
+                .DistinctBy(item => item.Asset!.Folder);
+            foreach (var (asset, root) in codexAssets)
             {
-                Write(Path.Combine(home, ".codex"), EvalInstall.Plan(session.Asset, Body(vaultRoot, session.Asset), Harness.Codex, axm, null).CodexHome);
+                Write(Path.Combine(home, ".codex"), EvalInstall.Plan(asset!, Body(root, asset!), Harness.Codex, axm, null).CodexHome);
             }
 
             var variables = Variables(sealedHome, environment, axm);
@@ -302,14 +308,21 @@ internal static class EvalSessions
             }
         }
 
-        var settings = Path.Combine(copy, ".claude", "settings.json");
-        var installation = EvalInstall.Plan(session.Asset, Body(vaultRoot, session.Asset), session.Harness, axm, File.Exists(settings) ? File.ReadAllText(settings) : null);
-        if (installation.Problem is not null)
+        // A compare's session installs its version of the asset: the baseline's files, or none at all.
+        var asset = session.Variant is { } variant ? variant.Asset : session.Asset;
+        if (asset is not null)
         {
-            return installation.Problem;
+            var settings = Path.Combine(copy, ".claude", "settings.json");
+            var installation = EvalInstall.Plan(
+                asset, Body(session.Variant?.VaultRoot ?? vaultRoot, asset), session.Harness, axm, File.Exists(settings) ? File.ReadAllText(settings) : null);
+            if (installation.Problem is not null)
+            {
+                return installation.Problem;
+            }
+
+            Write(copy, installation.Copy);
         }
 
-        Write(copy, installation.Copy);
         return await Commit(runner, copy, variables);
     }
 
