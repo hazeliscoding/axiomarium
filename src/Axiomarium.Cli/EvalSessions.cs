@@ -294,9 +294,16 @@ internal static class EvalSessions
     // one session pays that before any scored session starts.
     private static async Task<EvalWarmup> Warm(IHarnessRunner runner, string folder, string home, IReadOnlyDictionary<string, string?> variables, string? model, TimeProvider clock)
     {
+        // Shaped like a session's copy, a git repo, since a plain folder left the first command in a copy cold.
         var copy = Directory.CreateDirectory(Path.Combine(folder, "warmup")).FullName;
         try
         {
+            await File.WriteAllTextAsync(Path.Combine(copy, "README.md"), "# Warm-up\n");
+            if (await Commit(runner, copy, variables) is { } problem)
+            {
+                return new EvalWarmup(TimeSpan.Zero, null, problem);
+            }
+
             var started = clock.GetTimestamp();
             var output = await runner.RunAsync(new HarnessCall("codex", Arguments(Harness.Codex, [], model), WarmupPrompt, copy, null, Timeout, variables));
             var elapsed = clock.GetElapsedTime(started);
