@@ -24,12 +24,21 @@ public static partial class OutsidePaths
     public static IReadOnlyList<string> Of(IEnumerable<string> commands, string copyRoot, IEnumerable<string> allowed)
     {
         var roots = allowed.Prepend(copyRoot).Select(Normal).ToList();
+        var windows = Drive().IsMatch(copyRoot);
         var found = new List<string>();
         foreach (var command in commands)
         {
             foreach (Match match in Path().Matches(command))
             {
-                var path = Normal(match.Groups.Values.Skip(1).First(group => group.Success).Value.TrimEnd('.', ',', ')', ':'));
+                var written = match.Groups.Values.Skip(1).First(group => group.Success).Value.TrimEnd('.', ',', ')', ':');
+
+                // Git Bash, which Claude Code's Bash tool is on Windows, writes C:\x as /c/x.
+                if (windows && GitBash().Match(written) is { Success: true } bash)
+                {
+                    written = $"{char.ToUpperInvariant(bash.Groups[1].Value[0])}:\\{bash.Groups[2].Value}";
+                }
+
+                var path = Normal(written);
                 if (path.Length > 3 && !System(path) && !roots.Any(root => Under(path, root)) && !found.Contains(path, Comparer(path)))
                 {
                     found.Add(path);
@@ -62,4 +71,7 @@ public static partial class OutsidePaths
 
     [GeneratedRegex(@"^[A-Za-z]:", RegexOptions.CultureInvariant)]
     private static partial Regex Drive();
+
+    [GeneratedRegex(@"^/([A-Za-z])/(.*)$", RegexOptions.CultureInvariant)]
+    private static partial Regex GitBash();
 }
