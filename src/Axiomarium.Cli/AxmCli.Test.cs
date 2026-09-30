@@ -49,23 +49,7 @@ public static partial class AxmCli
             return CouldNotRunWith(session, setup.Problem!, setup.Hint);
         }
 
-        // A harness that isn't installed is skipped, and the report says so, rather than failing every session.
-        var versions = new Dictionary<Harness, string>();
-        var missing = new Dictionary<Harness, string>();
-        foreach (var harness in plan.Sessions.Select(item => item.Harness).Distinct())
-        {
-            var command = harness == Harness.ClaudeCode ? "claude" : "codex";
-            var output = session.Runner.RunAsync(new HarnessCall(command, ["--version"], "", plan.RepoRoot, null, TimeSpan.FromMinutes(1))).GetAwaiter().GetResult();
-            if (output.Started && output.Lines.FirstOrDefault(line => line.Trim().Length > 0) is { } version)
-            {
-                versions[harness] = version.Trim();
-            }
-            else
-            {
-                missing[harness] = output.Started ? $"{command} --version printed nothing" : output.Error;
-            }
-        }
-
+        var (versions, missing) = HarnessVersions(session, [.. plan.Sessions.Select(item => item.Harness).Distinct()], plan.RepoRoot);
         var sessions = plan.Sessions.Where(item => versions.ContainsKey(item.Harness)).ToList();
         if (sessions.Count == 0)
         {

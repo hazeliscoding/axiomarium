@@ -1,6 +1,6 @@
 # The axm command line
 
-`axm` is one native binary. Every command reads by default. The only ones that call a model are `axm triggers generate` and `axm triggers test`, and they do it through Claude Code or Codex on your own login, only when you run them. The only one that writes is `axm triggers generate`, and it asks first.
+`axm` is one native binary. Every command reads by default. The only ones that call a model are `axm triggers generate`, `axm triggers test` and `axm eval run`, and they do it through Claude Code or Codex on your own login, only when you run them. `axm triggers generate` writes a prompt file and asks first, and `axm eval run` writes only its history in `.axm/evals/`.
 
 ## Exit codes
 
@@ -16,7 +16,7 @@
 
 - In a terminal, output has color and one kaomoji per summary line. Piped, in CI or read by an agent, it's plain text, and so is any run with `AXM_PLAIN` set. `NO_COLOR` or `TERM=dumb` turns color off. Terminal output is always the plain output plus color and kaomoji.
 - Paths are relative to the repo root with forward slashes. Paths in your home folder start with `~`.
-- `axm explain --json` prints JSON whose shape is a contract, versioned by `schemaVersion`, which is 1. New fields may appear, but existing ones don't change without a new version.
+- `axm explain --json` and `axm eval run --json` print JSON whose shape is a contract, versioned by `schemaVersion`, which is 1 for each. New fields may appear, but existing ones don't change without a new version.
 - `axm triggers export` prints a file for another tool, with no header and no color.
 
 ## Where axm looks
@@ -87,6 +87,24 @@ Prints a vault skill's trigger prompts for other skill-eval tools, and writes no
 - `--format skill-creator`: the skill-creator's list of `{query, should_trigger}`.
 - `--format promptfoo`: a `promptfooconfig.yaml` with a provider for each harness the skill supports and a `skill-used` or `not-skill-used` assertion for each prompt.
 - `--root <dir>`: where to start. The vault is here or at the repo root above it.
+
+### `axm eval`
+
+Runs the vault's behavioral and regression evals on the real harnesses. Each case is described in [Eval cases](assets.md#eval-cases).
+
+### `axm eval run [<asset>...]`
+
+Runs each asset's eval cases on Claude Code and Codex, four sessions at a time. Each session runs in a sealed home that holds your logins and the model you chose for each harness, and nothing else of your setup: no plugins, hooks, MCP servers, skills or instructions. It runs in its own copy of the case's `repo/`, committed once as a git repo, with the asset installed as that harness's files. Claude Code may edit only inside the copy and run only the case's `allow` commands. Codex runs in its workspace-write sandbox, with the network off. After each session, the case's `run` commands run in the copy, and every check is decided from what the harness recorded.
+
+For each case on each harness, it reports how many runs passed, each check that failed with its runs, and the median and range of tokens, wall time and tool calls, plus turns and cost where Claude Code reports them. It gives no verdict beyond the counts, because each run is the model at work. On Windows, it first runs one unscored Codex session to start Codex's sandbox, which takes about two minutes in a new home. The copies, the sealed home and the borrowed logins are deleted afterwards, and the next run removes anything a stopped run left. Each asset's part of the run is saved as its `--json` output in `.axm/evals/<asset folder>/<time>.json`. It exits 0 whenever it ran, and 2 when nothing could.
+
+Claude Code sessions can't run on macOS yet, because Claude Code keeps its login in the Keychain there.
+
+- `--root <dir>`: where to start. The vault is here or at the repo root above it.
+- `--harness <all|claude-code|codex>`: only this harness. Defaults to both.
+- `--runs <n>`: how many times each case runs on each harness. Defaults to 3.
+- `--model <model>`: the model each harness runs. Defaults to the one you chose for it.
+- `--json`: the result as JSON, shape 1, the same as the saved history.
 
 ### `axm hook scope-sheriff`
 

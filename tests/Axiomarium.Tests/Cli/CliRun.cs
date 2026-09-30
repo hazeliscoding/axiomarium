@@ -24,13 +24,13 @@ internal static partial class CliRun
         bool inputRedirected = true)
     {
         // Tests never read the real machine, and these commands read the harnesses' files from it.
-        if (machine is null && args is ["doctor" or "explain" or "triggers", ..] or ["hook", "session-doctor", ..])
+        if (machine is null && args is ["doctor" or "explain" or "triggers", ..] or ["hook", "session-doctor", ..] or ["eval", "run" or "compare", ..])
         {
             throw new InvalidOperationException($"{string.Join(' ', args)} reads the harnesses' files: pass a machine that lives in the test's own folder.");
         }
 
         // Tests never run a model, and these commands start harness sessions.
-        if (runner is null && args is ["triggers", "generate" or "test", ..])
+        if (runner is null && args is ["triggers", "generate" or "test", ..] or ["eval", "run" or "compare", ..])
         {
             throw new InvalidOperationException($"{string.Join(' ', args)} starts harness sessions: pass a runner that replays captured streams.");
         }
