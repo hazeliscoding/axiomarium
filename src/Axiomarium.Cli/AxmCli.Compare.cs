@@ -12,7 +12,14 @@ namespace Axiomarium.Cli;
 /// <param name="Harness">The harness.</param>
 /// <param name="Baseline">The baseline's runs, counted.</param>
 /// <param name="Candidate">The candidate's runs, counted.</param>
-internal sealed record ComparedCase(EvalCase Case, Harness Harness, CaseSide Baseline, CaseSide Candidate);
+internal sealed record ComparedCase(EvalCase Case, Harness Harness, CaseSide Baseline, CaseSide Candidate)
+{
+    /// <summary>The baseline's runs in full, or <see langword="null"/> when a saved run stood in for them.</summary>
+    public CaseSummary? BaselineRuns { get; init; }
+
+    /// <summary>The candidate's runs in full.</summary>
+    public CaseSummary? CandidateRuns { get; init; }
+}
 
 /// <summary>Everything <c>axm eval compare</c> reports.</summary>
 /// <param name="Date">When it finished.</param>
@@ -241,12 +248,16 @@ public static partial class AxmCli
             saved.AddRange(SaveHistory(plan.RepoRoot, Side("candidate", candidateHash), "-candidate"));
             var candidateSummaries = EvalSummaries.Summarize([.. ran.Results.Where(result => result.Spec.Variant?.Name == "candidate")]);
             var baselineSummaries = EvalSummaries.Summarize([.. ran.Results.Where(result => result.Spec.Variant?.Name == "baseline")]);
-            var cases = candidateSummaries.Select(summary => new ComparedCase(
-                summary.Case,
-                summary.Harness,
-                reused?.Cases.FirstOrDefault(item => item.Case == summary.Case.Name && item.Type == EvalCases.Folder(summary.Case.Type) && item.Harness == summary.Harness)?.Side
-                    ?? CaseSide.Of(baselineSummaries.First(item => item.Case == summary.Case && item.Harness == summary.Harness)),
-                CaseSide.Of(summary))).ToList();
+            var cases = candidateSummaries.Select(summary =>
+            {
+                var fresh = baselineSummaries.FirstOrDefault(item => item.Case == summary.Case && item.Harness == summary.Harness);
+                var saved = reused?.Cases.FirstOrDefault(item => item.Case == summary.Case.Name && item.Type == EvalCases.Folder(summary.Case.Type) && item.Harness == summary.Harness);
+                return new ComparedCase(summary.Case, summary.Harness, saved?.Side ?? CaseSide.Of(fresh!), CaseSide.Of(summary))
+                {
+                    BaselineRuns = fresh,
+                    CandidateRuns = summary,
+                };
+            }).ToList();
             var report = new CompareReport(
                 date, Version, asset.Folder, gitRef, baselineHash, candidateHash,
                 reused is null ? null : Path.GetRelativePath(plan.RepoRoot, reused.File).Replace(Path.DirectorySeparatorChar, '/'),

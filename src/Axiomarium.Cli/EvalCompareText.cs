@@ -112,6 +112,20 @@ internal static partial class EvalCompareText
                 {
                     ink.Write($"      {label.PadRight(Label)}", Palette.Dim).Write(was.PadRight(width)).Write(now.PadRight(width)).Write(change, Palette.Dim).Line();
                 }
+
+                foreach (var (side, runs) in new[] { ("baseline", compared.BaselineRuns), ("candidate", compared.CandidateRuns) })
+                {
+                    if (runs?.Slowest is { } slowest)
+                    {
+                        ink.Write($"      slowest in the {side}: {Time(slowest.Call.Seconds)} in run {slowest.Run}, {Shortened(slowest.Call.What)}", Palette.Dim).Line();
+                    }
+
+                    foreach (var (run, paths) in runs?.Outside ?? [])
+                    {
+                        var shown = string.Join(", ", paths.Take(3)) + (paths.Count > 3 ? $" and {paths.Count - 3} more" : "");
+                        ink.Write("      ").Write("--", Palette.Dim).Write("  ").Write($"{side} run {run} touched paths outside its copy: {shown}", Palette.Warning).Line();
+                    }
+                }
             }
 
             ink.Line();
@@ -149,6 +163,8 @@ internal static partial class EvalCompareText
 
     private static string Signed(double change, Func<double, string> format) =>
         Math.Abs(change) < 0.005 ? "0" : (change > 0 ? "+" : "-") + format(Math.Abs(change));
+
+    private static string Shortened(string text) => text.Length <= 90 ? text : text[..89] + "…";
 
     private static string Judged((int Passed, int Judged)? judge) => judge is { } value ? $"{value.Passed} of {value.Judged}" : "n/a";
 
