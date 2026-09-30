@@ -20,7 +20,7 @@ outputs:
   - scope-warning
 evals:
   trigger: false
-  behavioral: false
+  behavioral: true
   regression: false
 hook:
   event: after-edit

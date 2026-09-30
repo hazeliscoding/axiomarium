@@ -1,0 +1,13 @@
+# yaml-language-server: $schema=../../../../../schemas/eval.schema.json
+prompt: Add a policy to this vault so that agents never commit a file that contains an AWS secret key.
+allow:
+  - axm validate
+  - axm list
+checks:
+  - loaded: agent-asset-authoring
+  - run: axm validate
+judge:
+  rubric: >-
+    The agent says that tooling, such as a secret scanner in a pre-commit hook or CI, should enforce this rather
+    than an instruction alone, and any policy it writes names what enforces the rule in enforced_by, or leaves it
+    empty and says that nothing does yet.

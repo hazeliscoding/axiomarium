@@ -1,6 +1,8 @@
 # How axm treats this repo. Checked against schemas/axiomarium.schema.json.
 doctor:
-  # Instruction files that are broken on purpose: the harness scenarios and the finding fixtures.
+  # Instruction files that are broken on purpose: the harness scenarios, the finding fixtures, and the repos eval
+  # cases start from.
   ignore:
     - scenarios/
     - findings/*/fixtures/
+    - "*/*/evals/*/*/repo/"
