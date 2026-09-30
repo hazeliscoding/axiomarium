@@ -28,6 +28,25 @@ public sealed record SealedHome(
 /// </summary>
 public static class SealedHomes
 {
+    /// <summary>The model the user chose for each harness, which a sealed home carries over.</summary>
+    /// <param name="machine">Where the user's real harness folders are.</param>
+    /// <returns>Claude Code's <c>model</c> setting and Codex's <c>model</c>, by harness, where the user set one.</returns>
+    public static IReadOnlyDictionary<Harness, string> Models(Machine machine)
+    {
+        var models = new Dictionary<Harness, string>();
+        if (ClaudeModel(Path.Combine(machine.ClaudeConfig, "settings.json")) is { } claude)
+        {
+            models[Harness.ClaudeCode] = claude;
+        }
+
+        if (CodexConfig.Load(machine.CodexHome).Model is { } codex)
+        {
+            models[Harness.Codex] = codex;
+        }
+
+        return models;
+    }
+
     /// <summary>Plans a sealed home at <paramref name="folder"/> for sessions on <paramref name="harnesses"/>.</summary>
     /// <param name="folder">Where the fake home goes: outside the user's home, so no instructions above it load.</param>
     /// <param name="machine">Where the user's real harness folders are, which the logins and model choices come from.</param>

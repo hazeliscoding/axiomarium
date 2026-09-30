@@ -117,7 +117,8 @@ public static partial class AxmCli
             [.. versions.OrderBy(item => item.Key).Select(item => new EvalHarness(
                 item.Key,
                 item.Value,
-                model ?? ran.Results.FirstOrDefault(result => result.Spec.Harness == item.Key && result.Record?.Model is not null)?.Record!.Model ?? ran.Models.GetValueOrDefault(item.Key)))],
+                model ?? ran.Results.FirstOrDefault(result => result.Spec.Harness == item.Key && result.Record?.Model is not null)?.Record!.Model ?? ran.Models.GetValueOrDefault(item.Key),
+                model ?? ran.Models.GetValueOrDefault(item.Key)))],
             missing,
             ran.Warmup,
             ran.Leftovers,

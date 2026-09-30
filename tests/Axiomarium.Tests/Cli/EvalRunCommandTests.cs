@@ -113,6 +113,11 @@ public class EvalRunCommandTests
             session.GetProperty("checks").EnumerateArray().Select(check => check.GetProperty("expects").GetString()));
         var history = File.ReadAllText(Path.Combine(vault.Root, "repo", ".axm", "evals", "skills", "agent-asset-authoring", "20260928-120000.json"));
         Assert.Equal(output, history);
+
+        // What a compare will look for in history: the model axm asked each harness for, and each case's side.
+        Assert.Equal(("opus", "gpt-6-sol"), (root.GetProperty("harnesses")[0].GetProperty("asked").GetString(), root.GetProperty("harnesses")[1].GetProperty("asked").GetString()));
+        var saved = Axiomarium.Core.Evals.EvalHistory.Read(history, "history.json")!;
+        Assert.Equal(("skills/agent-asset-authoring", 2), (saved.Asset, saved.Cases.Count));
     }
 
     // Codex's sandbox reads the whole disk on Windows, and a real run read this repo's own hooks for the answer.
