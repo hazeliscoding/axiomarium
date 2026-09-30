@@ -13,10 +13,11 @@ namespace Axiomarium.Core.Evals;
 public sealed record EvalSessionSpec(DiscoveredAsset Asset, EvalCase Case, string CaseFolder, Harness Harness, int Run);
 
 /// <summary>What <c>axm eval run</c> runs.</summary>
+/// <param name="RepoRoot">The repo the vault is in, whose <c>.axm/evals/</c> keeps the run's history.</param>
 /// <param name="VaultRoot">The vault the assets are in.</param>
 /// <param name="Sessions">Every session: by asset folder, then harness, case and run.</param>
 /// <param name="Notes">Assets left out, and why, as sentences.</param>
-public sealed record EvalRunPlan(string VaultRoot, IReadOnlyList<EvalSessionSpec> Sessions, IReadOnlyList<string> Notes);
+public sealed record EvalRunPlan(string RepoRoot, string VaultRoot, IReadOnlyList<EvalSessionSpec> Sessions, IReadOnlyList<string> Notes);
 
 /// <summary>An eval run plan, or why there can't be one.</summary>
 /// <param name="Plan">The plan, or <see langword="null"/>.</param>
@@ -125,7 +126,7 @@ public static class EvalRuns
 
         return sessions.Count == 0
             ? new EvalRunSetup(null, $"None of the assets with eval cases supports {string.Join(" or ", harnesses.Select(harness => harness.Name()))}.", null)
-            : new EvalRunSetup(new EvalRunPlan(vaultRoot!, sessions, notes), null, null);
+            : new EvalRunSetup(new EvalRunPlan(repoRoot, vaultRoot!, sessions, notes), null, null);
     }
 
     // An asset's cases, behavioral then regression, each in folder order, or the first case that can't be read.

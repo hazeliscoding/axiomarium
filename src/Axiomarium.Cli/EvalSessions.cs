@@ -18,7 +18,9 @@ internal sealed record EvalWarmup(TimeSpan Elapsed, TokenCount? Tokens, string? 
 /// <param name="Leftovers">Folders a stopped run had left behind, which this run removed.</param>
 /// <param name="Problem">Why no session could run, such as a missing login, or <see langword="null"/>.</param>
 /// <param name="Hint">What to do about it, or <see langword="null"/>.</param>
-internal sealed record EvalSessionsRun(IReadOnlyList<EvalSessionResult> Results, EvalWarmup? Warmup, IReadOnlyList<string> Leftovers, string? Problem, string? Hint);
+/// <param name="Models">The model each harness was set to in the sealed home, where the user chose one.</param>
+internal sealed record EvalSessionsRun(
+    IReadOnlyList<EvalSessionResult> Results, EvalWarmup? Warmup, IReadOnlyList<string> Leftovers, string? Problem, string? Hint, IReadOnlyDictionary<Harness, string> Models);
 
 /// <summary>
 /// Runs an eval run's sessions in a sealed home, four at a time, each in its own copy of its case's repo with the
@@ -71,7 +73,7 @@ internal static class EvalSessions
         {
             if (sealedHome.Problem is not null)
             {
-                return new EvalSessionsRun([], null, leftovers, sealedHome.Problem, sealedHome.Hint);
+                return new EvalSessionsRun([], null, leftovers, sealedHome.Problem, sealedHome.Hint, sealedHome.Models);
             }
 
             Write(home, sealedHome.Files);
@@ -109,7 +111,7 @@ internal static class EvalSessions
                     gate.Release();
                 }
             }));
-            return new EvalSessionsRun(results, warmup, leftovers, null, null);
+            return new EvalSessionsRun(results, warmup, leftovers, null, null, sealedHome.Models);
         }
         finally
         {

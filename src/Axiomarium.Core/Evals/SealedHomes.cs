@@ -16,7 +16,11 @@ public sealed record SealedHome(
     IReadOnlyList<(string From, string To)> Logins,
     IReadOnlyDictionary<string, string> Environment,
     string? Problem,
-    string? Hint);
+    string? Hint)
+{
+    /// <summary>The model each harness is set to in the sealed home, where the user chose one, by harness.</summary>
+    public IReadOnlyDictionary<Harness, string> Models { get; init; } = new Dictionary<Harness, string>();
+}
 
 /// <summary>
 /// Plans the sealed home eval sessions run in, as the M5 spike settled (see <c>ROADMAP.md</c>): only the user's
@@ -39,6 +43,7 @@ public static class SealedHomes
     {
         var files = new List<WorkspaceFile>();
         var logins = new List<(string, string)>();
+        var models = new Dictionary<Harness, string>();
         var environment = new Dictionary<string, string>
         {
             ["CLAUDE_CONFIG_DIR"] = Path.Combine(folder, ".claude"),
@@ -69,6 +74,11 @@ public static class SealedHomes
 
             logins.Add((login, ".claude/.credentials.json"));
             var model = ClaudeModel(Path.Combine(machine.ClaudeConfig, "settings.json"));
+            if (model is not null)
+            {
+                models[Harness.ClaudeCode] = model;
+            }
+
             files.Add(new WorkspaceFile(
                 ".claude/settings.json",
                 $"{{{(model is null ? "" : $"\"model\":{TriggerPrompts.Quoted(model)},")}\"syncClaudeAiSkills\":false}}\n"));
@@ -83,15 +93,20 @@ public static class SealedHomes
             }
 
             logins.Add((login, ".codex/auth.json"));
-            files.Add(new WorkspaceFile(".codex/config.toml", CodexConfigFor(machine)));
+            var config = CodexConfig.Load(machine.CodexHome);
+            if (config.Model is { } codexModel)
+            {
+                models[Harness.Codex] = codexModel;
+            }
+
+            files.Add(new WorkspaceFile(".codex/config.toml", CodexConfigFor(machine, config)));
         }
 
-        return new SealedHome(files, logins, environment, null, null);
+        return new SealedHome(files, logins, environment, null, null) { Models = models };
     }
 
-    private static string CodexConfigFor(Machine machine)
+    private static string CodexConfigFor(Machine machine, CodexConfig config)
     {
-        var config = CodexConfig.Load(machine.CodexHome);
         var blocks = new List<string>();
         var top = new List<string>();
         if (config.Model is { } model)
