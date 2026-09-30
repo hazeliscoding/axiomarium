@@ -10,7 +10,18 @@ namespace Axiomarium.Cli;
 /// <param name="Folder">Where to run it, or <see langword="null"/> for an empty scratch folder outside the home folder, deleted afterwards.</param>
 /// <param name="StopAfter">Stops the session after the first line it returns <see langword="true"/> for, or <see langword="null"/> to let it finish.</param>
 /// <param name="Timeout">How long the session may run before it's stopped.</param>
-public sealed record HarnessCall(string Command, IReadOnlyList<string> Arguments, string Input, string? Folder, Func<string, bool>? StopAfter, TimeSpan Timeout);
+/// <param name="Environment">
+/// Changes to the environment it inherits: a value sets a variable, and <see langword="null"/> removes it. Or
+/// <see langword="null"/> to inherit it as it is.
+/// </param>
+public sealed record HarnessCall(
+    string Command,
+    IReadOnlyList<string> Arguments,
+    string Input,
+    string? Folder,
+    Func<string, bool>? StopAfter,
+    TimeSpan Timeout,
+    IReadOnlyDictionary<string, string?>? Environment = null);
 
 /// <summary>What a harness session printed.</summary>
 /// <param name="Started">Whether the command was found and started.</param>
@@ -31,21 +42,88 @@ public interface IHarnessRunner
     /// <returns>What it printed. A command that isn't installed comes back as not started, never as an exception.</returns>
     Task<HarnessOutput> RunAsync(HarnessCall call, CancellationToken cancellation = default);
 
-    /// <summary>Creates an empty folder for a trigger test's throwaway copy. The caller fills it, and deletes it when done.</summary>
+    /// <summary>
+    /// Creates an empty folder for a run's throwaway copies, such as a trigger test's or an eval run's, and marks it
+    /// as this process's. The caller fills it, and deletes it when done.
+    /// </summary>
+    /// <param name="purpose">What it's for, such as <c>triggers</c> or <c>evals</c>, which names the folder it goes in.</param>
     /// <returns>The folder's absolute path, outside the home folder.</returns>
-    string CreateFolder();
+    string CreateFolder(string purpose);
+
+    /// <summary>
+    /// Deletes the folders that runs for <paramref name="purpose"/> left behind when they were stopped before they
+    /// could clean up, such as by a closed terminal. A folder whose process is still running is left alone.
+    /// </summary>
+    /// <param name="purpose">What the folders were for, as given to <see cref="CreateFolder"/>.</param>
+    /// <returns>The names of the folders it deleted.</returns>
+    IReadOnlyList<string> RemoveLeftovers(string purpose);
 }
 
 /// <summary>Runs harness sessions as processes, with the user's own environment and login.</summary>
-public sealed class ProcessHarnessRunner : IHarnessRunner
+/// <param name="scratchRoot">
+/// Where scratch folders go, one folder per purpose, or <see langword="null"/> for the drive's root on Windows and
+/// <c>/tmp</c> elsewhere: outside the home folder, so no project instructions above them load.
+/// </param>
+public sealed class ProcessHarnessRunner(string? scratchRoot = null) : IHarnessRunner
 {
-    /// <summary>Where scratch folders go: outside the home folder, so no project instructions above them load.</summary>
-    public static string ScratchRoot { get; } = OperatingSystem.IsWindows()
-        ? Path.Combine(Path.GetPathRoot(Environment.SystemDirectory)!, "axm-triggers")
-        : "/tmp/axm-triggers";
+    // Names the process that owns a scratch folder, so a later run can tell a leftover from a run in progress.
+    private const string OwnerFile = "axm.pid";
+
+    private readonly string _scratchRoot = scratchRoot
+        ?? (OperatingSystem.IsWindows() ? Path.GetPathRoot(Environment.SystemDirectory)! : "/tmp");
 
     /// <inheritdoc/>
-    public string CreateFolder() => Directory.CreateDirectory(Path.Combine(ScratchRoot, NewName())).FullName;
+    public string CreateFolder(string purpose)
+    {
+        var folder = Directory.CreateDirectory(Path.Combine(_scratchRoot, $"axm-{purpose}", NewName())).FullName;
+        File.WriteAllText(Path.Combine(folder, OwnerFile), Environment.ProcessId.ToString(System.Globalization.CultureInfo.InvariantCulture));
+        return folder;
+    }
+
+    /// <inheritdoc/>
+    public IReadOnlyList<string> RemoveLeftovers(string purpose)
+    {
+        var root = Path.Combine(_scratchRoot, $"axm-{purpose}");
+        if (!Directory.Exists(root))
+        {
+            return [];
+        }
+
+        var removed = new List<string>();
+        foreach (var folder in Directory.EnumerateDirectories(root).Order(StringComparer.Ordinal))
+        {
+            if (Running(Path.Combine(folder, OwnerFile)))
+            {
+                continue;
+            }
+
+            try
+            {
+                Directory.Delete(folder, recursive: true);
+                removed.Add(Path.GetFileName(folder));
+            }
+            catch (Exception problem) when (problem is IOException or UnauthorizedAccessException)
+            {
+                // Something still holds a file. The next run tries again.
+            }
+        }
+
+        return removed;
+    }
+
+    // A folder without an owner, or whose owner is gone, is a leftover. A reused process id keeps it one run longer.
+    private static bool Running(string ownerFile)
+    {
+        try
+        {
+            using var owner = Process.GetProcessById(int.Parse(File.ReadAllText(ownerFile).Trim(), System.Globalization.CultureInfo.InvariantCulture));
+            return !owner.HasExited;
+        }
+        catch (Exception problem) when (problem is IOException or UnauthorizedAccessException or FormatException or OverflowException or ArgumentException or InvalidOperationException)
+        {
+            return false;
+        }
+    }
 
     /// <inheritdoc/>
     public async Task<HarnessOutput> RunAsync(HarnessCall call, CancellationToken cancellation = default)
@@ -55,7 +133,7 @@ public sealed class ProcessHarnessRunner : IHarnessRunner
             return new HarnessOutput(false, [], null, $"{call.Command} isn't on PATH.");
         }
 
-        var scratch = call.Folder is null ? Path.Combine(ScratchRoot, NewName()) : null;
+        var scratch = call.Folder is null ? Path.Combine(_scratchRoot, "axm-triggers", NewName()) : null;
         if (scratch is not null)
         {
             Directory.CreateDirectory(scratch);
@@ -99,6 +177,18 @@ public sealed class ProcessHarnessRunner : IHarnessRunner
         foreach (var argument in shim ? ["/d", "/c", program, .. call.Arguments] : call.Arguments)
         {
             start.ArgumentList.Add(argument);
+        }
+
+        foreach (var (name, value) in call.Environment ?? new Dictionary<string, string?>())
+        {
+            if (value is null)
+            {
+                start.Environment.Remove(name);
+            }
+            else
+            {
+                start.Environment[name] = value;
+            }
         }
 
         using var process = Process.Start(start)!;

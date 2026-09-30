@@ -47,7 +47,9 @@ internal sealed class FakeRunner : IHarnessRunner
         }
     }
 
-    public string CreateFolder() =>
+    public IReadOnlyList<string> RemoveLeftovers(string purpose) => [];
+
+    public string CreateFolder(string purpose) =>
         Directory.CreateDirectory(Path.Combine(FolderRoot ?? throw new InvalidOperationException("Set FolderRoot to the test's own folder."), $"workspace-{Interlocked.Increment(ref _folders)}")).FullName;
 
     /// <summary>A Claude Code session that answers in one turn of text, shaped like the spike's fixture.</summary>
