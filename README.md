@@ -11,7 +11,7 @@
 
 Axiomarium is my lab for engineering reliable AI coding environments. It holds the agents, skills, hooks, policies, workflows and evals I use, and `axm`, a local CLI that inspects, validates, tests and debugs them. It treats agent configuration as real software infrastructure: kept in git, inspectable, testable, portable, and able to learn from its failures. It's built for my own setup first, and it's public in case it's useful to you too.
 
-> **Status:** early development. `axm explain` shows what Claude Code and Codex actually load for a file, and since v0.3 which skills each lists for the model and which hooks run. `axm doctor` checks the instruction files, skills and hooks of any repo, and `axm triggers` finds skills whose descriptions overlap. Since v0.4, `axm triggers test` runs a vault skill's trigger prompts on both harnesses and reports whether the agent picks it. v0.1's vault checks stay: `axm list`, `axm validate` and `axm doctor` in a vault. Evals follow in v0.5. See [ROADMAP.md](ROADMAP.md).
+> **Status:** early development. `axm explain` shows what Claude Code and Codex actually load for a file, and since v0.3 which skills each lists for the model and which hooks run. `axm doctor` checks the instruction files, skills and hooks of any repo, and `axm triggers` finds skills whose descriptions overlap. Since v0.4, `axm triggers test` runs a vault skill's trigger prompts on both harnesses and reports whether the agent picks it. Since v0.5, `axm eval run` runs an asset's eval cases in a sealed home, `axm eval compare` shows a change to the asset side by side with its last commit, and `axm conflicts --judge` has a model find instructions that contradict each other. v0.1's vault checks stay: `axm list`, `axm validate` and `axm doctor` in a vault. Evidence freshness follows in v0.6. See [ROADMAP.md](ROADMAP.md).
 
 ## The problem
 
@@ -156,7 +156,7 @@ axm explain src/app/main.cs    what Claude Code and Codex load for that file, wh
 axm triggers                   skills whose descriptions overlap, and the words they share
 ```
 
-In a vault such as this repo, `axm list` and `axm validate` check the assets too, and `axm doctor` adds them to its report. `axm triggers generate <skill>` writes a skill's trigger prompts after you approve them, and `axm triggers test` runs them on Claude Code and Codex, on your own login. The [docs](docs/README.md) have the full command reference and the write-ups.
+In a vault such as this repo, `axm list` and `axm validate` check the assets too, and `axm doctor` adds them to its report. `axm triggers generate <skill>` writes a skill's trigger prompts after you approve them, and `axm triggers test` runs them on Claude Code and Codex, on your own login. `axm eval run <asset>` runs an asset's eval cases and `axm eval compare <asset>` compares it with its last commit, each session in a sealed home that borrows only your logins and model. The [docs](docs/README.md) have the full command reference and the write-ups.
 
 A few platform notes:
 
