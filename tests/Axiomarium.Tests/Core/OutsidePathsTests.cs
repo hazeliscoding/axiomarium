@@ -42,6 +42,7 @@ public class OutsidePathsTests
             @"C:\Windows\System32\where.exe git; & 'C:\Program Files\Git\bin\git.exe' status",
             @"curl.exe -s -o NUL https://example.com; echo hi > /dev/null",
             "/usr/bin/env bash -c 'ls'",
+            "rg --files -g '!/.git/**' -g '!/.agents' .",
         ];
 
         Assert.Empty(OutsidePaths.Of(commands, Copy, [@"C:\Tools\axm"]));

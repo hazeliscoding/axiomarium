@@ -65,8 +65,9 @@ public static partial class OutsidePaths
 
     private static StringComparer Comparer(string path) => Drive().IsMatch(path) ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal;
 
-    // A Windows path quoted or bare, or a POSIX path of two parts or more that isn't part of a URL or another path.
-    [GeneratedRegex("""'([A-Za-z]:[\\/][^']*)'|"([A-Za-z]:[\\/][^"]*)"|(?<![\w\\/])([A-Za-z]:[\\/][^\s'"`;|&<>]*)|(?<![\w.:~\\/-])(/[\w.~-]+/[^\s'"`;|&<>]*)""", RegexOptions.CultureInvariant)]
+    // A Windows path quoted or bare, or a POSIX path of two parts or more that isn't part of a URL, another path or a
+    // glob's exclusion such as rg's -g '!/.git/**'.
+    [GeneratedRegex("""'([A-Za-z]:[\\/][^']*)'|"([A-Za-z]:[\\/][^"]*)"|(?<![\w\\/])([A-Za-z]:[\\/][^\s'"`;|&<>]*)|(?<![\w.:~\\/!-])(/[\w.~-]+/[^\s'"`;|&<>]*)""", RegexOptions.CultureInvariant)]
     private static partial Regex Path();
 
     [GeneratedRegex(@"^[A-Za-z]:", RegexOptions.CultureInvariant)]
