@@ -49,6 +49,10 @@ public static partial class AxmCli
     /// <param name="inputRedirected">Whether <paramref name="input"/> is a file or pipe rather than a terminal, where a command that writes can't ask first.</param>
     /// <param name="runner">Runs harness sessions for <c>axm triggers</c>, or <see langword="null"/> for real processes. Tests pass one that replays captured streams.</param>
     /// <param name="clock">The time, for dating what <c>axm triggers generate</c> writes, or <see langword="null"/> for the system clock.</param>
+    /// <param name="platform">
+    /// The operating system <c>axm eval</c> plans its sealed home for, or <see langword="null"/> for the one it runs on.
+    /// Tests pass their own, so no test depends on the machine it runs on.
+    /// </param>
     /// <returns>
     /// 0, 1 or 2. See <see cref="Passed"/>, <see cref="ErrorsFound"/> and <see cref="CouldNotRun"/>.
     /// Bad arguments and unexpected failures return 2, never 1, except for <c>axm hook</c> commands,
@@ -68,7 +72,8 @@ public static partial class AxmCli
         Machine? machine = null,
         bool inputRedirected = true,
         IHarnessRunner? runner = null,
-        TimeProvider? clock = null)
+        TimeProvider? clock = null,
+        System.Runtime.InteropServices.OSPlatform? platform = null)
     {
         var outputStyle = Style.For(outputRedirected, environment, outputVirtualTerminal);
         var errorStyle = Style.For(errorRedirected, environment, errorVirtualTerminal);
@@ -81,7 +86,7 @@ public static partial class AxmCli
 
         var session = new Session(
             output, error, outputStyle, errorStyle, currentDirectory, environment, machine,
-            input, inputRedirected, runner ?? new ProcessHarnessRunner(), clock ?? TimeProvider.System);
+            input, inputRedirected, runner ?? new ProcessHarnessRunner(), clock ?? TimeProvider.System, platform ?? CurrentPlatform());
         root.Subcommands.Add(DoctorCommand(session));
         root.Subcommands.Add(VaultCommand("validate", "Check every asset and print only the problems, for CI and hooks.", ReportText.WriteValidate, session));
         root.Subcommands.Add(ListCommand(session));
@@ -372,7 +377,12 @@ public static partial class AxmCli
     private sealed record Session(
         TextWriter Output, TextWriter Error, Style OutputStyle, Style ErrorStyle, string CurrentDirectory,
         IReadOnlyDictionary<string, string?> Environment, Machine? Machine,
-        TextReader Input, bool InputRedirected, IHarnessRunner Runner, TimeProvider Clock);
+        TextReader Input, bool InputRedirected, IHarnessRunner Runner, TimeProvider Clock, System.Runtime.InteropServices.OSPlatform Platform);
+
+    private static System.Runtime.InteropServices.OSPlatform CurrentPlatform() =>
+        OperatingSystem.IsWindows() ? System.Runtime.InteropServices.OSPlatform.Windows
+        : OperatingSystem.IsMacOS() ? System.Runtime.InteropServices.OSPlatform.OSX
+        : System.Runtime.InteropServices.OSPlatform.Linux;
 
     private sealed class VersionAction(TextWriter output, Style style) : SynchronousCommandLineAction
     {

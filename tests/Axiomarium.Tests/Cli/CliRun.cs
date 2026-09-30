@@ -21,7 +21,8 @@ internal static partial class CliRun
         string? currentDirectory = null,
         IHarnessRunner? runner = null,
         TimeProvider? clock = null,
-        bool inputRedirected = true)
+        bool inputRedirected = true,
+        System.Runtime.InteropServices.OSPlatform? platform = null)
     {
         // Tests never read the real machine, and these commands read the harnesses' files from it.
         if (machine is null && (args is ["doctor" or "explain" or "triggers", ..] or ["hook", "session-doctor", ..] or ["eval", "run" or "compare", ..] || (args is ["conflicts", ..] && args.Contains("--judge"))))
@@ -51,7 +52,9 @@ internal static partial class CliRun
             machine,
             inputRedirected,
             runner,
-            clock);
+            clock,
+            // Linux by default, so an eval test means the same on every machine: Claude Code can run and Codex needs no warm-up.
+            platform ?? System.Runtime.InteropServices.OSPlatform.Linux);
         return (exitCode, output.ToString(), error.ToString());
     }
 
