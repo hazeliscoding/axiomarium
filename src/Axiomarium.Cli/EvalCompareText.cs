@@ -87,20 +87,30 @@ internal static partial class EvalCompareText
             {
                 index++;
                 var name = compared.Case.Name + (compared.Case.Type == EvalType.Regression ? " (regression)" : "");
-                ink.Write("  ").Write($"{index:00}", Palette.Dim).Write("  ").Write(name.PadRight(Label + 2), Palette.Bold)
-                    .Write("baseline".PadRight(Column), Palette.Dim).Write("candidate".PadRight(Column), Palette.Dim).Write("change", Palette.Dim).Line();
                 var (before, after) = (compared.Baseline, compared.Candidate);
-                Row(ink, "passed", $"{before.Passed} of {before.Runs}", $"{after.Passed} of {after.Runs}", Signed(after.Passed - before.Passed, value => value.ToString(CultureInfo.InvariantCulture)));
-                Measure(ink, "input tokens", before.Input, after.Input, Number);
-                Measure(ink, "cached tokens", before.Cached, after.Cached, Number);
-                Measure(ink, "output tokens", before.Output, after.Output, Number);
-                Measure(ink, "time", before.Seconds, after.Seconds, Time);
-                Measure(ink, "tool calls", before.ToolCalls, after.ToolCalls, Number);
-                Measure(ink, "turns", before.Turns, after.Turns, Number);
-                Measure(ink, "cost", before.Cost, after.Cost, Dollars);
+                var rows = new List<(string Label, string Before, string After, string Change)>
+                {
+                    ("passed", $"{before.Passed} of {before.Runs}", $"{after.Passed} of {after.Runs}", Signed(after.Passed - before.Passed, value => value.ToString(CultureInfo.InvariantCulture))),
+                };
+                Measure(rows, "input tokens", before.Input, after.Input, Number);
+                Measure(rows, "cached tokens", before.Cached, after.Cached, Number);
+                Measure(rows, "output tokens", before.Output, after.Output, Number);
+                Measure(rows, "time", before.Seconds, after.Seconds, Time);
+                Measure(rows, "tool calls", before.ToolCalls, after.ToolCalls, Number);
+                Measure(rows, "turns", before.Turns, after.Turns, Number);
+                Measure(rows, "cost", before.Cost, after.Cost, Dollars);
                 if (before.Judge is not null || after.Judge is not null)
                 {
-                    Row(ink, "judge", Judged(before.Judge), Judged(after.Judge), "model judgment");
+                    rows.Add(("judge", Judged(before.Judge), Judged(after.Judge), "model judgment"));
+                }
+
+                // A median with its range can outgrow a column, so each table's columns fit its widest value.
+                var width = Math.Max(Column, rows.Max(row => Math.Max(row.Before.Length, row.After.Length)) + 2);
+                ink.Write("  ").Write($"{index:00}", Palette.Dim).Write("  ").Write(name.PadRight(Label + 2), Palette.Bold)
+                    .Write("baseline".PadRight(width), Palette.Dim).Write("candidate".PadRight(width), Palette.Dim).Write("change", Palette.Dim).Line();
+                foreach (var (label, was, now, change) in rows)
+                {
+                    ink.Write($"      {label.PadRight(Label)}", Palette.Dim).Write(was.PadRight(width)).Write(now.PadRight(width)).Write(change, Palette.Dim).Line();
                 }
             }
 
@@ -119,23 +129,19 @@ internal static partial class EvalCompareText
             .Kaomoji(Kaomoji.ForOutcome(0, candidateRuns - candidatePassed), candidatePassed == candidateRuns ? Palette.Ok : Palette.Warning).Line();
     }
 
-    private static void Measure(Ink ink, string label, Spread? before, Spread? after, Func<double, string> format)
+    private static void Measure(List<(string, string, string, string)> rows, string label, Spread? before, Spread? after, Func<double, string> format)
     {
         if (before is null && after is null)
         {
             return;
         }
 
-        Row(
-            ink,
+        rows.Add((
             label,
             before is null ? "n/a" : Shown(before, format),
             after is null ? "n/a" : Shown(after, format),
-            before is null || after is null ? "" : Signed(after.Median - before.Median, value => format(Math.Abs(value))));
+            before is null || after is null ? "" : Signed(after.Median - before.Median, value => format(Math.Abs(value)))));
     }
-
-    private static void Row(Ink ink, string label, string before, string after, string change) =>
-        ink.Write($"      {label.PadRight(Label)}", Palette.Dim).Write(before.PadRight(Column)).Write(after.PadRight(Column)).Write(change, Palette.Dim).Line();
 
     // The median, and the range when the runs differ.
     private static string Shown(Spread spread, Func<double, string> format) =>
