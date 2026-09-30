@@ -234,7 +234,8 @@ internal static class EvalSessions
                 var stopped = timedOut ?? record.Stopped;
                 var result = new EvalSessionResult(session, record, EvalChecks.Evaluate(session.Case.Checks, record.Activity, copy, runs), elapsed, stopped)
                 {
-                    Outside = OutsidePaths.Of(record.Activity.Commands, copy, [Path.GetDirectoryName(axm)!]),
+                    // Codex reads its built-in skills from its home: that's the harness at work, not the agent leaving the copy.
+                    Outside = OutsidePaths.Of(record.Activity.Commands, copy, [Path.GetDirectoryName(axm)!, Path.Combine(home, ".codex", "skills")]),
                 };
 
                 // A session that didn't finish has already failed, so it isn't worth a judge's call.
