@@ -99,7 +99,7 @@ public class EvalRunCommandTests
         Assert.Equal((1, "eval run", "sealed"), (root.GetProperty("schemaVersion").GetInt32(), root.GetProperty("command").GetString(), root.GetProperty("home").GetString()));
         Assert.Equal(["claude-code", "codex"], root.GetProperty("harnesses").EnumerateArray().Select(harness => harness.GetProperty("harness").GetString()));
         Assert.Equal("gpt-6-sol", root.GetProperty("harnesses")[1].GetProperty("model").GetString());
-        Assert.Equal(OperatingSystem.IsWindows(), root.TryGetProperty("warmup", out _));
+        Assert.False(root.TryGetProperty("warmup", out _));
         var asset = root.GetProperty("assets")[0];
         Assert.Equal("skills/agent-asset-authoring", asset.GetProperty("asset").GetString());
         Assert.StartsWith("sha256:", asset.GetProperty("hash").GetString(), StringComparison.Ordinal);
@@ -184,6 +184,23 @@ public class EvalRunCommandTests
         Assert.Equal(AxmCli.Passed, exitCode);
         Assert.Contains("  CODEX // skipped: codex isn't on PATH.\n", output.ReplaceLineEndings("\n"), StringComparison.Ordinal);
         Assert.Contains("1 run · 1 passed · 0 failed", output, StringComparison.Ordinal);
+    }
+
+    // Claude Code keeps its login in the macOS Keychain, which a sealed home can't borrow yet.
+    [Fact]
+    public void On_macos_claude_code_sessions_can_t_run_yet()
+    {
+        using var vault = Vault();
+
+        var (exitCode, _, error) = CliRun.Run(
+            ["eval", "run", "--runs", "1", "--harness", "claude-code"],
+            machine: TestMachine.For(vault.Root),
+            currentDirectory: Path.Combine(vault.Root, "repo"),
+            runner: new FakeRunner(Respond) { FolderRoot = Path.Combine(vault.Root, "scratch") },
+            platform: System.Runtime.InteropServices.OSPlatform.OSX);
+
+        Assert.Equal(AxmCli.CouldNotRun, exitCode);
+        Assert.Contains("On macOS, Claude Code keeps its login in the Keychain", error, StringComparison.Ordinal);
     }
 
     [Fact]

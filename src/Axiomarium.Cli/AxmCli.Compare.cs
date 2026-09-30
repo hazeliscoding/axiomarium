@@ -212,9 +212,8 @@ public static partial class AxmCli
                 session.Output.Flush();
             }
 
-            var platform = OperatingSystem.IsWindows() ? OSPlatform.Windows : OperatingSystem.IsMacOS() ? OSPlatform.OSX : OSPlatform.Linux;
             var ran = EvalSessions.RunAsync(
-                session.Runner, sessions, plan.VaultRoot, machine, session.Environment, Environment.ProcessPath ?? "axm", model, session.Clock, platform, judge)
+                session.Runner, sessions, plan.VaultRoot, machine, session.Environment, Environment.ProcessPath ?? "axm", model, session.Clock, session.Platform, judge)
                 .GetAwaiter().GetResult();
             if (ran.Problem is not null)
             {
