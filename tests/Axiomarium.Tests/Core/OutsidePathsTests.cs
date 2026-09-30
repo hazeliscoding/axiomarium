@@ -22,6 +22,15 @@ public class OutsidePathsTests
             OutsidePaths.Of(commands, Copy, []));
     }
 
+    // Claude Code's Bash on Windows is Git Bash, which writes C:\axm-evals as /c/axm-evals.
+    [Fact]
+    public void A_git_bash_path_is_read_as_its_windows_path()
+    {
+        string[] commands = ["cat /c/axm-evals/run/copy-1/src/llm.ts; cat /c/ai/axiomarium/README.md"];
+
+        Assert.Equal([@"C:\ai\axiomarium\README.md"], OutsidePaths.Of(commands, Copy, []));
+    }
+
     // The copy, the axm the session runs, the system's own folders and the null device are where work happens anyway.
     [Fact]
     public void The_copy_the_tools_and_the_system_s_folders_are_not_outside()
