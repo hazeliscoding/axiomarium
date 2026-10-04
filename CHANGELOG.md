@@ -4,6 +4,10 @@ This file records the user-visible changes to `axm` and the vault's schemas. The
 
 ## [Unreleased]
 
+### Fixed
+
+- On Windows, `axm explain` and `axm doctor` no longer call a Codex hook trusted, or a project trusted, when its entry in `~/.codex/config.toml` is written with forward slashes. Codex ignores such an entry, so `codex-hook-untrusted` now reports the hooks it leaves out. A hook's key must also match in case, as Codex writes it, though a project's path may differ in case.
+
 ## [0.5.0] - 2026-09-30
 
 Evals: what an asset does once it's active, measured on the real Claude Code and Codex in a sealed home, and whether a change made it better.

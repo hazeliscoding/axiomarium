@@ -30,7 +30,10 @@ internal sealed record CodexConfig(long MaxBytes, IReadOnlyList<string> Fallback
     /// <summary>The directories whose <c>trust_level</c> is <c>trusted</c>.</summary>
     public IReadOnlyList<string> TrustedProjects { get; init; } = [];
 
-    /// <summary><c>[hooks.state]</c> in the user config, by hook key with forward slashes: whether each hook is enabled and the hash it's trusted at.</summary>
+    /// <summary>
+    /// <c>[hooks.state]</c> in the user config, by hook key exactly as written: whether each hook is enabled and the hash
+    /// it's trusted at. Codex finds an entry only under the key it writes itself, with no change of case or slashes.
+    /// </summary>
     public IReadOnlyDictionary<string, (bool? Enabled, string? TrustedHash)> HookStates { get; init; } = new Dictionary<string, (bool?, string?)>();
 
     /// <summary>The config file's own <c>[hooks]</c> events, or <see langword="null"/> when it has none.</summary>
@@ -54,27 +57,30 @@ internal sealed record CodexConfig(long MaxBytes, IReadOnlyList<string> Fallback
         }
 
         var table = TomlSerializer.Deserialize(File.ReadAllText(path), CodexConfigContext.Default.TomlTable) ?? [];
+        // Entries keep the path as written: Codex doesn't normalize it before it compares (see ProjectIs).
         var untrusted = table.TryGetValue("projects", out var projects) && projects is TomlTable projectTable
             ? projectTable
                 .Where(pair => pair.Value is TomlTable settings && settings.TryGetValue("trust_level", out var level) && level is "untrusted")
-                .Select(pair => Path.GetFullPath(pair.Key))
+                .Select(pair => pair.Key)
                 .ToList()
             : [];
         var trusted = table.TryGetValue("projects", out var trustedProjects) && trustedProjects is TomlTable trustedTable
             ? trustedTable
                 .Where(pair => pair.Value is TomlTable settings && settings.TryGetValue("trust_level", out var level) && level is "trusted")
-                .Select(pair => Path.GetFullPath(pair.Key))
+                .Select(pair => pair.Key)
                 .ToList()
             : [];
         var hooks = table.TryGetValue("hooks", out var hooksValue) && hooksValue is TomlTable hooksTable ? hooksTable : null;
-        var states = new Dictionary<string, (bool?, string?)>(OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal);
+
+        // Codex matches a hook's key exactly, case and slashes included, even on Windows.
+        var states = new Dictionary<string, (bool?, string?)>(StringComparer.Ordinal);
         if (hooks?.TryGetValue("state", out var stateValue) == true && stateValue is TomlTable stateTable)
         {
             foreach (var (key, value) in stateTable)
             {
                 if (value is TomlTable state)
                 {
-                    states[key.Replace('\\', '/')] = (
+                    states[key] = (
                         state.TryGetValue("enabled", out var enabled) && enabled is bool flag ? flag : null,
                         state.TryGetValue("trusted_hash", out var hash) && hash is string text ? text : null);
                 }
@@ -117,12 +123,12 @@ internal sealed record CodexConfig(long MaxBytes, IReadOnlyList<string> Fallback
     {
         foreach (var folder in new[] { directory, projectRoot })
         {
-            if (TrustedProjects.Any(project => Paths.Same(project, folder)))
+            if (TrustedProjects.Any(project => ProjectIs(project, folder)))
             {
                 return true;
             }
 
-            if (UntrustedProjects.Any(project => Paths.Same(project, folder)))
+            if (UntrustedProjects.Any(project => ProjectIs(project, folder)))
             {
                 return false;
             }
@@ -130,6 +136,12 @@ internal sealed record CodexConfig(long MaxBytes, IReadOnlyList<string> Fallback
 
         return false;
     }
+
+    // A [projects] entry names a folder only with the path as Codex writes it, though on Windows in any case: hooks/list
+    // on Windows ignored an entry with forward slashes or a trailing backslash, and took one with another case
+    // (0.156.1, 2026-10-04).
+    private static bool ProjectIs(string entry, string folder) =>
+        string.Equals(entry, Path.TrimEndingDirectorySeparator(folder), OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal);
 
     /// <summary>Reads another layer's <c>config.toml</c>, such as a project's or the system folder's, for its <c>[hooks]</c> alone.</summary>
     public static TomlTable? HooksIn(string configFile)
@@ -165,11 +177,7 @@ internal sealed record CodexConfig(long MaxBytes, IReadOnlyList<string> Fallback
         return !enabled;
     }
 
-    public bool IsUntrusted(string directory) =>
-        UntrustedProjects.Any(project => string.Equals(
-            Path.TrimEndingDirectorySeparator(project),
-            Path.TrimEndingDirectorySeparator(directory),
-            OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal));
+    public bool IsUntrusted(string directory) => UntrustedProjects.Any(project => ProjectIs(project, directory));
 
     private static List<string> Strings(TomlTable table, string key) =>
         table.TryGetValue(key, out var value) && value is TomlArray array ? [.. array.OfType<string>()] : [];

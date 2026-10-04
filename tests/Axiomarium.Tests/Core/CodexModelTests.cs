@@ -128,7 +128,7 @@ public class CodexModelTests
     public void An_untrusted_project_loads_only_the_global_file()
     {
         using var vault = Repo().Write("home/.codex/AGENTS.md", "global\n").Write("repo/AGENTS.md", "root\n");
-        var repo = Path.Combine(vault.Root, "repo").Replace('\\', '/');
+        var repo = Path.Combine(vault.Root, "repo");
         vault.Write("home/.codex/config.toml", $"[projects.'{repo}']\ntrust_level = \"untrusted\"\n");
 
         var resolution = Resolve(vault);

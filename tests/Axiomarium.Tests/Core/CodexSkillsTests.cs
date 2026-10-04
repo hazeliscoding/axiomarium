@@ -154,7 +154,7 @@ public class CodexSkillsTests
     {
         using var vault = Repo()
             .Write("repo/.codex/skills/local/SKILL.md", Skill("Local."));
-        vault.Write("home/.codex/config.toml", $"[projects.\"{Path.Combine(vault.Root, "repo").Replace('\\', '/')}\"]\ntrust_level = \"untrusted\"\n");
+        vault.Write("home/.codex/config.toml", $"[projects.'{Path.Combine(vault.Root, "repo")}']\ntrust_level = \"untrusted\"\n");
 
         Assert.Equal(["local"], Resolve(vault).Skills.Select(skill => skill.Name));
     }

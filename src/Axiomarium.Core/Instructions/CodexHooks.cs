@@ -11,7 +11,8 @@ namespace Axiomarium.Core.Instructions;
 /// <remarks>
 /// Follows the Codex hooks guide and <c>codex-rs/hooks</c> as read at 0.156.1 on 2026-09-28. Recordings confirm
 /// the hooks Codex lists and their trust and hashes; whether a hook fires needs a model turn, so matching
-/// follows the source.
+/// follows the source. How Codex keys a hook and a trusted project on Windows follows <c>hooks/list</c> from
+/// <c>codex app-server</c> 0.156.1 there, and sessions that ran the hooks, on 2026-10-04.
 /// </remarks>
 internal static class CodexHooks
 {
@@ -44,7 +45,9 @@ internal static class CodexHooks
                     var handlers = groups[group]?["hooks"] as JsonArray ?? [];
                     for (var index = 0; index < handlers.Count; index++)
                     {
-                        hooks.Add(Configure(handlers[index] as JsonObject ?? [], file, name, key, matcher, $"{Slashes(file)}:{key}:{group}:{index}", source, managed, layerOff, config));
+                        // The key is the one Codex writes: the file's full path in the platform's form, so backslashes
+                        // on Windows even when CODEX_HOME has forward slashes.
+                        hooks.Add(Configure(handlers[index] as JsonObject ?? [], file, name, key, matcher, $"{Path.GetFullPath(file)}:{key}:{group}:{index}", source, managed, layerOff, config));
                     }
                 }
             }
@@ -289,6 +292,4 @@ internal static class CodexHooks
     };
 
     private static string? Text(JsonNode? node) => node is JsonValue value && value.TryGetValue<string>(out var text) ? text : null;
-
-    private static string Slashes(string path) => path.Replace('\\', '/');
 }
