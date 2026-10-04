@@ -1,0 +1,21 @@
+{
+  "session_id": "id1",
+  "transcript_path": "C:\\Users\\dev\\.claude\\projects\\C--Users-dev-repo\\id1.jsonl",
+  "cwd": "C:\\Users\\dev\\repo\\sub",
+  "prompt_id": "id2",
+  "permission_mode": "acceptEdits",
+  "effort": {
+    "level": "medium"
+  },
+  "hook_event_name": "PostToolUseFailure",
+  "tool_name": "Bash",
+  "tool_input": {
+    "command": "sleep 20",
+    "timeout": 3000,
+    "description": "Sleep 20 seconds"
+  },
+  "tool_use_id": "id3",
+  "error": "Exit code 143\nCommand timed out after 3s",
+  "is_interrupt": false,
+  "duration_ms": 3060
+}

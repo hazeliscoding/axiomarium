@@ -1,0 +1,15 @@
+{
+  "session_id": "id1",
+  "turn_id": "id3",
+  "transcript_path": "C:\\Users\\dev\\.codex\\sessions\\2026\\10\\04\\rollout-2026-10-04T00-00-00-id1.jsonl",
+  "cwd": "C:\\Users\\dev\\repo",
+  "hook_event_name": "PostToolUse",
+  "model": "gpt-6-astra",
+  "permission_mode": "bypassPermissions",
+  "tool_name": "Bash",
+  "tool_input": {
+    "command": "git rev-parse --show-prefix"
+  },
+  "tool_response": "sub/\n",
+  "tool_use_id": "id2"
+}
