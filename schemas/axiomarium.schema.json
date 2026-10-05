@@ -17,6 +17,48 @@
           "items": { "type": "string", "minLength": 1 }
         }
       }
+    },
+    "evidence": {
+      "description": "The checks whose runs axm evidence records, such as tests, build and format.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "checks": {
+          "description": "Each check, with the commands that count as running it and the files it vouches for. A declared check that never ran is MISSING.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/check" }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "check": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "run"],
+      "properties": {
+        "name": {
+          "description": "The check's kebab-case name, unique in the repo, such as tests. Its latest run is kept as .axm/evidence/<name>.json.",
+          "type": "string",
+          "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+        },
+        "run": {
+          "description": "The commands that count as running the check. A command counts when it starts with one of them, word by word, so dotnet test --no-build counts for dotnet test.",
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "description": "A command's leading words, such as dotnet test. Never a compound command: one joined with &&, ||, ;, | or & has one exit code for several commands.",
+            "type": "string",
+            "pattern": "^[^;&|\\r\\n]*[^;&|\\s][^;&|\\r\\n]*$"
+          }
+        },
+        "covers": {
+          "description": "Globs relative to the repo root for the files the check vouches for, such as src/**. Left out, it covers every file git sees: tracked, or untracked and not ignored. The repo's own .axm/ is never covered.",
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 }
+        }
+      }
     }
   }
 }

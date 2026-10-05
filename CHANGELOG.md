@@ -4,6 +4,10 @@ This file records the user-visible changes to `axm` and the vault's schemas. The
 
 ## [Unreleased]
 
+### Added
+
+- `axiomarium.yaml` takes an `evidence` block: each check's name, the commands that count as running it, such as `dotnet test`, and the files it covers, every file git sees unless `covers` says otherwise. `axm validate` and `axm doctor` check it: a check named twice, a compound command such as `dotnet build && dotnet test`, or an invalid glob is an error at its line. `schemas/evidence.schema.json` describes the record of a check's latest run, which `axm evidence` will keep in `.axm/evidence/`.
+
 ### Fixed
 
 - `axm explain` and `axm doctor` read Codex's trust entries in `~/.codex/config.toml` the way Codex does. A hook's entry counts only under the key Codex writes: the hooks file's path, with backslashes on Windows, under `CODEX_HOME` spelled as Codex canonicalizes it, with its links followed and, on Windows, its case as on disk. A `[projects]` entry, trusted or untrusted, counts for a folder or the folder its links lead to, as written, with no trailing separator and, on Windows, with backslashes but in any case. Before, an entry with forward slashes on Windows, or a project entry with a trailing separator, counted where Codex ignores it, so `codex-hook-untrusted` missed hooks that never run and an untrusted project's AGENTS.md files still loaded; and a `CODEX_HOME` reached through a link, such as `/tmp` on macOS, hid trust entries Codex honors.

@@ -1,0 +1,100 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/hazeliscoding/axiomarium/blob/main/schemas/evidence.schema.json",
+  "title": "Axiomarium evidence record",
+  "description": "The latest run of a check declared in axiomarium.yaml, kept as .axm/evidence/<check>.json: what ran, how it ended, and a hash of each file the check covered when it ended.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "check", "command", "passed", "started", "ended", "folder", "recordedBy", "covers", "files"],
+  "properties": {
+    "schemaVersion": {
+      "description": "The version of the record's shape, 1, which changes only through a decision in ROADMAP.md.",
+      "type": "integer"
+    },
+    "check": {
+      "description": "The check's name in axiomarium.yaml.",
+      "type": "string",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+    },
+    "command": {
+      "description": "The command as it ran.",
+      "type": "string",
+      "minLength": 1
+    },
+    "passed": {
+      "description": "Whether the command passed.",
+      "type": "boolean"
+    },
+    "exit": {
+      "description": "Its exit code. Left out when a failure didn't say which.",
+      "type": "integer"
+    },
+    "started": {
+      "description": "When it started, in UTC.",
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$"
+    },
+    "ended": {
+      "description": "When it ended, in UTC.",
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$"
+    },
+    "folder": {
+      "description": "The folder it ran in, relative to the repo root with forward slashes, or . for the root. A run below the root may test only part of the repo.",
+      "type": "string",
+      "minLength": 1
+    },
+    "recordedBy": {
+      "description": "What recorded the run.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tool"],
+      "properties": {
+        "tool": {
+          "description": "axm evidence record, which ran the command itself, or the hook, which saw an agent run it.",
+          "enum": ["axm evidence record", "axm hook evidence-freshness"]
+        },
+        "harness": {
+          "description": "The harness the agent ran in, for the hook.",
+          "enum": ["claude-code", "codex"]
+        },
+        "session": {
+          "description": "The harness's session id, for the hook.",
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "head": {
+      "description": "The commit HEAD named when the command ended, for the reader: freshness never uses it. Left out in a repo with no commit.",
+      "type": "string",
+      "pattern": "^[0-9a-f]{40,64}$"
+    },
+    "covers": {
+      "description": "The check's covers globs when it ran, empty for every file git sees. A check whose covers changed since is stale.",
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "files": {
+      "description": "Each file the check covered when the command ended, with its SHA-256.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path", "hash"],
+        "properties": {
+          "path": {
+            "description": "The file, relative to the repo root with forward slashes.",
+            "type": "string",
+            "minLength": 1
+          },
+          "hash": {
+            "description": "sha256: and the SHA-256 of the file's bytes in lowercase hex.",
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          }
+        }
+      }
+    }
+  }
+}
