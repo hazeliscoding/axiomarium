@@ -30,7 +30,7 @@ public sealed record EvidenceRecord(
     string Check,
     string Command,
     bool Passed,
-    int? Exit,
+    long? Exit,
     DateTimeOffset Started,
     DateTimeOffset Ended,
     string Folder,
@@ -119,8 +119,8 @@ public static class EvidenceRecords
     /// <param name="repoRoot">The repo's root folder.</param>
     /// <param name="check">The check's name.</param>
     /// <returns>
-    /// The record; neither the record nor a problem when the check never ran; or why the file isn't a record, which
-    /// leaves the check missing until it runs again.
+    /// The record; neither the record nor a problem when the check never ran; or why the file isn't the check's
+    /// record, which leaves the check missing until it runs again. It never throws for what the file holds.
     /// </returns>
     public static (EvidenceRecord? Record, string? Problem) Read(string repoRoot, string check)
     {
@@ -141,32 +141,68 @@ public static class EvidenceRecords
             return (null, $"{shown} can't be read: {problem.Message}");
         }
 
+        try
+        {
+            return Record(node, check, shown);
+        }
+        catch (Exception problem) when (problem is ArgumentException or InvalidOperationException or FormatException)
+        {
+            // A property written twice only throws once it's read.
+            return (null, $"{shown} isn't an evidence record: {problem.Message}");
+        }
+    }
+
+    private static (EvidenceRecord? Record, string? Problem) Record(JsonNode? node, string check, string shown)
+    {
         if (SchemaValidator.Validate(node, SchemaCatalog.Evidence).FirstOrDefault() is { } error)
         {
             return (null, $"{shown} isn't an evidence record: {error.Message}");
         }
 
+        // The schema's integers fit a long, which also holds an exit code Node reports unsigned on Windows.
         var json = node!.AsObject();
-        if (json["schemaVersion"]!.GetValue<int>() is var version and not SchemaVersion)
+        if (json["schemaVersion"]!.GetValue<long>() is var version and not SchemaVersion)
         {
             return (null, $"{shown} has schemaVersion {version}, and this axm reads {SchemaVersion}.");
         }
 
+        if (json["check"]!.GetValue<string>() is var name && name != check)
+        {
+            return (null, $"{shown} is the record of {name}, not {check}.");
+        }
+
+        if (Moment(json, "started") is not { } started || Moment(json, "ended") is not { } ended)
+        {
+            var field = Moment(json, "started") is null ? "started" : "ended";
+            return (null, $"{shown} isn't an evidence record: {field} {json[field]!.GetValue<string>()} isn't a date.");
+        }
+
+        var files = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var file in json["files"]!.AsArray())
+        {
+            if (!files.TryAdd(file!["path"]!.GetValue<string>(), file["hash"]!.GetValue<string>()))
+            {
+                return (null, $"{shown} isn't an evidence record: it lists {file["path"]!.GetValue<string>()} twice.");
+            }
+        }
+
         var source = json["recordedBy"]!.AsObject();
         return (new EvidenceRecord(
-            json["check"]!.GetValue<string>(),
+            name,
             json["command"]!.GetValue<string>(),
             json["passed"]!.GetValue<bool>(),
-            json["exit"]?.GetValue<int>(),
-            Moment(json["started"]!),
-            Moment(json["ended"]!),
+            json["exit"]?.GetValue<long>(),
+            started,
+            ended,
             json["folder"]!.GetValue<string>(),
             new EvidenceSource(source["tool"]!.GetValue<string>(), source["harness"]?.GetValue<string>(), source["session"]?.GetValue<string>()),
             json["head"]?.GetValue<string>(),
             [.. json["covers"]!.AsArray().Select(pattern => pattern!.GetValue<string>())],
-            json["files"]!.AsArray().ToDictionary(file => file!["path"]!.GetValue<string>(), file => file!["hash"]!.GetValue<string>(), StringComparer.Ordinal)), null);
+            files), null);
     }
 
-    private static DateTimeOffset Moment(JsonNode node) =>
-        DateTimeOffset.ParseExact(node.GetValue<string>(), Time, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal);
+    private static DateTimeOffset? Moment(JsonObject json, string field) =>
+        DateTimeOffset.TryParseExact(json[field]!.GetValue<string>(), Time, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out var moment)
+            ? moment
+            : null;
 }

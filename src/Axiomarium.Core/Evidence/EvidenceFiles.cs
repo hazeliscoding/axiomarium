@@ -33,16 +33,28 @@ public static class EvidenceFiles
     /// <c>sha256:</c> and the lowercase hex hash of each file's bytes, by path. A file that no longer exists, as git
     /// still lists a deleted file it tracks, is left out.
     /// </returns>
+    /// <exception cref="IOException">A file can't be read, such as one another process holds exclusively, or one the user may not read. The message names the file.</exception>
     public static IReadOnlyDictionary<string, string> Hash(string repoRoot, IEnumerable<string> files)
     {
         var hashes = new Dictionary<string, string>(StringComparer.Ordinal);
         foreach (var file in files)
         {
             var path = Path.Combine(repoRoot, file);
-            if (File.Exists(path))
+            if (!File.Exists(path))
             {
-                using var stream = File.OpenRead(path);
+                continue;
+            }
+
+            try
+            {
+                // A file mid-write, such as a log a server appends to, hashes to what it holds now: the next check sees
+                // whatever changed after.
+                using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
                 hashes[file] = "sha256:" + Convert.ToHexStringLower(SHA256.HashData(stream));
+            }
+            catch (Exception problem) when (problem is IOException or UnauthorizedAccessException)
+            {
+                throw new IOException($"{file} can't be read: {problem.Message}", problem);
             }
         }
 

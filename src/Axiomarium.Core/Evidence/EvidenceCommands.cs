@@ -31,19 +31,42 @@ public static class EvidenceCommands
     }
 
     /// <summary>
-    /// Whether <paramref name="command"/> joins several commands, outside quotes: with <c>&amp;&amp;</c>,
-    /// <c>||</c>, <c>;</c>, <c>|</c>, a line break or a trailing <c>&amp;</c>. One exit code can't vouch for one check
-    /// then: a pipe's is usually its last command's. A redirection such as <c>2&gt;&amp;1</c> joins nothing.
+    /// Whether <paramref name="command"/> may join several commands: with <c>&amp;&amp;</c>, <c>||</c>, <c>;</c>,
+    /// <c>|</c>, a line break or a trailing <c>&amp;</c> outside quotes. One exit code can't vouch for one check then: a
+    /// pipe's is usually its last command's. A redirection such as <c>2&gt;&amp;1</c> joins nothing.
     /// </summary>
+    /// <remarks>
+    /// The command may run in bash, where <c>\</c> escapes, or PowerShell, where a backtick does, so it's read three
+    /// ways: with no escape, with each, and a separator any reading finds makes it compound. A line break anywhere, or
+    /// a quote left open, such as an apostrophe in a comment, also makes it compound. Each of these only ever stops a
+    /// command from counting, which is the safe way to be wrong.
+    /// </remarks>
     /// <param name="command">A command line.</param>
-    /// <returns>Whether it's compound.</returns>
+    /// <returns>Whether it's compound, or may be.</returns>
     public static bool IsCompound(string command)
     {
         var text = command.Trim();
+        return text.Contains('\n') || text.Contains('\r') || Joins(text, null) || Joins(text, '\\') || Joins(text, '`');
+    }
+
+    private static bool Joins(string text, char? escape)
+    {
         char? quote = null;
         for (var i = 0; i < text.Length; i++)
         {
             var character = text[i];
+            if (character == escape && quote != '\'')
+            {
+                // An escaped separator is safest read as one, and an escaped quote opens and closes nothing.
+                if (i + 1 < text.Length && text[i + 1] is ';' or '|' or '&')
+                {
+                    return true;
+                }
+
+                i++;
+                continue;
+            }
+
             if (quote is not null)
             {
                 quote = character == quote ? null : quote;
@@ -55,7 +78,7 @@ public static class EvidenceCommands
                 case '"' or '\'':
                     quote = character;
                     break;
-                case ';' or '|' or '\n' or '\r':
+                case ';' or '|':
                     return true;
                 case '&':
                     var redirection = (i > 0 && text[i - 1] is '>' or '<') || (i + 1 < text.Length && text[i + 1] == '>');
@@ -69,12 +92,24 @@ public static class EvidenceCommands
             }
         }
 
-        return false;
+        return quote is not null;
     }
 
+    // A program on PATH matches by name, so a full path or a .exe counts. An entry that names a script by its path
+    // matches only that path, give or take ./ and the slashes, since another test.sh elsewhere is another script.
     private static bool StartsWith(List<string> words, List<string> entry) =>
         entry.Count > 0
         && words.Count >= entry.Count
-        && CommandLine.Program(words[0]) == CommandLine.Program(entry[0])
+        && (entry[0].Contains('/') || entry[0].Contains('\\')
+            ? ScriptPath(words[0]) == ScriptPath(entry[0])
+            : CommandLine.Program(words[0]) == CommandLine.Program(entry[0]))
         && words.Skip(1).Take(entry.Count - 1).SequenceEqual(entry.Skip(1), StringComparer.Ordinal);
+
+    private static string ScriptPath(string word)
+    {
+        var path = word.Replace('\\', '/');
+        path = path.StartsWith("./", StringComparison.Ordinal) ? path[2..] : path;
+        var folder = path.LastIndexOf('/') + 1;
+        return path[..folder] + CommandLine.Program(path[folder..]);
+    }
 }

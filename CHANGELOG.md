@@ -6,7 +6,7 @@ This file records the user-visible changes to `axm` and the vault's schemas. The
 
 ### Added
 
-- `axiomarium.yaml` takes an `evidence` block: each check's name, the commands that count as running it, such as `dotnet test`, and the files it covers, every file git sees unless `covers` says otherwise. `axm validate` and `axm doctor` check it: a check named twice, a compound command such as `dotnet build && dotnet test`, or an invalid glob is an error at its line. `schemas/evidence.schema.json` describes the record of a check's latest run, which `axm evidence` will keep in `.axm/evidence/`.
+- `axiomarium.yaml` takes an `evidence` block: each check's name, the commands that count as running it, such as `dotnet test`, and the files it covers, every file git sees unless `covers` says otherwise. `axm doctor` checks it: a check named twice, a compound command such as `dotnet build && dotnet test`, or an invalid glob is an error at its line. `schemas/evidence.schema.json` describes the record of a check's latest run, which `axm evidence` will keep in `.axm/evidence/`.
 
 ### Fixed
 

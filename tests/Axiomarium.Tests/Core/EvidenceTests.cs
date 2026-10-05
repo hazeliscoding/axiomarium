@@ -11,7 +11,7 @@ public class EvidenceTests
 
     private static readonly DateTimeOffset Started = new(2026, 10, 4, 14, 2, 0, TimeSpan.Zero);
 
-    private static EvidenceRecord Record(bool passed = true, int? exit = 0, IReadOnlyDictionary<string, string>? files = null, string[]? covers = null) => new(
+    private static EvidenceRecord Record(bool passed = true, long? exit = 0, IReadOnlyDictionary<string, string>? files = null, string[]? covers = null) => new(
         "tests", "dotnet test", passed, exit, Started, Started.AddSeconds(41), ".", new EvidenceSource("axm evidence record", null, null), null,
         covers ?? [], files ?? new Dictionary<string, string> { ["src/a.cs"] = "sha256:1", ["src/b.cs"] = "sha256:2" });
 
@@ -65,22 +65,50 @@ public class EvidenceTests
     [InlineData("& dotnet test", true)]
     [InlineData("dotnet test 2>&1", true)]
     [InlineData("dotnet test > out.txt", true)]
+    [InlineData("dotnet test --logger \"trx;LogFileName=a.trx\" --results-directory \"C:\\out\\x\"", true)]
     [InlineData("dotnet tests", false)]
     [InlineData("dotnet", false)]
     [InlineData("echo dotnet test", false)]
     public void A_command_counts_when_it_starts_with_a_run_entry_word_by_word(string command, bool counts) =>
         Assert.Equal(counts, EvidenceCommands.Counts(Check(), command));
 
-    // One exit code can't vouch for one check when several commands share it, such as a pipe's last command.
+    // One exit code can't vouch for one check when several commands share it, such as a pipe's last command. Each
+    // case starts with the run entry, so it would count if the command weren't seen as compound.
     [Theory]
-    [InlineData("dotnet build && dotnet test")]
+    [InlineData("dotnet test && dotnet build")]
     [InlineData("dotnet test || true")]
-    [InlineData("dotnet test; echo done")]
+    [InlineData("dotnet test ; echo done")]
     [InlineData("dotnet test | tail -5")]
     [InlineData("dotnet test &")]
     [InlineData("dotnet test\necho done")]
-    public void A_compound_command_never_counts(string command) =>
+    public void A_compound_command_never_counts(string command)
+    {
         Assert.False(EvidenceCommands.Counts(Check(), command));
+        Assert.True(EvidenceCommands.Counts(Check(), command[..11]));
+    }
+
+    // The matcher doesn't know which shell runs the command, so a quote that an escape or a comment may have changed
+    // the meaning of makes it read the command as compound: missing a run is safe, and counting a wrong one isn't.
+    [Theory]
+    [InlineData("dotnet test --filter \"Name~X\\\"\" || true")]
+    [InlineData("dotnet test --filter 'it'\\''s' ; true")]
+    [InlineData("dotnet test --filter \"a`\"b\" ; exit 0")]
+    [InlineData("dotnet test \\\"; echo done")]
+    [InlineData("dotnet test --filter \"a\\\"\" ; echo \"ok\\\"\"")]
+    [InlineData("dotnet test  # don't rebuild\necho \"exit: $?\"")]
+    [InlineData("dotnet test --filter \"a\nb\"")]
+    public void A_command_whose_quotes_an_escape_or_a_comment_could_change_never_counts(string command) =>
+        Assert.False(EvidenceCommands.Counts(Check(), command));
+
+    // A run entry that names a script by its path counts only for that script, which another test.sh elsewhere isn't.
+    [Theory]
+    [InlineData("./scripts/test.sh", true)]
+    [InlineData("scripts/test.sh --fast", true)]
+    [InlineData(".\\scripts\\test.sh", true)]
+    [InlineData("./examples/demo/test.sh", false)]
+    [InlineData("test.sh", false)]
+    public void A_run_entry_with_a_path_counts_only_that_script(string command, bool counts) =>
+        Assert.Equal(counts, EvidenceCommands.Counts(Check(run: ["./scripts/test.sh"]), command));
 
     [Fact]
     public void A_check_covers_every_file_git_sees_or_its_globs_but_never_the_repo_s_own_axm_folder()
@@ -103,6 +131,18 @@ public class EvidenceTests
         Assert.Equal(["src/a.cs", "src/b.cs"], hashes.Keys.Order(StringComparer.Ordinal));
         Assert.Equal("sha256:87428fc522803d31065e7bce3cf03fe475096631e5e07bbd7a0fde60c4cf25c7", hashes["src/a.cs"]);
         Assert.Equal(hashes["src/a.cs"], hashes["src/b.cs"]);
+    }
+
+    // A log a running server appends to is a covered file too, when nothing ignores it.
+    [Fact]
+    public void A_file_another_process_is_writing_is_still_hashed()
+    {
+        using var vault = new TempVault().Write("server.log", "a\n");
+        using var writer = new FileStream(Path.Combine(vault.Root, "server.log"), FileMode.Open, FileAccess.Write, FileShare.Read);
+
+        var hashes = EvidenceFiles.Hash(vault.Root, ["server.log"]);
+
+        Assert.Equal("sha256:87428fc522803d31065e7bce3cf03fe475096631e5e07bbd7a0fde60c4cf25c7", hashes["server.log"]);
     }
 
     [Fact]
@@ -143,6 +183,31 @@ public class EvidenceTests
         Assert.Equal((EvidenceState.Stale, "its covers changed"), (recovered.State, recovered.Reason));
     }
 
+    // When the covers change, a file can leave or join them without being deleted or new.
+    [Fact]
+    public void A_stale_reason_says_a_file_left_or_joined_the_covers_when_it_still_exists_or_the_covers_changed()
+    {
+        var record = Record(files: new Dictionary<string, string> { ["README.md"] = "sha256:1", ["src/a.cs"] = "sha256:2" });
+        var narrowed = new Dictionary<string, string> { ["src/a.cs"] = "sha256:2" };
+        var widened = new Dictionary<string, string> { ["README.md"] = "sha256:1", ["src/a.cs"] = "sha256:2", ["docs/b.md"] = "sha256:3" };
+
+        Assert.Equal("its covers changed, README.md is no longer covered", EvidenceStatuses.Of(Check("tests", null, "src/**"), record, narrowed, exists: path => path == "README.md").Reason);
+        Assert.Equal("README.md was deleted", EvidenceStatuses.Of(Check(), record, narrowed, exists: _ => false).Reason);
+        Assert.Equal("its covers changed, docs/b.md is now covered", EvidenceStatuses.Of(Check("tests", null, "**"), record, widened).Reason);
+        Assert.Equal("docs/b.md is new", EvidenceStatuses.Of(Check(), record, widened).Reason);
+    }
+
+    // A record vouches only while its command still counts for the check, as the hook and record decided when they wrote it.
+    [Fact]
+    public void A_passed_check_goes_stale_when_its_run_entries_no_longer_count_its_command()
+    {
+        var current = new Dictionary<string, string> { ["src/a.cs"] = "sha256:1", ["src/b.cs"] = "sha256:2" };
+
+        var stale = EvidenceStatuses.Of(Check(run: ["dotnet build"]), Record(), current);
+
+        Assert.Equal((EvidenceState.Stale, "its run changed"), (stale.State, stale.Reason));
+    }
+
     [Fact]
     public void A_failed_run_is_failed_whatever_changed_since()
     {
@@ -180,18 +245,57 @@ public class EvidenceTests
         Assert.Equal(Path.Combine(vault.Root, ".axm", "evidence", "tests.json"), EvidenceRecords.PathOf(vault.Root, "tests"));
     }
 
+    // axm evidence record writes no harness or session, a failure may not say its exit code, and a new repo has no HEAD.
+    [Fact]
+    public void A_record_without_its_optional_fields_leaves_them_out_and_reads_them_back_as_null()
+    {
+        using var vault = new TempVault();
+        var record = Record(passed: false, exit: null, files: new Dictionary<string, string> { ["src/a.cs"] = "sha256:" + new string('1', 64) });
+
+        var json = EvidenceRecords.ToJson(record);
+        vault.Write(".axm/evidence/tests.json", json);
+        var (read, problem) = EvidenceRecords.Read(vault.Root, "tests");
+
+        Assert.Null(problem);
+        Assert.Equal(((long?)null, (string?)null, (string?)null, (string?)null), (read!.Exit, read.Head, read.RecordedBy.Harness, read.RecordedBy.Session));
+        Assert.All(["\"exit\"", "\"head\"", "\"harness\"", "\"session\""], key => Assert.DoesNotContain(key, json, StringComparison.Ordinal));
+    }
+
+    // Node reports a Windows crash's exit code unsigned, such as 0xC0000005, which doesn't fit an int.
+    [Fact]
+    public void A_record_keeps_an_exit_code_too_large_for_an_int()
+    {
+        using var vault = new TempVault();
+        vault.Write(".axm/evidence/tests.json", EvidenceRecords.ToJson(Record(passed: false, exit: 3221225477, files: new Dictionary<string, string>())));
+
+        Assert.Equal(3221225477, EvidenceRecords.Read(vault.Root, "tests").Record!.Exit);
+    }
+
     [Fact]
     public void A_record_that_isn_t_one_says_why_and_a_missing_one_is_no_problem()
     {
-        using var vault = new TempVault().Write(".axm/evidence/tests.json", """{ "schemaVersion": 1, "check": "tests" }""");
+        using var vault = new TempVault();
+        var good = EvidenceRecords.ToJson(Record(files: new Dictionary<string, string> { ["src/a.cs"] = "sha256:" + new string('1', 64) }));
+        string? Problem(string json)
+        {
+            vault.Write(".axm/evidence/tests.json", json);
+            var (record, problem) = EvidenceRecords.Read(vault.Root, "tests");
+            Assert.Null(record);
+            return problem;
+        }
 
-        var (record, problem) = EvidenceRecords.Read(vault.Root, "tests");
+        Assert.StartsWith(".axm/evidence/tests.json isn't an evidence record: ", Problem("""{ "schemaVersion": 1, "check": "tests" }"""), StringComparison.Ordinal);
+        Assert.StartsWith(".axm/evidence/tests.json can't be read: ", Problem("{"), StringComparison.Ordinal);
+        Assert.Equal(".axm/evidence/tests.json has schemaVersion 2, and this axm reads 1.", Problem(good.Replace("\"schemaVersion\": 1", "\"schemaVersion\": 2", StringComparison.Ordinal)));
+        Assert.Equal(".axm/evidence/tests.json is the record of format, not tests.", Problem(good.Replace("\"check\": \"tests\"", "\"check\": \"format\"", StringComparison.Ordinal)));
+        Assert.Equal(".axm/evidence/tests.json isn't an evidence record: started 2026-02-30T00:00:00Z isn't a date.", Problem(good.Replace("2026-10-04T14:02:00Z", "2026-02-30T00:00:00Z", StringComparison.Ordinal)));
+        Assert.StartsWith(".axm/evidence/tests.json isn't an evidence record: ", Problem(good.Replace("2026-10-04T14:02:00Z", "٢٠٢٦-10-04T14:02:00Z", StringComparison.Ordinal)), StringComparison.Ordinal);
+        Assert.Equal(".axm/evidence/tests.json isn't an evidence record: it lists src/a.cs twice.", Problem(good.Replace("\"files\": [", "\"files\": [\n    { \"path\": \"src/a.cs\", \"hash\": \"sha256:" + new string('2', 64) + "\" },", StringComparison.Ordinal)));
+        Assert.StartsWith(".axm/evidence/tests.json isn't an evidence record: ", Problem(good.Replace("\"command\":", "\"check\": \"tests\",\n  \"command\":", StringComparison.Ordinal)), StringComparison.Ordinal);
+
         var (none, noProblem) = EvidenceRecords.Read(vault.Root, "format");
-
-        Assert.Null(record);
-        Assert.StartsWith(".axm/evidence/tests.json isn't an evidence record: ", problem, StringComparison.Ordinal);
         Assert.Equal(((EvidenceRecord?)null, (string?)null), (none, noProblem));
-        var status = EvidenceStatuses.Of(Check(), null, new Dictionary<string, string>(), problem);
-        Assert.Equal((EvidenceState.Missing, problem), (status.State, status.Reason));
+        var status = EvidenceStatuses.Of(Check(), null, new Dictionary<string, string>(), "a problem");
+        Assert.Equal((EvidenceState.Missing, "a problem"), (status.State, status.Reason));
     }
 }
