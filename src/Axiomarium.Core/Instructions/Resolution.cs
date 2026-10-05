@@ -12,7 +12,10 @@ public sealed record Machine(string Home, string CodexHome, string ClaudeConfig,
     /// <summary>The real machine, from the process's environment variables.</summary>
     /// <param name="environment">The environment: <c>HOME</c> or <c>USERPROFILE</c>, <c>CODEX_HOME</c>, <c>CLAUDE_CONFIG_DIR</c> and, on Windows, <c>ProgramData</c>.</param>
     /// <param name="launchDirectory">Where the harness would start, whose drive or root the upward walks end at.</param>
-    /// <returns>The machine, with each harness's default folder where its variable isn't set.</returns>
+    /// <returns>
+    /// The machine, with each harness's default folder where its variable isn't set, and a set <c>CODEX_HOME</c> spelled
+    /// the way Codex canonicalizes it.
+    /// </returns>
     public static Machine FromEnvironment(IReadOnlyDictionary<string, string?> environment, string launchDirectory)
     {
         string? Variable(string name) => environment.TryGetValue(name, out var value) && !string.IsNullOrEmpty(value) ? value : null;
@@ -24,9 +27,11 @@ public sealed record Machine(string Home, string CodexHome, string ClaudeConfig,
         var codexAdmin = OperatingSystem.IsWindows()
             ? System.IO.Path.Combine(Variable("ProgramData") ?? Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "OpenAI", "Codex")
             : "/etc/codex";
+        // Codex canonicalizes CODEX_HOME when it's set and keys its hooks' trust by that spelling, but takes the default
+        // ~/.codex as it is (codex-rs/utils/home-dir, 0.156.1; hooks/list on Windows, 2026-10-04).
         return new Machine(
             home,
-            Variable("CODEX_HOME") ?? System.IO.Path.Combine(home, ".codex"),
+            Variable("CODEX_HOME") is { } codexHome ? Paths.Canonical(codexHome) : System.IO.Path.Combine(home, ".codex"),
             Variable("CLAUDE_CONFIG_DIR") ?? System.IO.Path.Combine(home, ".claude"),
             ClaudeManagedFolder(platform),
             System.IO.Path.GetPathRoot(System.IO.Path.GetFullPath(launchDirectory)) ?? "/",

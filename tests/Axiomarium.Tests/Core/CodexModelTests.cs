@@ -124,6 +124,25 @@ public class CodexModelTests
         Assert.Equal([("repo/src/AGENTS.md", 4, false)], Loaded(vault, Resolve(vault, launch: "repo/src", target: "repo/src/app.cs")));
     }
 
+    // Codex looks up trusted and untrusted [projects] entries alike, so an untrusted one also counts only with the
+    // path Codex writes: no forward slashes on Windows, no trailing separator, and in any case on Windows.
+    [Fact]
+    public void An_untrusted_entry_counts_only_with_the_path_codex_writes()
+    {
+        using var vault = Repo().Write("repo/AGENTS.md", "root\n");
+        var repo = Path.Combine(vault.Root, "repo");
+        var otherSlashes = repo.Replace(Path.DirectorySeparatorChar, Path.DirectorySeparatorChar == '\\' ? '/' : '\\');
+        bool Drops(string entry)
+        {
+            vault.Write("home/.codex/config.toml", $"[projects.'{entry}']\ntrust_level = \"untrusted\"\n");
+            return Dropped(vault, Resolve(vault)).Contains(("repo/AGENTS.md", "codex/untrusted"));
+        }
+
+        Assert.Equal(
+            [true, false, false, OperatingSystem.IsWindows()],
+            [Drops(repo), Drops(otherSlashes), Drops(repo + Path.DirectorySeparatorChar), Drops(repo.ToUpperInvariant())]);
+    }
+
     [Fact]
     public void An_untrusted_project_loads_only_the_global_file()
     {

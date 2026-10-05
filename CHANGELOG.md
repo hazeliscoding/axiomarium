@@ -6,7 +6,7 @@ This file records the user-visible changes to `axm` and the vault's schemas. The
 
 ### Fixed
 
-- On Windows, `axm explain` and `axm doctor` no longer call a Codex hook trusted, or a project trusted, when its entry in `~/.codex/config.toml` is written with forward slashes. Codex ignores such an entry, so `codex-hook-untrusted` now reports the hooks it leaves out. A hook's key must also match in case, as Codex writes it, though a project's path may differ in case.
+- `axm explain` and `axm doctor` read Codex's trust entries in `~/.codex/config.toml` the way Codex does. A hook's entry counts only under the key Codex writes: the hooks file's path, with backslashes on Windows, under `CODEX_HOME` spelled as Codex canonicalizes it, with its links followed and, on Windows, its case as on disk. A `[projects]` entry, trusted or untrusted, counts for a folder or the folder its links lead to, as written, with no trailing separator and, on Windows, with backslashes but in any case. Before, an entry with forward slashes on Windows, or a project entry with a trailing separator, counted where Codex ignores it, so `codex-hook-untrusted` missed hooks that never run and an untrusted project's AGENTS.md files still loaded; and a `CODEX_HOME` reached through a link, such as `/tmp` on macOS, hid trust entries Codex honors.
 - `axm eval run` and `axm eval compare` give Claude Code's sessions and judge a temp folder inside the run. Before, each session left a folder in your own temp folder, such as `%TEMP%\claude\C--axm-evals-…`.
 
 ## [0.5.0] - 2026-09-30

@@ -57,7 +57,7 @@ internal sealed record CodexConfig(long MaxBytes, IReadOnlyList<string> Fallback
         }
 
         var table = TomlSerializer.Deserialize(File.ReadAllText(path), CodexConfigContext.Default.TomlTable) ?? [];
-        // Entries keep the path as written: Codex doesn't normalize it before it compares (see ProjectIs).
+        // Entries keep the path as written: Codex doesn't resolve or turn the slashes of an entry before it compares (see ProjectIs).
         var untrusted = table.TryGetValue("projects", out var projects) && projects is TomlTable projectTable
             ? projectTable
                 .Where(pair => pair.Value is TomlTable settings && settings.TryGetValue("trust_level", out var level) && level is "untrusted")
@@ -137,11 +137,20 @@ internal sealed record CodexConfig(long MaxBytes, IReadOnlyList<string> Fallback
         return false;
     }
 
-    // A [projects] entry names a folder only with the path as Codex writes it, though on Windows in any case: hooks/list
-    // on Windows ignored an entry with forward slashes or a trailing backslash, and took one with another case
-    // (0.156.1, 2026-10-04).
-    private static bool ProjectIs(string entry, string folder) =>
-        string.Equals(entry, Path.TrimEndingDirectorySeparator(folder), OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal);
+    // Codex looks a folder up under its canonical path and under the path as given, and compares each [projects] entry
+    // exactly, lowercased on Windows, without turning slashes or trimming separators (normalized_project_trust_keys in
+    // codex-rs/config, 0.156.1). hooks/list on Windows agreed: it ignored an entry with forward slashes or a trailing
+    // backslash, and took one in another case (2026-10-04).
+    private static bool ProjectIs(string entry, string folder)
+    {
+        var given = Path.TrimEndingDirectorySeparator(folder);
+        return string.Equals(TrustKey(entry), TrustKey(given), StringComparison.Ordinal)
+            || string.Equals(TrustKey(entry), TrustKey(Paths.Canonical(given)), StringComparison.Ordinal);
+    }
+
+    // Codex lowercases ASCII letters only, so a non-ASCII letter's case still counts.
+    private static string TrustKey(string path) =>
+        OperatingSystem.IsWindows() ? string.Concat(path.Select(character => character is >= 'A' and <= 'Z' ? (char)(character + 32) : character)) : path;
 
     /// <summary>Reads another layer's <c>config.toml</c>, such as a project's or the system folder's, for its <c>[hooks]</c> alone.</summary>
     public static TomlTable? HooksIn(string configFile)

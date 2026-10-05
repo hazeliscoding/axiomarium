@@ -45,8 +45,8 @@ internal static class CodexHooks
                     var handlers = groups[group]?["hooks"] as JsonArray ?? [];
                     for (var index = 0; index < handlers.Count; index++)
                     {
-                        // The key is the one Codex writes: the file's full path in the platform's form, so backslashes
-                        // on Windows even when CODEX_HOME has forward slashes.
+                        // The key is the one Codex writes: the file's full path in the platform's form, under the
+                        // canonical CODEX_HOME that Machine.FromEnvironment holds, and matched exactly.
                         hooks.Add(Configure(handlers[index] as JsonObject ?? [], file, name, key, matcher, $"{Path.GetFullPath(file)}:{key}:{group}:{index}", source, managed, layerOff, config));
                     }
                 }

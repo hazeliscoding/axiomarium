@@ -96,6 +96,42 @@ public class CodexHooksTests
         Assert.Equal(["trusted", "untrusted", "untrusted"], [Trust(key), Trust(otherSlashes), Trust(key.ToUpperInvariant())]);
     }
 
+    // On Windows a CODEX_HOME written with forward slashes still gives a key with backslashes, as Codex writes it.
+    [Fact]
+    public void A_hooks_key_has_the_platforms_slashes_however_codex_home_is_written()
+    {
+        using var vault = Repo().Write("home/.codex/hooks.json", HooksJson(("SessionStart", null, "a")));
+        var machine = TestMachine.For(vault.Root) with { CodexHome = Path.Combine(vault.Root, "home", ".codex").Replace('\\', '/') };
+        string Trust(string key)
+        {
+            var hash = Assert.Single(CodexModel.Resolve(Path.Combine(vault.Root, "repo"), Path.Combine(vault.Root, "repo", "src", "app.ts"), machine).ConfiguredHooks).Hash;
+            vault.Write("home/.codex/config.toml", $"[hooks.state.'{key}']\ntrusted_hash = \"{hash}\"\n");
+            return Assert.Single(CodexModel.Resolve(Path.Combine(vault.Root, "repo"), Path.Combine(vault.Root, "repo", "src", "app.ts"), machine).ConfiguredHooks).Trust!;
+        }
+
+        var native = Path.Combine(vault.Root, "home", ".codex", "hooks.json") + ":session_start:0:0";
+        Assert.Equal(("trusted", OperatingSystem.IsWindows() ? "untrusted" : "trusted"), (Trust(native), Trust(native.Replace('\\', '/'))));
+    }
+
+    // Codex also looks a project up by its folder's canonical path, links followed (codex-rs/config, 0.156.1).
+    [Fact]
+    public void A_project_trust_entry_may_name_the_folder_a_link_leads_to()
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            Assert.Skip("A symbolic link on Windows needs a privilege the test can't count on.");
+        }
+
+        using var vault = Repo().Write("repo/.codex/hooks.json", HooksJson(("SessionStart", null, "project")));
+        var link = Path.Combine(vault.Root, "link");
+        Directory.CreateSymbolicLink(link, Path.Combine(vault.Root, "repo"));
+        vault.Write("home/.codex/config.toml", $"[projects.'{Paths.Canonical(Path.Combine(vault.Root, "repo"))}']\ntrust_level = \"trusted\"\n");
+
+        var hook = Assert.Single(CodexModel.Resolve(link, Path.Combine(link, "src", "app.ts"), TestMachine.For(vault.Root)).Hooks);
+
+        Assert.NotEqual("codex/hook-project-untrusted", hook.Rule.Id);
+    }
+
     // A project's entry in [projects] counts only with its path as Codex writes it, though on Windows in any case:
     // hooks/list on Windows ignored the entry with forward slashes or a trailing backslash (0.156.1, 2026-10-04).
     [Fact]
