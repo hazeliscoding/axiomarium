@@ -1,5 +1,4 @@
 using System.CommandLine;
-using System.Runtime.InteropServices;
 using Axiomarium.Core.Evidence;
 using Axiomarium.Core.Health;
 
@@ -87,23 +86,24 @@ public static partial class AxmCli
                 return UnknownCheck(session, repo, result.GetValue(name)!);
             }
 
+            // The program runs with the words the user's shell split, and no shell of its own, so what runs is exactly
+            // what's recorded: a shell would read a filter's | or a quoted space its own way, and cmd differently again.
             var given = result.GetValue(words) ?? [];
-            var line = given.Length == 0 ? check.Run[0] : string.Join(' ', given.Select(Quoted));
+            var program = given.Length == 0 ? EvidenceCommands.Words(check.Run[0]) : given;
+            var line = given.Length == 0 ? check.Run[0] : EvidenceCommands.Join(given);
             if (!EvidenceCommands.Counts(check, line))
             {
                 return CouldNotRunWith(
                     session, $"{line} doesn't count as running {check.Name}.", $"A command counts when it starts with one of the check's run entries: {string.Join(", ", check.Run)}.");
             }
 
-            // The command runs as the user would run it, in a shell, with its output on the user's terminal.
-            var shell = session.Platform == OSPlatform.Windows ? new HarnessCall("cmd", ["/d", "/s", "/c", line], "", session.CurrentDirectory, null, Timeout.InfiniteTimeSpan)
-                : new HarnessCall("sh", ["-c", line], "", session.CurrentDirectory, null, Timeout.InfiniteTimeSpan);
             var started = session.Clock.GetUtcNow();
-            var ran = session.Runner.RunAsync(shell with { Attached = true }).GetAwaiter().GetResult();
+            var ran = session.Runner.RunAsync(
+                new HarnessCall(program[0], [.. program.Skip(1)], "", session.CurrentDirectory, null, Timeout.InfiniteTimeSpan) { Attached = true }).GetAwaiter().GetResult();
             var ended = session.Clock.GetUtcNow();
             if (!ran.Started)
             {
-                return CouldNotRunWith(session, $"{line} couldn't start: {ran.Error}", hint: null);
+                return CouldNotRunWith(session, ran.Error, "Nothing was recorded.");
             }
 
             // The command may have made or removed files, so git lists them again, and the hashes are of the files as it left them.
@@ -113,7 +113,10 @@ public static partial class AxmCli
             }
 
             var head = Git(session, repo.Root, "rev-parse", "--verify", "--quiet", "HEAD");
-            var folder = Path.GetRelativePath(repo.Root, session.CurrentDirectory).Replace('\\', '/');
+
+            // git spells the folder against the root it found, which a junction or a subst drive can spell differently from the current folder.
+            var prefix = Git(session, session.CurrentDirectory, "rev-parse", "--show-prefix");
+            var folder = prefix.ExitCode == 0 && prefix.Lines is [var shown, ..] && shown.Trim().TrimEnd('/') is { Length: > 0 } below ? below : ".";
             var record = new EvidenceRecord(
                 check.Name,
                 line,
@@ -136,10 +139,6 @@ public static partial class AxmCli
     private static int UnknownCheck(Session session, EvidenceRepo repo, string name) =>
         CouldNotRunWith(session, $"axiomarium.yaml declares no check named {name}.", $"Its checks: {string.Join(", ", repo.Checks.Select(check => check.Name))}.");
 
-    // A word the shell split off goes back in quotes when it holds a space, so the command runs as typed.
-    private static string Quoted(string word) =>
-        word.Length > 0 && !word.Any(char.IsWhiteSpace) ? word : $"\"{word.Replace("\"", "\\\"", StringComparison.Ordinal)}\"";
-
     // The repo around the current folder, its checks and the files git sees, or null after saying why it can't be used.
     private static EvidenceRepo? OpenEvidence(Session session)
     {
@@ -152,7 +151,16 @@ public static partial class AxmCli
 
         if (top.ExitCode != 0 || top.Lines.Count == 0)
         {
-            CouldNotRunWith(session, "axm evidence needs a git repo, and the current folder isn't in one.", "It compares the files git sees. Run it inside a git repo.");
+            // git refuses a real repo too, such as one it calls of dubious ownership, and then says how to fix it.
+            if (top.Error.Contains("not a git repository", StringComparison.OrdinalIgnoreCase))
+            {
+                CouldNotRunWith(session, "axm evidence needs a git repo, and the current folder isn't in one.", "It compares the files git sees. Run it inside a git repo.");
+            }
+            else
+            {
+                CouldNotRunWith(session, $"git couldn't find the repo: {top.Error.Trim()}", hint: null);
+            }
+
             return null;
         }
 
@@ -160,10 +168,11 @@ public static partial class AxmCli
         var (config, problems) = RepoConfig.Load(root);
         if (problems.Count > 0)
         {
+            // Each problem keeps its detail, such as the format a field needs, as axm doctor shows it.
             WriteCouldNotRun(
                 session.Error,
                 session.ErrorStyle,
-                [.. problems.Select(problem => $"{problem.File}{(problem.Location is { } at ? $":{at.Line}" : "")} {problem.Message}")],
+                [.. problems.Select(problem => string.Join("\n     ", [$"{problem.File}{(problem.Location is { } at ? $":{at.Line}" : "")} {problem.Message}", .. problem.Detail]))],
                 "Fix axiomarium.yaml, then run axm evidence again.");
             return null;
         }
@@ -192,18 +201,32 @@ public static partial class AxmCli
         return new EvidenceRepo(root, config.EvidenceChecks, files);
     }
 
-    // Tracked files, and untracked ones git doesn't ignore, by their paths with forward slashes, or null after saying why not.
+    // Tracked files, those in checked-out submodules too, and untracked ones git doesn't ignore, by their paths with
+    // forward slashes, or null after saying why not.
     private static IReadOnlyList<string>? ListFiles(Session session, string root)
     {
-        var listed = Git(session, root, "ls-files", "-z", "--cached", "--others", "--exclude-standard");
-        if (!listed.Started || listed.ExitCode != 0)
+        // git can't list submodules' files and untracked ones in one call.
+        var listed = new List<string>();
+        string[][] calls = [["ls-files", "-z", "--cached", "--recurse-submodules"], ["ls-files", "-z", "--others", "--exclude-standard"]];
+        foreach (var arguments in calls)
         {
-            CouldNotRunWith(session, $"git couldn't list the repo's files: {listed.Error.Trim()}", hint: null);
-            return null;
+            var output = Git(session, root, arguments);
+            if (!output.Started || output.ExitCode != 0)
+            {
+                CouldNotRunWith(session, $"git couldn't list the repo's files: {output.Error.Trim()}", hint: null);
+                return null;
+            }
+
+            // -z ends each path with a NUL, so a path with a line break in it arrives whole once the lines are joined again.
+            listed.AddRange(string.Join('\n', output.Lines).Split('\0', StringSplitOptions.RemoveEmptyEntries));
         }
 
-        // -z ends each path with a NUL, so a path with a line break in it arrives whole once the lines are joined again.
-        return [.. string.Join('\n', listed.Lines).Split('\0', StringSplitOptions.RemoveEmptyEntries).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal)];
+        // A submodule that isn't checked out, or an untracked repo inside this one, is listed as a folder, which holds
+        // no file to hash: counted as covered, it would leave a check vouching for nothing.
+        return [.. listed
+            .Where(path => !path.EndsWith('/') && !Directory.Exists(Path.Combine(root, path)))
+            .Distinct(StringComparer.Ordinal)
+            .Order(StringComparer.Ordinal)];
     }
 
     private static HarnessOutput Git(Session session, string folder, params string[] arguments) =>

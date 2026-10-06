@@ -28,16 +28,26 @@ public class EvidenceCommandTests
         .Write("src/b.cs", "b\n")
         .Write("README.md", "# Repo\n");
 
-    private static readonly string[] Files = ["README.md", "axiomarium.yaml", "src/a.cs", "src/b.cs", ".axm/evidence/tests.json"];
+    private static readonly string[] Files = ["README.md", "axiomarium.yaml", "src/a.cs", "src/b.cs"];
 
-    private static FakeRunner Git(TempVault repo, string[]? files = null, int exit = 0, string? head = null, Action<HarnessCall>? onCommand = null) => new(call => call switch
+    // git answers as it does: the root with forward slashes, the folder below it with a trailing slash, NUL-ended paths,
+    // and no HEAD in a repo with no commit. The tracked files come from tracked() when given, so a command can change them.
+    private static FakeRunner Git(
+        TempVault repo, string[]? files = null, int exit = 0, string? head = null, Action<HarnessCall>? onCommand = null, Func<string[]>? tracked = null, string[]? untracked = null) => new(call => call switch
     {
         { Command: "git", Arguments: ["rev-parse", "--show-toplevel"] } => new HarnessOutput(true, [repo.Root.Replace('\\', '/')], 0, ""),
-        { Command: "git", Arguments: ["ls-files", "-z", "--cached", "--others", "--exclude-standard"] } => new HarnessOutput(true, [string.Join('\0', files ?? Files) + "\0"], 0, ""),
+        { Command: "git", Arguments: ["rev-parse", "--show-prefix"] } => new HarnessOutput(true, [Prefix(repo, call.Folder!)], 0, ""),
+        { Command: "git", Arguments: ["ls-files", "-z", "--cached", "--recurse-submodules"] } => Listed(tracked?.Invoke() ?? files ?? Files),
+        { Command: "git", Arguments: ["ls-files", "-z", "--others", "--exclude-standard"] } => Listed(untracked ?? [".axm/evidence/tests.json"]),
         { Command: "git", Arguments: ["rev-parse", "--verify", "--quiet", "HEAD"] } => head is null ? new HarnessOutput(true, [], 1, "") : new HarnessOutput(true, [head], 0, ""),
-        { Command: "sh", Arguments: ["-c", _] } => Ran(call, exit, onCommand),
-        _ => throw new InvalidOperationException($"Unexpected call: {call.Command} {string.Join(' ', call.Arguments)}"),
+        { Command: "git" } => throw new InvalidOperationException($"Unexpected git call: {string.Join(' ', call.Arguments)}"),
+        _ => Ran(call, exit, onCommand),
     });
+
+    private static string Prefix(TempVault repo, string folder) =>
+        Path.GetRelativePath(repo.Root, folder) is "." ? "" : Path.GetRelativePath(repo.Root, folder).Replace('\\', '/') + "/";
+
+    private static HarnessOutput Listed(string[] paths) => new(true, paths.Length == 0 ? [] : [string.Join('\0', paths) + "\0"], 0, "");
 
     private static HarnessOutput Ran(HarnessCall call, int exit, Action<HarnessCall>? onCommand)
     {
@@ -91,9 +101,22 @@ public class EvidenceCommandTests
             "tests", "dotnet test", false, 1, Noon.AddMinutes(-2), Noon.AddMinutes(-1), "src/api", new EvidenceSource("axm evidence record", null, null), null, ["src/**"],
             EvidenceFiles.Hash(repo.Root, ["src/a.cs", "src/b.cs"]))));
 
-        var (_, output, _) = Run(repo, Git(repo), "check", "tests");
+        var (exitCode, output, _) = Run(repo, Git(repo), "check", "tests");
 
+        Assert.Equal(1, exitCode);
         Assert.Contains("  01  tests  FAILED  failed 2026-09-28 11:59 · dotnet test in src/api\n                     exit 1\n", output, StringComparison.Ordinal);
+    }
+
+    // The gate fails on a stale check as on a failed or missing one.
+    [Fact]
+    public void Check_fails_on_a_stale_check_and_shows_why()
+    {
+        using var repo = Repo();
+        Recorded(repo, "tests", "dotnet test", Noon.AddMinutes(-1), ["src/**"], hashes: ("src/a.cs", "sha256:" + new string('0', 64)));
+
+        var (exitCode, output, _) = Run(repo, Git(repo), "check", "tests");
+
+        Assert.Equal((1, "AXM EVIDENCE CHECK // 1 check\n\n  01  tests  STALE  passed 2026-09-28 11:59 · dotnet test\n                    src/a.cs changed\n\n1 check · 1 stale\n"), (exitCode, output));
     }
 
     [Fact]
@@ -134,15 +157,44 @@ public class EvidenceCommandTests
             (Run(nothing, Git(nothing)).ExitCode, Run(nothing, Git(nothing)).Error));
     }
 
+    // git refuses a repo of dubious ownership with its own fix, which an "isn't in a repo" message would hide.
     [Fact]
-    public void An_invalid_evidence_block_can_t_run_and_says_where()
+    public void A_repo_git_refuses_shows_git_s_reason()
+    {
+        using var repo = Repo();
+        var refused = new FakeRunner(_ => new HarnessOutput(true, [], 128, "fatal: detected dubious ownership in repository at 'C:/repo'\nTo add an exception for this directory, call:\n\n\tgit config --global --add safe.directory C:/repo\n"));
+
+        var (exitCode, _, error) = Run(repo, refused);
+
+        Assert.Equal(2, exitCode);
+        Assert.StartsWith("axm: git couldn't find the repo: fatal: detected dubious ownership", error, StringComparison.Ordinal);
+        Assert.Contains("git config --global --add safe.directory C:/repo", error, StringComparison.Ordinal);
+    }
+
+    // A submodule that isn't checked out is listed as a folder, which holds no file to hash, so it covers nothing.
+    [Fact]
+    public void A_glob_that_reaches_only_a_submodule_folder_matches_nothing()
+    {
+        using var repo = Repo().Folder("vendor/lib").Write("axiomarium.yaml", "evidence:\n  checks:\n    - name: tests\n      run: [dotnet test]\n      covers: [vendor/**]\n");
+
+        var (exitCode, _, error) = Run(repo, Git(repo, files: [.. Files, "vendor/lib"]));
+
+        Assert.Equal((2, "axm: The check tests covers vendor/**, which matches no file git sees, so it would vouch for nothing.\n     Fix the glob in axiomarium.yaml, or drop it.\n"), (exitCode, error));
+    }
+
+    [Fact]
+    public void An_invalid_evidence_block_can_t_run_and_says_where_and_what_it_needs()
     {
         using var repo = Repo().Write("axiomarium.yaml", "evidence:\n  checks:\n    - name: tests\n      run: [dotnet test]\n    - name: tests\n      run: [npm test]\n");
+        using var named = Repo().Write("axiomarium.yaml", "evidence:\n  checks:\n    - name: Tests\n      run: [dotnet test]\n");
 
         var (exitCode, _, error) = Run(repo, Git(repo));
+        var (_, _, detail) = Run(named, Git(named));
 
         Assert.Equal(2, exitCode);
         Assert.Equal("axm: axiomarium.yaml:5 evidence.checks[1].name: tests is declared twice.\n     Fix axiomarium.yaml, then run axm evidence again.\n", error);
+        Assert.StartsWith("axm: axiomarium.yaml:3 evidence.checks[0].name \"Tests\" has the wrong format", detail, StringComparison.Ordinal);
+        Assert.Contains("\n     The check's kebab-case name, unique in the repo", detail, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -171,8 +223,8 @@ public class EvidenceCommandTests
         var (exitCode, output, error) = Run(repo, runner, "record", "tests");
 
         Assert.Equal((0, ""), (exitCode, error));
-        Assert.Equal(["-c", "dotnet test"], ran!.Arguments);
-        Assert.Equal((repo.Root, true), (ran.Folder, ran.Attached));
+        Assert.Equal(["test"], ran!.Arguments);
+        Assert.Equal(("dotnet", repo.Root, true), (ran.Command, ran.Folder, ran.Attached));
         Assert.Equal("AXM EVIDENCE RECORD // tests passed · dotnet test\n\nrecorded in .axm/evidence/tests.json\n", output);
         var (record, problem) = EvidenceRecords.Read(repo.Root, "tests");
         Assert.Null(problem);
@@ -188,14 +240,56 @@ public class EvidenceCommandTests
         HarnessCall? ran = null;
 
         var (exitCode, output, _) = CliRun.Run(
-            ["evidence", "record", "tests", "--", "dotnet", "test", "--filter", "Name~a b"], currentDirectory: Path.Combine(repo.Root, "src", "api"),
+            ["evidence", "record", "tests", "--", "dotnet", "test", "--filter", "Name~a b|Category=Fast"], currentDirectory: Path.Combine(repo.Root, "src", "api"),
             runner: Git(repo, exit: 3, onCommand: call => ran = call), clock: new FixedClock());
 
         Assert.Equal(1, exitCode);
-        Assert.Equal("dotnet test --filter \"Name~a b\"", ran!.Arguments[1]);
-        Assert.Equal("AXM EVIDENCE RECORD // tests failed · dotnet test --filter \"Name~a b\" in src/api\n\nexit 3 · recorded in .axm/evidence/tests.json\n", output);
+        Assert.Equal(("dotnet", ["test", "--filter", "Name~a b|Category=Fast"]), (ran!.Command, ran.Arguments.ToArray()), new WordsComparer());
+        Assert.Equal("AXM EVIDENCE RECORD // tests failed · dotnet test --filter 'Name~a b|Category=Fast' in src/api\n\nexit 3 · recorded in .axm/evidence/tests.json\n", output);
         var record = EvidenceRecords.Read(repo.Root, "tests").Record!;
         Assert.Equal((false, 3L, "src/api", (string?)null), (record.Passed, record.Exit, record.Folder, record.Head));
+        Assert.Equal(EvidenceState.Failed, EvidenceStatuses.InRepo(repo.Root, new EvidenceCheck("tests", ["dotnet test"], []), Files).State);
+    }
+
+    // The command may write a covered file, such as a snapshot, or a new one, so the record holds the files as it left them.
+    [Fact]
+    public void Record_lists_and_hashes_the_files_after_the_command_ends()
+    {
+        using var repo = Repo();
+        var files = Files.ToList();
+        var runner = Git(repo, tracked: () => [.. files], onCommand: _ =>
+        {
+            repo.Write("src/a.cs", "changed by the run\n").Write("src/c.cs", "new\n");
+            files.Add("src/c.cs");
+        });
+
+        Run(repo, runner, "record", "tests");
+        var record = EvidenceRecords.Read(repo.Root, "tests").Record!;
+
+        Assert.Equal(EvidenceFiles.Hash(repo.Root, ["src/a.cs", "src/b.cs", "src/c.cs"]).OrderBy(file => file.Key), record.Files.OrderBy(file => file.Key));
+        Assert.Equal(0, Run(repo, runner, "check", "tests").ExitCode);
+    }
+
+    // With no shell to fail in its place, a program that isn't there can't start, and the last record stands.
+    [Fact]
+    public void Record_of_a_program_that_can_t_start_writes_nothing_and_can_t_run()
+    {
+        using var repo = Repo();
+        Recorded(repo, "tests", "dotnet test", Noon.AddMinutes(-1), ["src/**"]);
+        var before = File.ReadAllText(EvidenceRecords.PathOf(repo.Root, "tests"));
+        var missing = new FakeRunner(call => call.Command == "git" ? Git(repo).RunAsync(call).GetAwaiter().GetResult() : new HarnessOutput(false, [], null, "dotnet isn't on PATH."));
+
+        var (exitCode, _, error) = Run(repo, missing, "record", "tests");
+
+        Assert.Equal((2, "axm: dotnet isn't on PATH.\n     Nothing was recorded.\n"), (exitCode, error));
+        Assert.Equal(before, File.ReadAllText(EvidenceRecords.PathOf(repo.Root, "tests")));
+    }
+
+    private sealed class WordsComparer : IEqualityComparer<(string, string[])>
+    {
+        public bool Equals((string, string[]) x, (string, string[]) y) => x.Item1 == y.Item1 && x.Item2.SequenceEqual(y.Item2);
+
+        public int GetHashCode((string, string[]) obj) => obj.Item1.GetHashCode(StringComparison.Ordinal);
     }
 
     [Fact]

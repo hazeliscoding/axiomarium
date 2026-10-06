@@ -100,6 +100,23 @@ public class EvidenceTests
     public void A_command_whose_quotes_an_escape_or_a_comment_could_change_never_counts(string command) =>
         Assert.False(EvidenceCommands.Counts(Check(), command));
 
+    // axm evidence record runs the words it's given and records them as one line, which must read back as the same
+    // words and still count: a test filter's | or ; is quoted, not a separator.
+    [Theory]
+    [InlineData(new[] { "dotnet", "test" }, "dotnet test")]
+    [InlineData(new[] { "dotnet", "test", "--filter", "Category=Unit|Category=Fast" }, "dotnet test --filter 'Category=Unit|Category=Fast'")]
+    [InlineData(new[] { "dotnet", "test", "--logger", "console;verbosity=detailed" }, "dotnet test --logger 'console;verbosity=detailed'")]
+    [InlineData(new[] { "dotnet", "test", "--filter", "Name~a b" }, "dotnet test --filter 'Name~a b'")]
+    [InlineData(new[] { "dotnet", "test", "--filter", "it's" }, "dotnet test --filter 'it'\"'\"'s'")]
+    [InlineData(new[] { "dotnet", "test", "--results-directory", "C:\\out\\" }, "dotnet test --results-directory C:\\out\\")]
+    [InlineData(new[] { "dotnet", "test", "" }, "dotnet test ''")]
+    public void Words_join_into_a_line_that_reads_back_as_the_same_words_and_counts(string[] words, string line)
+    {
+        Assert.Equal(line, EvidenceCommands.Join(words));
+        Assert.Equal(words, EvidenceCommands.Words(line));
+        Assert.True(EvidenceCommands.Counts(Check(), line));
+    }
+
     // A run entry that names a script by its path counts only for that script, which another test.sh elsewhere isn't.
     [Theory]
     [InlineData("./scripts/test.sh", true)]

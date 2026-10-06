@@ -130,9 +130,10 @@ public sealed class ProcessHarnessRunner(string? scratchRoot = null) : IHarnessR
     /// <inheritdoc/>
     public async Task<HarnessOutput> RunAsync(HarnessCall call, CancellationToken cancellation = default)
     {
-        if (Resolve(call.Command) is not { } program)
+        var byPath = call.Command.Contains('/') || call.Command.Contains('\\');
+        if ((byPath ? AtPath(call.Command, call.Folder) : Resolve(call.Command)) is not { } program)
         {
-            return new HarnessOutput(false, [], null, $"{call.Command} isn't on PATH.");
+            return new HarnessOutput(false, [], null, byPath ? $"{call.Command} isn't there." : $"{call.Command} isn't on PATH.");
         }
 
         var scratch = call.Folder is null ? Path.Combine(_scratchRoot, "axm-triggers", NewName()) : null;
@@ -144,6 +145,11 @@ public sealed class ProcessHarnessRunner(string? scratchRoot = null) : IHarnessR
         try
         {
             return await Run(program, call, call.Folder ?? scratch!, cancellation);
+        }
+        catch (System.ComponentModel.Win32Exception problem)
+        {
+            // A file that isn't a program, such as a shell script on Windows or one without its execute bit.
+            return new HarnessOutput(false, [], null, $"{call.Command} couldn't start: {problem.Message}");
         }
         finally
         {
@@ -251,6 +257,15 @@ public sealed class ProcessHarnessRunner(string? scratchRoot = null) : IHarnessR
 
     // Sortable by time, and unique across parallel runs.
     private static string NewName() => $"{DateTime.UtcNow:yyyyMMddHHmmss}-{Guid.NewGuid():N}"[..27];
+
+    // A program named by its path, relative to the folder it runs in, as a shell finds ./gradlew: on Windows, with or
+    // without the extension it can have.
+    private static string? AtPath(string command, string? folder)
+    {
+        var path = Path.GetFullPath(command, folder ?? Environment.CurrentDirectory);
+        string[] extensions = OperatingSystem.IsWindows() && !Path.HasExtension(path) ? ["", ".exe", ".cmd", ".bat"] : [""];
+        return extensions.Select(extension => path + extension).FirstOrDefault(File.Exists);
+    }
 
     // PATH lookup the way a shell does it: on Windows, with the extensions a command can have.
     private static string? Resolve(string command)

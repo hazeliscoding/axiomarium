@@ -8,7 +8,7 @@
 |---|---|
 | 0 | The command ran. Warnings, info and overlapping skills don't change that. |
 | 1 | It ran and found errors: an invalid asset or manifest, or a broken `axiomarium.yaml`, for `doctor` and `validate`; a check that isn't FRESH, for `evidence check`; or a command that failed, for `evidence record`. |
-| 2 | It couldn't run: bad arguments, a missing folder, no vault where one is needed, or no harness installed. |
+| 2 | It couldn't run: bad arguments, a missing folder, no vault where one is needed, no harness installed, or, for `evidence`, no git repo, no evidence checks, or a recorded program that couldn't start. |
 
 `axm hook` commands never exit with 2, because Claude Code reads 2 as "block the action". A hook that can't run exits with 1 and says why on stderr.
 
@@ -152,9 +152,9 @@ evidence:
 
 A check's `run` lists the commands that count as running it: a command counts when it starts with one of them, word by word, so `dotnet test --no-build` counts for `dotnet test`. A compound command, such as `dotnet build && dotnet test` or `dotnet test | tail`, never counts, because its one exit code belongs to several commands. Its `covers` lists globs for the files it vouches for, and without it, every file git sees: tracked, or untracked and not ignored. The repo's own `.axm/` is never covered.
 
-Each check keeps its latest run in `.axm/evidence/<name>.json`, which [`schemas/evidence.schema.json`](../schemas/evidence.schema.json) describes: the command, how it ended, when, the folder it ran in, and a SHA-256 of each file it covered when it ended. A check is FRESH when its latest run passed and every covered file holds what it held then, and STALE when one changed, appeared or went, or when the check's `covers` or `run` changed since. Undoing an edit makes it fresh again. It's FAILED when its latest run failed, and MISSING when it never ran. Each line shows the command behind the run, so a narrowed run, such as `dotnet test --filter X`, or one in a folder below the repo root, shows as one.
+Each check keeps its latest run in `.axm/evidence/<name>.json`, which [`schemas/evidence.schema.json`](../schemas/evidence.schema.json) describes: the command, how it ended, when, the folder it ran in, and a SHA-256 of each file it covered when it ended. A check is FRESH when its latest run passed and every covered file holds what it held then, and STALE when one changed, appeared or went, when its `covers` changed, or when its `run` entries no longer count the recorded command. Undoing an edit makes it fresh again. It's FAILED when its latest run failed, and MISSING when it never ran or its record can't be read. Each line shows the command behind the run, so a narrowed run, such as `dotnet test --filter X`, or one in a folder below the repo root, shows as one.
 
-It needs a git repo, and reads git's list of files. It exits 0 whenever it ran, and 2 when it couldn't: outside a git repo, with no checks declared, with an invalid `evidence` block, or when a `covers` glob matches no file git sees, which would leave its check fresh whatever changed.
+It needs git and a git repo, and reads git's list of files, those in checked-out submodules included. It exits 0 whenever it ran, and 2 when it couldn't: without git or outside a git repo, with no checks declared, with an error in `axiomarium.yaml`, or when a `covers` glob matches no file git sees, which would leave its check fresh whatever changed.
 
 - `--json`: the result as JSON, shape 1: each check's state, the reason, its latest run and the files that changed, appeared or went.
 
@@ -164,7 +164,7 @@ The gate for a pre-commit hook: prints only the checks that aren't FRESH, and ex
 
 ### `axm evidence record <name> [-- <command>...]`
 
-Runs a check's command, the check's first `run` entry unless one follows `--`, in the current folder through the shell, with its output on your terminal. Then it records how it ended and what the files the check covers hold in `.axm/evidence/<name>.json`, replacing the last record. It refuses a command that doesn't count as running the check, so `echo ok` can't vouch for the tests. It exits 0 when the command passed, 1 when it failed, with the command's own exit code in the record and the output, and 2 when it couldn't run it. It writes nothing but that record.
+Runs a check's command, the check's first `run` entry unless one follows `--`, in the current folder, with its output on your terminal. Then it records how it ended and what the files the check covers hold in `.axm/evidence/<name>.json`, replacing the last record. It runs the program directly, not through a shell: the words after `--` are the program and its arguments as your shell split them, so a filter such as `--filter "A|B"` reaches it whole, and what runs is what's recorded. The record keeps the words as one line, with any word holding a space or a separator in single quotes. A program given by its path, such as `./scripts/test.sh`, runs from the current folder. It refuses a command that doesn't count as running the check, so `echo ok` can't vouch for the tests. It exits 0 when the command passed, 1 when it failed, with the command's own exit code in the record and the output, and 2 when it couldn't run it, such as a program that isn't installed, and then writes nothing. It writes nothing but that record.
 
 ### `axm hook scope-sheriff`
 

@@ -30,6 +30,27 @@ public static class EvidenceCommands
         return check.Run.Any(entry => StartsWith(words, CommandLine.Words(entry)));
     }
 
+    /// <summary>The words <paramref name="command"/> splits into, at whitespace outside quotes, with the quotes dropped.</summary>
+    /// <param name="command">A command line, such as a check's run entry.</param>
+    /// <returns>Its words, the program first.</returns>
+    public static IReadOnlyList<string> Words(string command) => CommandLine.Words(command);
+
+    /// <summary>
+    /// Joins <paramref name="words"/>, such as the program and arguments <c>axm evidence record</c> runs, into one line
+    /// that <see cref="Words"/> reads back as the same words. A word with anything but letters, digits and
+    /// <c>_ @ % + = : , . / \ ~ -</c> goes in single quotes, so a filter's <c>|</c> or <c>;</c> reads as part of it, never
+    /// as a separator, and the line still <see cref="Counts"/>.
+    /// </summary>
+    /// <param name="words">The words, the program first.</param>
+    /// <returns>The line.</returns>
+    public static string Join(IEnumerable<string> words) => string.Join(' ', words.Select(Quoted));
+
+    private static string Quoted(string word) =>
+        word.Length > 0 && word.All(character => char.IsAsciiLetterOrDigit(character) || "_@%+=:,./\\~-".Contains(character))
+            ? word
+            // A quote inside goes in double quotes between two single-quoted parts, which read back as one word.
+            : $"'{word.Replace("'", "'\"'\"'", StringComparison.Ordinal)}'";
+
     /// <summary>
     /// Whether <paramref name="command"/> may join several commands: with <c>&amp;&amp;</c>, <c>||</c>, <c>;</c>,
     /// <c>|</c>, a line break or a trailing <c>&amp;</c> outside quotes. One exit code can't vouch for one check then: a

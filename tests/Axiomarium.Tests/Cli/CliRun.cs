@@ -37,7 +37,8 @@ internal static partial class CliRun
         }
 
         // git reads the real machine's config and global gitignore, and a recorded command could be anything.
-        if (runner is null && args is ["evidence", ..] && !args.Contains("--help"))
+        // After --, a --help is a word of the command to record, not help.
+        if (runner is null && args is ["evidence", ..] && !args.TakeWhile(arg => arg != "--").Any(arg => arg is "--help" or "-h" or "-?"))
         {
             throw new InvalidOperationException($"{string.Join(' ', args)} runs git and commands: pass a runner that answers as they would.");
         }

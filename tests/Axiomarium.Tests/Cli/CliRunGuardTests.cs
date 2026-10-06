@@ -31,6 +31,10 @@ public class CliRunGuardTests
     }
 
     [Fact]
+    public void A_help_word_after_the_double_dash_is_part_of_the_command_and_still_needs_a_runner() =>
+        Assert.Throws<InvalidOperationException>(() => CliRun.Run(["evidence", "record", "tests", "--", "dotnet", "test", "--help"]));
+
+    [Fact]
     public void Help_and_conflicts_without_judge_call_no_model_so_need_no_runner()
     {
         using var vault = new TempVault().Write("a.md", "# A\n");
