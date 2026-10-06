@@ -32,8 +32,6 @@ public class CodexHooksTests
     private static Resolution Resolve(TempVault vault, string launch = "repo") =>
         CodexModel.Resolve(Path.Combine(vault.Root, launch), Path.Combine(vault.Root, "repo", "src", "app.ts"), TestMachine.For(vault.Root));
 
-    private static string Slashes(string path) => path.Replace('\\', '/');
-
     // The hashes CI recorded from Codex 0.156.1 for these two hooks, in scenarios/skills-and-hooks.
     [Fact]
     public void A_hooks_trust_hash_is_the_one_codex_computes()
@@ -59,15 +57,15 @@ public class CodexHooksTests
             ("SessionStart", null, "changed"),
             ("SessionStart", null, "off")));
         var hooks = Resolve(vault).ConfiguredHooks;
-        string Key(int group) => Slashes(Path.Combine(vault.Root, "home", ".codex", "hooks.json")) + $":session_start:{group}:0";
+        string Key(int group) => Path.Combine(vault.Root, "home", ".codex", "hooks.json") + $":session_start:{group}:0";
         vault.Write("home/.codex/config.toml", $"""
-            [hooks.state."{Key(1)}"]
+            [hooks.state.'{Key(1)}']
             trusted_hash = "{hooks[1].Hash}"
 
-            [hooks.state."{Key(2)}"]
+            [hooks.state.'{Key(2)}']
             trusted_hash = "sha256:0000"
 
-            [hooks.state."{Key(3)}"]
+            [hooks.state.'{Key(3)}']
             trusted_hash = "{hooks[3].Hash}"
             enabled = false
             """);
@@ -78,6 +76,79 @@ public class CodexHooksTests
         Assert.Equal(
             [("new", false, "codex/hook-untrusted"), ("trusted", true, "codex/user-hook"), ("changed", false, "codex/hook-modified"), ("off", false, "codex/hook-disabled")],
             resolution.Hooks.Select(hook => (hook.Hook.Handler, hook.Runs, hook.Rule.Id)));
+    }
+
+    // Codex keys a hook by its file's full path in the platform's form, then the event, group and index, and matches
+    // the key exactly: hooks/list on Windows trusted only the key with backslashes and the same case (0.156.1, 2026-10-04).
+    [Fact]
+    public void A_trust_entry_counts_only_when_its_key_is_exactly_the_one_codex_writes()
+    {
+        using var vault = Repo().Write("home/.codex/hooks.json", HooksJson(("SessionStart", null, "a")));
+        var hash = Assert.Single(Resolve(vault).ConfiguredHooks).Hash;
+        var key = Path.Combine(vault.Root, "home", ".codex", "hooks.json") + ":session_start:0:0";
+        var otherSlashes = key.Replace(Path.DirectorySeparatorChar, Path.DirectorySeparatorChar == '\\' ? '/' : '\\');
+        string Trust(string entry)
+        {
+            vault.Write("home/.codex/config.toml", $"[hooks.state.'{entry}']\ntrusted_hash = \"{hash}\"\n");
+            return Assert.Single(Resolve(vault).ConfiguredHooks).Trust!;
+        }
+
+        Assert.Equal(["trusted", "untrusted", "untrusted"], [Trust(key), Trust(otherSlashes), Trust(key.ToUpperInvariant())]);
+    }
+
+    // On Windows a CODEX_HOME written with forward slashes still gives a key with backslashes, as Codex writes it.
+    [Fact]
+    public void A_hooks_key_has_the_platforms_slashes_however_codex_home_is_written()
+    {
+        using var vault = Repo().Write("home/.codex/hooks.json", HooksJson(("SessionStart", null, "a")));
+        var machine = TestMachine.For(vault.Root) with { CodexHome = Path.Combine(vault.Root, "home", ".codex").Replace('\\', '/') };
+        string Trust(string key)
+        {
+            var hash = Assert.Single(CodexModel.Resolve(Path.Combine(vault.Root, "repo"), Path.Combine(vault.Root, "repo", "src", "app.ts"), machine).ConfiguredHooks).Hash;
+            vault.Write("home/.codex/config.toml", $"[hooks.state.'{key}']\ntrusted_hash = \"{hash}\"\n");
+            return Assert.Single(CodexModel.Resolve(Path.Combine(vault.Root, "repo"), Path.Combine(vault.Root, "repo", "src", "app.ts"), machine).ConfiguredHooks).Trust!;
+        }
+
+        var native = Path.Combine(vault.Root, "home", ".codex", "hooks.json") + ":session_start:0:0";
+        Assert.Equal(("trusted", OperatingSystem.IsWindows() ? "untrusted" : "trusted"), (Trust(native), Trust(native.Replace('\\', '/'))));
+    }
+
+    // Codex also looks a project up by its folder's canonical path, links followed (codex-rs/config, 0.156.1).
+    [Fact]
+    public void A_project_trust_entry_may_name_the_folder_a_link_leads_to()
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            Assert.Skip("A symbolic link on Windows needs a privilege the test can't count on.");
+        }
+
+        using var vault = Repo().Write("repo/.codex/hooks.json", HooksJson(("SessionStart", null, "project")));
+        var link = Path.Combine(vault.Root, "link");
+        Directory.CreateSymbolicLink(link, Path.Combine(vault.Root, "repo"));
+        vault.Write("home/.codex/config.toml", $"[projects.'{Paths.Canonical(Path.Combine(vault.Root, "repo"))}']\ntrust_level = \"trusted\"\n");
+
+        var hook = Assert.Single(CodexModel.Resolve(link, Path.Combine(link, "src", "app.ts"), TestMachine.For(vault.Root)).Hooks);
+
+        Assert.NotEqual("codex/hook-project-untrusted", hook.Rule.Id);
+    }
+
+    // A project's entry in [projects] counts only with its path as Codex writes it, though on Windows in any case:
+    // hooks/list on Windows ignored the entry with forward slashes or a trailing backslash (0.156.1, 2026-10-04).
+    [Fact]
+    public void A_project_trust_entry_counts_only_with_the_path_codex_writes()
+    {
+        using var vault = Repo().Write("repo/.codex/hooks.json", HooksJson(("SessionStart", null, "project")));
+        var repo = Path.Combine(vault.Root, "repo");
+        var otherSlashes = repo.Replace(Path.DirectorySeparatorChar, Path.DirectorySeparatorChar == '\\' ? '/' : '\\');
+        bool Loads(string entry)
+        {
+            vault.Write("home/.codex/config.toml", $"[projects.'{entry}']\ntrust_level = \"trusted\"\n");
+            return Assert.Single(Resolve(vault).Hooks).Rule.Id != "codex/hook-project-untrusted";
+        }
+
+        Assert.Equal(
+            [true, false, false, OperatingSystem.IsWindows()],
+            [Loads(repo), Loads(otherSlashes), Loads(repo + Path.DirectorySeparatorChar), Loads(repo.ToUpperInvariant())]);
     }
 
     [Fact]
@@ -99,7 +170,7 @@ public class CodexHooksTests
         var untrusted = Assert.Single(Resolve(vault).Hooks);
         Assert.Equal((false, "codex/hook-project-untrusted"), (untrusted.Runs, untrusted.Rule.Id));
 
-        vault.Write("home/.codex/config.toml", $"[projects.\"{Slashes(Path.Combine(vault.Root, "repo"))}\"]\ntrust_level = \"trusted\"\n");
+        vault.Write("home/.codex/config.toml", $"[projects.'{Path.Combine(vault.Root, "repo")}']\ntrust_level = \"trusted\"\n");
         var trusted = Assert.Single(Resolve(vault).Hooks);
         Assert.Equal((false, "codex/hook-untrusted", "codex/project-hook"), (trusted.Runs, trusted.Rule.Id, trusted.Hook.Source.Id));
     }

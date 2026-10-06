@@ -4,6 +4,18 @@ This file records the user-visible changes to `axm` and the vault's schemas. The
 
 ## [Unreleased]
 
+### Added
+
+- `axiomarium.yaml` takes an `evidence` block: each check's name, the commands that count as running it, such as `dotnet test`, and the files it covers, every file git sees unless `covers` says otherwise. `axm doctor` checks it: a check named twice, a compound command such as `dotnet build && dotnet test`, or an invalid glob is an error at its line. `schemas/evidence.schema.json` describes the record of a check's latest run, kept in `.axm/evidence/`.
+- `axm evidence` shows each declared check as FRESH (its latest run passed and the files it covers hold what they held then), STALE (with the files that changed since, up to three named), FAILED or MISSING, with when it ran and the command behind it. `--json` prints it as JSON, shape 1. It needs a git repo, and reads git's list of files.
+- `axm evidence check [<name>...]` prints only the checks that aren't fresh and exits 1 when one isn't: a gate for a pre-commit hook.
+- `axm evidence record <name> [-- <command>...]` runs a check's command directly, not through a shell, with its output on your terminal, then records how it ended and a hash of each file the check covers. It refuses a command that doesn't count as running the check, exits with 0 or 1 as the command passed or failed, and with 2, recording nothing, when the program can't start.
+
+### Fixed
+
+- `axm explain` and `axm doctor` read Codex's trust entries in `~/.codex/config.toml` the way Codex does. A hook's entry counts only under the key Codex writes: the hooks file's path, with backslashes on Windows, under `CODEX_HOME` spelled as Codex canonicalizes it, with its links followed and, on Windows, its case as on disk. A `[projects]` entry, trusted or untrusted, counts for a folder or the folder its links lead to, as written, with no trailing separator and, on Windows, with backslashes but in any case. Before, an entry with forward slashes on Windows, or a project entry with a trailing separator, counted where Codex ignores it, so `codex-hook-untrusted` missed hooks that never run and an untrusted project's AGENTS.md files still loaded; and a `CODEX_HOME` reached through a link, such as `/tmp` on macOS, hid trust entries Codex honors.
+- `axm eval run` and `axm eval compare` give Claude Code's sessions and judge a temp folder inside the run. Before, each session left a folder in your own temp folder, such as `%TEMP%\claude\C--axm-evals-…`.
+
 ## [0.5.0] - 2026-09-30
 
 Evals: what an asset does once it's active, measured on the real Claude Code and Codex in a sealed home, and whether a change made it better.

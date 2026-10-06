@@ -103,6 +103,7 @@ internal static class EvalSessions
             }
 
             var variables = Variables(sealedHome, environment, axm);
+            var claudeVariables = WithTemp(variables, Directory.CreateDirectory(Path.Combine(folder, "tmp")).FullName);
             var warmup = harnesses.Contains(Harness.Codex) && platform == OSPlatform.Windows
                 ? await Warm(runner, folder, home, variables, model, clock)
                 : null;
@@ -113,7 +114,7 @@ internal static class EvalSessions
                 await gate.WaitAsync();
                 try
                 {
-                    return await Run(runner, session, Path.Combine(folder, $"copy-{index + 1}"), vaultRoot, home, variables, axm, model, clock, judge);
+                    return await Run(runner, session, Path.Combine(folder, $"copy-{index + 1}"), vaultRoot, home, variables, claudeVariables, axm, model, clock, judge);
                 }
                 catch (Exception problem) when (problem is not OperationCanceledException)
                 {
@@ -168,6 +169,12 @@ internal static class EvalSessions
         return variables;
     }
 
+    // Claude Code keeps a folder for each session under the temp folder, which outside the run is the user's own: M5's
+    // runs left their folders in the real %TEMP%\claude (see the M6 spike in ROADMAP.md). Codex keeps the user's: its
+    // sandbox decides where a command may write, and no sandboxed session has shown a temp folder in the run works.
+    private static Dictionary<string, string?> WithTemp(IReadOnlyDictionary<string, string?> variables, string temp) =>
+        new(variables) { ["TEMP"] = temp, ["TMP"] = temp, ["TMPDIR"] = temp };
+
     /// <summary>The arguments a session runs its harness with. The prompt goes on stdin.</summary>
     /// <param name="harness">The harness.</param>
     /// <param name="allow">The case's <c>allow</c> commands.</param>
@@ -194,6 +201,7 @@ internal static class EvalSessions
         string vaultRoot,
         string home,
         IReadOnlyDictionary<string, string?> variables,
+        IReadOnlyDictionary<string, string?> claudeVariables,
         string axm,
         string? model,
         TimeProvider clock,
@@ -210,7 +218,7 @@ internal static class EvalSessions
             var claude = session.Harness == Harness.ClaudeCode;
             var started = clock.GetTimestamp();
             var output = await runner.RunAsync(new HarnessCall(
-                claude ? "claude" : "codex", Arguments(session.Harness, session.Case.Allow, model), session.Case.Prompt, copy, null, Timeout, variables));
+                claude ? "claude" : "codex", Arguments(session.Harness, session.Case.Allow, model), session.Case.Prompt, copy, null, Timeout, claude ? claudeVariables : variables));
             var elapsed = clock.GetElapsedTime(started);
             if (!output.Started)
             {
@@ -240,7 +248,7 @@ internal static class EvalSessions
 
                 // A session that didn't finish has already failed, so it isn't worth a judge's call.
                 return session.Case.Rubric is { } rubric && judge is { } judgeHarness && stopped is null
-                    ? await Judge(runner, result, rubric, judgeHarness, copy, variables)
+                    ? await Judge(runner, result, rubric, judgeHarness, copy, variables, judgeHarness == Harness.ClaudeCode ? claudeVariables : variables)
                     : result;
             }
             catch (Exception failure) when (failure is not OperationCanceledException)
@@ -257,7 +265,13 @@ internal static class EvalSessions
 
     // The judge sees what the session was asked, what it ran, what it changed in the copy and what it said.
     private static async Task<EvalSessionResult> Judge(
-        IHarnessRunner runner, EvalSessionResult result, string rubric, Harness judge, string copy, IReadOnlyDictionary<string, string?> variables)
+        IHarnessRunner runner,
+        EvalSessionResult result,
+        string rubric,
+        Harness judge,
+        string copy,
+        IReadOnlyDictionary<string, string?> variables,
+        IReadOnlyDictionary<string, string?> judgeVariables)
     {
         var changes = await Changes(runner, copy, variables);
         var activity = result.Record!.Activity;
@@ -265,7 +279,7 @@ internal static class EvalSessions
         for (var attempt = 0; attempt < 2; attempt++)
         {
             var brief = RubricJudge.Brief(rubric, result.Spec.Case.Prompt, activity.Reply, activity.Commands, changes, problem);
-            var asked = await JudgeCalls.AskAsync(runner, judge, brief, null, variables);
+            var asked = await JudgeCalls.AskAsync(runner, judge, brief, null, judgeVariables);
             if (asked.Text is null)
             {
                 return result with { JudgeProblem = asked.Problem };

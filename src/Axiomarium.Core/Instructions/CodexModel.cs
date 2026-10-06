@@ -46,7 +46,9 @@ public static class CodexRules
 /// <summary>What Codex loads for a file: its global AGENTS.md, then one file per directory of the project chain.</summary>
 /// <remarks>
 /// Follows the Codex AGENTS.md guide and <c>agents_md.rs</c> as read on 2026-09-28, confirmed against
-/// Codex <see cref="ConfirmedWith"/> by the recordings in <c>scenarios/</c>.
+/// Codex <see cref="ConfirmedWith"/> by the recordings in <c>scenarios/</c>. Which <c>[projects]</c> entry marks a
+/// project untrusted follows <c>normalized_project_trust_keys</c> in <c>codex-rs/config</c> at 0.156.1, read on
+/// 2026-10-04, and <c>hooks/list</c> on Windows the same day.
 /// </remarks>
 public static class CodexModel
 {

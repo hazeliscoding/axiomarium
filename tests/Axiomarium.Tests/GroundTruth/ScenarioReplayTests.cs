@@ -1,5 +1,6 @@
 using System.Text.Json.Nodes;
 using Axiomarium.Core.Instructions;
+using Axiomarium.GroundTruth;
 
 namespace Axiomarium.Tests.GroundTruth;
 
@@ -214,7 +215,7 @@ public class ScenarioReplayTests
         var source = Path.Combine(ScenariosFolder, name);
         foreach (var file in Directory.EnumerateFiles(source, "*", SearchOption.AllDirectories))
         {
-            run.Write(Path.GetRelativePath(source, file).Replace('\\', '/'), File.ReadAllText(file).Replace("{run}", run.Root.Replace('\\', '/'), StringComparison.Ordinal));
+            run.Write(Path.GetRelativePath(source, file).Replace('\\', '/'), RunFolder.FillIn(File.ReadAllText(file), run.Root));
         }
 
         return run.Folder("repo/.git").Folder("home/.codex");

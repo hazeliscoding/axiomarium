@@ -240,8 +240,8 @@ public class SkillAndHookFindingsTests
     public void A_hook_that_changed_since_it_was_trusted_says_so()
     {
         using var vault = Repo().Write("home/.codex/hooks.json", """{ "hooks": { "SessionStart": [ { "hooks": [ { "type": "command", "command": "a" } ] } ] } }""");
-        var key = Path.Combine(vault.Root, "home", ".codex", "hooks.json").Replace('\\', '/') + ":session_start:0:0";
-        vault.Write("home/.codex/config.toml", $"[hooks.state.\"{key}\"]\ntrusted_hash = \"sha256:0\"\n");
+        var key = Path.Combine(vault.Root, "home", ".codex", "hooks.json") + ":session_start:0:0";
+        vault.Write("home/.codex/config.toml", $"[hooks.state.'{key}']\ntrusted_hash = \"sha256:0\"\n");
 
         Assert.Equal(
             Finding(

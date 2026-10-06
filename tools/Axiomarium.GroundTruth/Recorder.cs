@@ -241,13 +241,12 @@ internal static partial class Recorder
         }
     }
 
-    // A config file can't know where the run happens, so absolute paths in it, such as trust keys, start with
-    // {run}, which becomes the run folder with forward slashes.
+    // A config file can't know where the run happens, so absolute paths in it, such as trust keys, start with {run}.
     private static void FillInRunFolder(string run)
     {
         foreach (var file in Directory.EnumerateFiles(Path.Combine(run, "home"), "config.toml", SearchOption.AllDirectories))
         {
-            File.WriteAllText(file, File.ReadAllText(file).Replace("{run}", Slashes(run), StringComparison.Ordinal));
+            File.WriteAllText(file, RunFolder.FillIn(File.ReadAllText(file), run));
         }
     }
 

@@ -76,6 +76,33 @@ public class ExplainerTests
         Assert.Equal(("/codex", "/claude"), (overridden.CodexHome, overridden.ClaudeConfig));
     }
 
+    // Codex canonicalizes CODEX_HOME when it's set, and keys each user hook by that spelling: hooks/list on Windows
+    // answered a lowercase drive letter and an upper-cased folder with the folder as it is on disk (0.156.1, 2026-10-04).
+    [Fact]
+    public void A_codex_home_that_is_set_takes_its_spelling_on_disk_with_links_followed()
+    {
+        using var vault = new TempVault().Folder("home/.codex");
+        var onDisk = Path.Combine(vault.Root, "home", ".codex");
+        string respelled;
+        if (OperatingSystem.IsWindows())
+        {
+            respelled = char.ToLowerInvariant(onDisk[0]) + onDisk[1..^@"home\.codex".Length] + @"HOME\.CODEX";
+        }
+        else
+        {
+            respelled = Path.Combine(vault.Root, "link");
+            Directory.CreateSymbolicLink(respelled, onDisk);
+        }
+
+        string CodexHome(string value) =>
+            Machine.FromEnvironment(new Dictionary<string, string?> { ["HOME"] = vault.Root, ["USERPROFILE"] = vault.Root, ["CODEX_HOME"] = value }, vault.Root).CodexHome;
+
+        var canonical = CodexHome(respelled);
+        Assert.Equal(CodexHome(onDisk), canonical);
+        Assert.EndsWith(Path.Combine("home", ".codex"), canonical);
+        Assert.False(char.IsLower(canonical[0]));
+    }
+
     [Fact]
     public void Paths_show_relative_to_the_repo_root_then_home_then_whole()
     {

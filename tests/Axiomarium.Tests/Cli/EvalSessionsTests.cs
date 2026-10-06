@@ -43,7 +43,7 @@ public class EvalSessionsTests
         .Write("home/.codex/auth.json", "{\"secret\":2}")
         .Folder("scratch");
 
-    private sealed record Seen(HarnessCall Call, bool LoginPresent, bool SkillInstalled);
+    private sealed record Seen(HarnessCall Call, bool LoginPresent, bool SkillInstalled, bool TempPresent);
 
     private static (FakeRunner Runner, List<Seen> Seen) Runner(TempVault vault, int? claudeExit = 0)
     {
@@ -57,7 +57,8 @@ public class EvalSessionsTests
                     call,
                     home is not null && File.Exists(Path.Combine(home, ".credentials.json")),
                     call.Folder is not null && (File.Exists(Path.Combine(call.Folder, ".claude", "skills", "agent-asset-authoring", "SKILL.md"))
-                        || File.Exists(Path.Combine(call.Folder, ".agents", "skills", "agent-asset-authoring", "SKILL.md")))));
+                        || File.Exists(Path.Combine(call.Folder, ".agents", "skills", "agent-asset-authoring", "SKILL.md"))),
+                    call.Environment?.GetValueOrDefault("TEMP") is { } temp && Directory.Exists(temp)));
             }
 
             return call.Command switch
@@ -113,6 +114,24 @@ public class EvalSessionsTests
         Assert.Equal(((string?)null, (string?)null, (string?)null), (variables["CLAUDECODE"], variables["CLAUDE_CODE_SESSION_ID"], variables["CLAUDE_EFFORT"]));
         Assert.StartsWith(Path.Combine(vault.Root, "bin") + Path.PathSeparator, variables["PATH"]);
         Assert.Empty(Directory.EnumerateFileSystemEntries(Path.Combine(vault.Root, "scratch")));
+    }
+
+    // Claude Code keeps each session's files under the temp folder, which would be the user's own (see the M6 spike in
+    // ROADMAP.md). Codex keeps the user's, since its sandbox decides where a command may write.
+    [Fact]
+    public void Claude_code_sessions_keep_their_temp_files_inside_the_run()
+    {
+        using var vault = Vault();
+        var (runner, seen) = Runner(vault);
+
+        Run(vault, runner);
+
+        var claude = seen.Single(item => item.Call.Command == "claude");
+        var variables = claude.Call.Environment!;
+        Assert.True(claude.TempPresent);
+        Assert.StartsWith(Path.Combine(vault.Root, "scratch") + Path.DirectorySeparatorChar, variables["TEMP"]);
+        Assert.Equal((variables["TEMP"], variables["TEMP"]), (variables["TMP"], variables["TMPDIR"]));
+        Assert.All(seen.Where(item => item.Call.Command == "codex"), item => Assert.False(item.Call.Environment!.ContainsKey("TEMP")));
     }
 
     [Fact]
@@ -246,6 +265,7 @@ public class EvalSessionsTests
         Assert.Contains("The hook warns and never blocks.", brief.Input, StringComparison.Ordinal);
         Assert.Contains("+response: block", brief.Input, StringComparison.Ordinal);
         Assert.EndsWith(Path.Combine("home", ".claude"), brief.Environment!["CLAUDE_CONFIG_DIR"]);
+        Assert.StartsWith(Path.Combine(vault.Root, "scratch") + Path.DirectorySeparatorChar, brief.Environment["TEMP"]);
     }
 
     // Codex reads its own built-in skills from its home, which is the harness at work, not the agent leaving its copy.

@@ -18,6 +18,22 @@ public class CliRunGuardTests
         Assert.Contains("starts harness sessions", problem.Message, StringComparison.Ordinal);
     }
 
+    [Theory]
+    [InlineData("evidence")]
+    [InlineData("evidence", "check")]
+    [InlineData("evidence", "record", "tests")]
+    public void An_evidence_command_needs_a_runner_that_answers_for_git_and_commands(params string[] args)
+    {
+        var problem = Assert.Throws<InvalidOperationException>(() => CliRun.Run(args));
+
+        Assert.Contains("runs git and commands", problem.Message, StringComparison.Ordinal);
+        Assert.Equal(0, CliRun.Run([.. args, "--help"]).ExitCode);
+    }
+
+    [Fact]
+    public void A_help_word_after_the_double_dash_is_part_of_the_command_and_still_needs_a_runner() =>
+        Assert.Throws<InvalidOperationException>(() => CliRun.Run(["evidence", "record", "tests", "--", "dotnet", "test", "--help"]));
+
     [Fact]
     public void Help_and_conflicts_without_judge_call_no_model_so_need_no_runner()
     {

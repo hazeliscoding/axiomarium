@@ -1,13 +1,13 @@
-[projects."{run}/repo"]
+[projects.'{run}/repo']
 trust_level = "trusted"
 
-[hooks.state."{run}/home/.codex/hooks.json:session_start:1:0"]
+[hooks.state.'{run}/home/.codex/hooks.json:session_start:1:0']
 trusted_hash = "sha256:bf7db03f94ac876d1986ca3cdd9018bdf6ca8c793356d64b6ecaeca576a54737"
 
-[hooks.state."{run}/home/.codex/hooks.json:session_start:2:0"]
+[hooks.state.'{run}/home/.codex/hooks.json:session_start:2:0']
 trusted_hash = "sha256:0000000000000000000000000000000000000000000000000000000000000000"
 
-[hooks.state."{run}/home/.codex/hooks.json:session_start:3:0"]
+[hooks.state.'{run}/home/.codex/hooks.json:session_start:3:0']
 trusted_hash = "sha256:91fbdcceea3f5d0a9c22a83d0ba4990ee534a6c493c23b83d565cca0c71159e1"
 enabled = false
 

@@ -1,0 +1,20 @@
+{
+  "session_id": "id1",
+  "transcript_path": "C:\\Users\\dev\\.claude\\projects\\C--Users-dev-repo\\id1.jsonl",
+  "cwd": "C:\\Users\\dev\\repo",
+  "prompt_id": "id2",
+  "permission_mode": "acceptEdits",
+  "effort": {
+    "level": "medium"
+  },
+  "hook_event_name": "PostToolUseFailure",
+  "tool_name": "PowerShell",
+  "tool_input": {
+    "command": "git rev-parse --verify no-such-ref",
+    "description": "Verify a nonexistent git ref"
+  },
+  "tool_use_id": "id3",
+  "error": "Exit code 128\nfatal: Needed a single revision",
+  "is_interrupt": false,
+  "duration_ms": 866
+}
