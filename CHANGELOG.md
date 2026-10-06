@@ -6,7 +6,10 @@ This file records the user-visible changes to `axm` and the vault's schemas. The
 
 ### Added
 
-- `axiomarium.yaml` takes an `evidence` block: each check's name, the commands that count as running it, such as `dotnet test`, and the files it covers, every file git sees unless `covers` says otherwise. `axm doctor` checks it: a check named twice, a compound command such as `dotnet build && dotnet test`, or an invalid glob is an error at its line. `schemas/evidence.schema.json` describes the record of a check's latest run, which `axm evidence` will keep in `.axm/evidence/`.
+- `axiomarium.yaml` takes an `evidence` block: each check's name, the commands that count as running it, such as `dotnet test`, and the files it covers, every file git sees unless `covers` says otherwise. `axm doctor` checks it: a check named twice, a compound command such as `dotnet build && dotnet test`, or an invalid glob is an error at its line. `schemas/evidence.schema.json` describes the record of a check's latest run, kept in `.axm/evidence/`.
+- `axm evidence` shows each declared check as FRESH (its latest run passed and the files it covers hold what they held then), STALE (with the files that changed since, up to three named), FAILED or MISSING, with when it ran and the command behind it. `--json` prints it as JSON, shape 1. It needs a git repo, and reads git's list of files.
+- `axm evidence check [<name>...]` prints only the checks that aren't fresh and exits 1 when one isn't: a gate for a pre-commit hook.
+- `axm evidence record <name> [-- <command>...]` runs a check's command with its output on your terminal, then records how it ended and a hash of each file the check covers. It refuses a command that doesn't count as running the check, and exits with 0 or 1 as the command passed or failed.
 
 ### Fixed
 

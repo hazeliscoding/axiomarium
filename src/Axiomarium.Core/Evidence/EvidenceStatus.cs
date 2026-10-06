@@ -43,6 +43,19 @@ public static class EvidenceStatuses
 {
     private const int Named = 3;
 
+    /// <summary>The status of <paramref name="check"/> in the repo at <paramref name="repoRoot"/>: its record there, against what the files it covers hold now.</summary>
+    /// <param name="repoRoot">The repo's root folder.</param>
+    /// <param name="check">The check.</param>
+    /// <param name="files">The files git sees, relative to the repo root with forward slashes.</param>
+    /// <returns>The status, as <see cref="Of"/> decides it.</returns>
+    /// <exception cref="IOException">A covered file can't be read. The message names it.</exception>
+    public static EvidenceStatus InRepo(string repoRoot, EvidenceCheck check, IReadOnlyList<string> files)
+    {
+        var current = EvidenceFiles.Hash(repoRoot, EvidenceFiles.Covered(check, files));
+        var (record, problem) = EvidenceRecords.Read(repoRoot, check.Name);
+        return Of(check, record, current, problem, path => File.Exists(Path.Combine(repoRoot, path)));
+    }
+
     /// <summary>The status of <paramref name="check"/>, from its latest run and the hashes of the files it covers now.</summary>
     /// <param name="check">The check.</param>
     /// <param name="record">Its latest run, or <see langword="null"/> when it never ran or its record can't be read.</param>

@@ -1,13 +1,13 @@
 # The axm command line
 
-`axm` is one native binary. Every command reads by default. The only ones that call a model are `axm triggers generate`, `axm triggers test`, `axm eval run` and `axm conflicts --judge`, and they do it through Claude Code or Codex on your own login, only when you run them. `axm triggers generate` writes a prompt file and asks first, and `axm eval run` writes only its history in `.axm/evals/`.
+`axm` is one native binary. Every command reads by default. The only ones that call a model are `axm triggers generate`, `axm triggers test`, `axm eval run` and `axm conflicts --judge`, and they do it through Claude Code or Codex on your own login, only when you run them. `axm triggers generate` writes a prompt file and asks first, `axm eval run` writes only its history in `.axm/evals/`, and `axm evidence record` writes only its check's record in `.axm/evidence/`.
 
 ## Exit codes
 
 | Code | Means |
 |---|---|
 | 0 | The command ran. Warnings, info and overlapping skills don't change that. |
-| 1 | It ran and found errors: an invalid asset or manifest, or a broken `axiomarium.yaml`. Only `doctor` and `validate` find errors. |
+| 1 | It ran and found errors: an invalid asset or manifest, or a broken `axiomarium.yaml`, for `doctor` and `validate`; a check that isn't FRESH, for `evidence check`; or a command that failed, for `evidence record`. |
 | 2 | It couldn't run: bad arguments, a missing folder, no vault where one is needed, or no harness installed. |
 
 `axm hook` commands never exit with 2, because Claude Code reads 2 as "block the action". A hook that can't run exits with 1 and says why on stderr.
@@ -16,14 +16,14 @@
 
 - In a terminal, output has color and one kaomoji per summary line. Piped, in CI or read by an agent, it's plain text, and so is any run with `AXM_PLAIN` set. `NO_COLOR` or `TERM=dumb` turns color off. Terminal output is always the plain output plus color and kaomoji.
 - Paths are relative to the repo root with forward slashes. Paths in your home folder start with `~`.
-- `axm explain --json`, `axm eval run --json` and `axm eval compare --json` print JSON whose shape is a contract, versioned by `schemaVersion`, which is 1 for each. New fields may appear, but existing ones don't change without a new version.
+- `axm explain --json`, `axm eval run --json`, `axm eval compare --json` and `axm evidence --json` print JSON whose shape is a contract, versioned by `schemaVersion`, which is 1 for each. New fields may appear, but existing ones don't change without a new version.
 - `axm triggers export` prints a file for another tool, with no header and no color.
 
 ## Where axm looks
 
 The harness models read the same places the harnesses do: your home folder (`USERPROFILE` on Windows, `HOME` elsewhere), `CODEX_HOME` (else `~/.codex`), `CLAUDE_CONFIG_DIR` (else `~/.claude`), Claude Code's managed settings, and Codex's system folder (`/etc/codex`, or `%ProgramData%\OpenAI\Codex` on Windows).
 
-A repo can have an `axiomarium.yaml` at its root, checked against [`schemas/axiomarium.schema.json`](../schemas/axiomarium.schema.json). Its `doctor.ignore` lists globs for instruction files that are broken on purpose, such as test fixtures, which the doctor leaves out and counts.
+A repo can have an `axiomarium.yaml` at its root, checked against [`schemas/axiomarium.schema.json`](../schemas/axiomarium.schema.json). Its `doctor.ignore` lists globs for instruction files that are broken on purpose, such as test fixtures, which the doctor leaves out and counts, and its `evidence.checks` declares the checks `axm evidence` tracks.
 
 ## Commands
 
@@ -135,6 +135,36 @@ Each version's runs are saved in `.axm/evals/<asset folder>/`, as `<time>-baseli
 - `--judge-with <claude-code|codex>`: the harness whose model grades the rubrics. Defaults to Claude Code.
 - `--fresh`: run the baseline again, even when a saved run still describes it.
 - `--json`: the result as JSON, shape 1, with both sides of each case.
+
+### `axm evidence`
+
+Shows whether each check that `axiomarium.yaml` declares under `evidence.checks` still vouches for the files as they are now:
+
+```yaml
+evidence:
+  checks:
+    - name: tests
+      run: [dotnet test]
+      covers: [src/**, tests/**]
+    - name: build
+      run: [dotnet build]
+```
+
+A check's `run` lists the commands that count as running it: a command counts when it starts with one of them, word by word, so `dotnet test --no-build` counts for `dotnet test`. A compound command, such as `dotnet build && dotnet test` or `dotnet test | tail`, never counts, because its one exit code belongs to several commands. Its `covers` lists globs for the files it vouches for, and without it, every file git sees: tracked, or untracked and not ignored. The repo's own `.axm/` is never covered.
+
+Each check keeps its latest run in `.axm/evidence/<name>.json`, which [`schemas/evidence.schema.json`](../schemas/evidence.schema.json) describes: the command, how it ended, when, the folder it ran in, and a SHA-256 of each file it covered when it ended. A check is FRESH when its latest run passed and every covered file holds what it held then, and STALE when one changed, appeared or went, or when the check's `covers` or `run` changed since. Undoing an edit makes it fresh again. It's FAILED when its latest run failed, and MISSING when it never ran. Each line shows the command behind the run, so a narrowed run, such as `dotnet test --filter X`, or one in a folder below the repo root, shows as one.
+
+It needs a git repo, and reads git's list of files. It exits 0 whenever it ran, and 2 when it couldn't: outside a git repo, with no checks declared, with an invalid `evidence` block, or when a `covers` glob matches no file git sees, which would leave its check fresh whatever changed.
+
+- `--json`: the result as JSON, shape 1: each check's state, the reason, its latest run and the files that changed, appeared or went.
+
+### `axm evidence check [<name>...]`
+
+The gate for a pre-commit hook: prints only the checks that aren't FRESH, and exits 1 when one isn't, 0 when every check named, or every check, is fresh, and 2 when it couldn't run. CI has no `.axm/`, so there `axm evidence record` runs each check, and its exit code is the gate.
+
+### `axm evidence record <name> [-- <command>...]`
+
+Runs a check's command, the check's first `run` entry unless one follows `--`, in the current folder through the shell, with its output on your terminal. Then it records how it ended and what the files the check covers hold in `.axm/evidence/<name>.json`, replacing the last record. It refuses a command that doesn't count as running the check, so `echo ok` can't vouch for the tests. It exits 0 when the command passed, 1 when it failed, with the command's own exit code in the record and the output, and 2 when it couldn't run it. It writes nothing but that record.
 
 ### `axm hook scope-sheriff`
 

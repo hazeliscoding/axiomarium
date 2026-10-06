@@ -14,6 +14,11 @@ namespace Axiomarium.Cli;
 /// Changes to the environment it inherits: a value sets a variable, and <see langword="null"/> removes it. Or
 /// <see langword="null"/> to inherit it as it is.
 /// </param>
+/// <param name="Attached">
+/// Whether it shares <c>axm</c>'s own stdin, stdout and stderr, so the user sees its output as it runs, as for a command
+/// <c>axm evidence record</c> runs. Its lines and stderr then come back empty, and <paramref name="Input"/> and
+/// <paramref name="StopAfter"/> are ignored.
+/// </param>
 public sealed record HarnessCall(
     string Command,
     IReadOnlyList<string> Arguments,
@@ -21,7 +26,8 @@ public sealed record HarnessCall(
     string? Folder,
     Func<string, bool>? StopAfter,
     TimeSpan Timeout,
-    IReadOnlyDictionary<string, string?>? Environment = null);
+    IReadOnlyDictionary<string, string?>? Environment = null,
+    bool Attached = false);
 
 /// <summary>What a harness session printed.</summary>
 /// <param name="Started">Whether the command was found and started.</param>
@@ -163,13 +169,16 @@ public sealed class ProcessHarnessRunner(string? scratchRoot = null) : IHarnessR
         var start = new ProcessStartInfo(shim ? "cmd.exe" : program)
         {
             WorkingDirectory = folder,
-            RedirectStandardInput = true,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            StandardInputEncoding = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false),
-            StandardOutputEncoding = Encoding.UTF8,
-            StandardErrorEncoding = Encoding.UTF8,
+            RedirectStandardInput = !call.Attached,
+            RedirectStandardOutput = !call.Attached,
+            RedirectStandardError = !call.Attached,
         };
+        if (!call.Attached)
+        {
+            start.StandardInputEncoding = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false);
+            start.StandardOutputEncoding = Encoding.UTF8;
+            start.StandardErrorEncoding = Encoding.UTF8;
+        }
         foreach (var argument in shim ? ["/d", "/c", program, .. call.Arguments] : call.Arguments)
         {
             start.ArgumentList.Add(argument);
@@ -188,6 +197,23 @@ public sealed class ProcessHarnessRunner(string? scratchRoot = null) : IHarnessR
         }
 
         using var process = Process.Start(start)!;
+        if (call.Attached)
+        {
+            using var limit = CancellationTokenSource.CreateLinkedTokenSource(cancellation);
+            limit.CancelAfter(call.Timeout);
+            try
+            {
+                await process.WaitForExitAsync(limit.Token);
+                return new HarnessOutput(true, [], process.ExitCode, "");
+            }
+            catch (OperationCanceledException)
+            {
+                process.Kill(entireProcessTree: true);
+                await process.WaitForExitAsync(CancellationToken.None);
+                return new HarnessOutput(true, [], null, "");
+            }
+        }
+
         var error = process.StandardError.ReadToEndAsync(cancellation);
         await process.StandardInput.WriteAsync(call.Input);
         process.StandardInput.Close();
