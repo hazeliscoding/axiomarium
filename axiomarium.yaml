@@ -6,3 +6,11 @@ doctor:
     - scenarios/
     - findings/*/fixtures/
     - "*/*/evals/*/*/repo/"
+
+# The checks axm evidence tracks. The tests read nearly every folder, so they cover every file git sees.
+evidence:
+  checks:
+    - name: tests
+      run: [dotnet test]
+    - name: format
+      run: [dotnet format]
